@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Portfolio interaktif bergaya pixel art 2D - Redho Harli Saputra touring dengan Motor di dunia coding PHP & Laravel."
+    />
+    <meta
+      name="keywords"
+      content="PHP, Laravel, Web Developer, Portfolio, Pixel Art"
+    />
+    <meta name="author" content="Redho Harli Saputra" />
+    <title>Journey of Redok</title>
+    <!-- favicon -->
+    <link rel="icon" type="image/png" href="assets/favicon.ico" sizes="32x32" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=VT323&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+      <div class="loading-content">
+        <div class="pixel-loader"></div>
+        <p>Sedang Disiapkan...</p>
+      </div>
+    </div>
+
+    <!-- Splash Screen -->
+    <div id="splash-screen" class="splash hidden">
+      <div class="splash-content pixel-panel">
+        <h1>Journey of Redok</h1>
+        <p>Siap untuk menjelajah? Langsung klik tombol di bawah!</p>
+        <button id="start-explore" class="splash-btn">Gasskan!</button>
+      </div>
+    </div>
+
+    <!-- Opening Story (short) shown immediately after splash closes -->
+    <div id="opening-story" class="opening hidden">
+      <div class="opening-content pixel-panel">
+        <p class="story-line">
+          Selamat datang di <strong>Journey of Redok</strong> sebuah portofolio
+          interaktif bergaya pixel art 2D.
+        </p>
+        <p class="story-line">
+          Saya seorang PHP &amp; Laravel developer yang menggabungkan kecintaan
+          pada coding dan petualangan, silakan jelajahi proyek, kemampuan, dan
+          kisah perjalanan saya.
+        </p>
+        <p class="story-line">Terima kasih sudah mampir!</p>
+      </div>
+    </div>
+
+    <!-- Game Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI Overlay -->
+    <div id="ui-overlay">
+      <button
+        id="audio-toggle"
+        class="audio-toggle"
+        aria-label="Audio controls"
+      >
+        🔊
+      </button>
+      <div
+        id="audio-control-panel"
+        class="audio-panel hidden"
+        aria-hidden="true"
+      >
+        <div class="audio-panel-inner">
+          <label for="audio-volume">Volume</label>
+          <input id="audio-volume" type="range" min="0" max="100" value="60" />
+          <div class="audio-panel-row">
+            <button
+              id="audio-mute-toggle"
+              class="audio-mute"
+              aria-pressed="false"
+            >
+              🔊
+            </button>
+            <button
+              id="audio-panel-close"
+              class="audio-close"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="controls-hint">
+        <p>
+          🎮 Gunakan <kbd>A</kbd> <kbd>D</kbd> atau <kbd>←</kbd>
+          <kbd>→</kbd> untuk bergerak
+        </p>
+        <p>💬 Tekan <kbd>E</kbd> untuk berinteraksi</p>
+      </div>
+      <div id="interaction-prompt" class="interaction-prompt hidden">
+        <span>Tekan <kbd>E</kbd> untuk berinteraksi</span>
+      </div>
+      <div
+        id="interaction-tooltip"
+        class="interaction-tooltip hidden"
+        aria-hidden="true"
+      >
+        <div class="tooltip-inner">
+          <span class="tooltip-arrow">◀</span>
+          <span class="tooltip-label"
+            >Tujuan: <strong id="tooltip-label-text"></strong
+          ></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- About Me Modal -->
+    <div id="about-modal" class="modal hidden">
+      <div class="modal-content pixel-panel">
+        <button class="close-btn" onclick="closeModal('about-modal')">×</button>
+        <h2>🏕️ About Me</h2>
+        <div class="modal-body">
+          <div class="profile-section">
+            <div class="profile-image">
+              <div class="pixel-avatar">👨‍💻</div>
+            </div>
+            <div class="profile-info">
+              <h3>Redho Harli Saputra</h3>
+              <p class="subtitle">Web Developer</p>
+              <p class="bio">
+                Saya Redho Harli Saputra seorang PHP &amp; Laravel developer
+                sekaligus penggemar petualangan. Saya suka jalan-jalan dengan
+                motor kesayangan, dan semangat itu saya bawa ke setiap proyek:
+                kode yang rapi, solusi praktis, dan pengalaman digital yang
+                bercerita. Selamat menjelajah portofolio saya!
+              </p>
+              <div class="stats">
+                <div class="stat-item">
+                  <span class="stat-value">5+</span>
+                  <span class="stat-label">Tahun Pengalaman</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-value">50+</span>
+                  <span class="stat-label">Project Selesai</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-value">∞</span>
+                  <span class="stat-label">Kopi Diminum</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Skills Modal -->
+    <div id="skills-modal" class="modal hidden">
+      <div class="modal-content pixel-panel">
+        <button class="close-btn" onclick="closeModal('skills-modal')">
+          ×
+        </button>
+        <h2>🪧 Tech Stack</h2>
+        <div class="modal-body">
+          <h3 style="text-align: center">As soon as posible! (ASAP)</h3>
+          <!-- <div class="skills-grid">
+            <div class="skill-card">
+              <div class="skill-icon">🐘</div>
+              <h4>PHP</h4>
+              <div class="skill-bar">
+                <div class="skill-progress" style="width: 90%"></div>
+              </div>
+              <span class="skill-level">Expert</span>
+            </div>
+            <div class="skill-card">
+              <div class="skill-icon">🔺</div>
+              <h4>Laravel</h4>
+              <div class="skill-bar">
+                <div class="skill-progress" style="width: 90%"></div>
+              </div>
+              <span class="skill-level">Expert</span>
+            </div>
+            <div class="skill-card">
+              <div class="skill-icon">⚔️</div>
+              <h4>Blade</h4>
+              <div class="skill-bar">
+                <div class="skill-progress" style="width: 85%"></div>
+              </div>
+              <span class="skill-level">Advanced</span>
+            </div>
+            <div class="skill-card">
+              <div class="skill-icon">🗄️</div>
+              <h4>MySQL</h4>
+              <div class="skill-bar">
+                <div class="skill-progress" style="width: 85%"></div>
+              </div>
+              <span class="skill-level">Advanced</span>
+            </div>
+            <div class="skill-card">
+              <div class="skill-icon">🔌</div>
+              <h4>REST API</h4>
+              <div class="skill-bar">
+                <div class="skill-progress" style="width: 88%"></div>
+              </div>
+              <span class="skill-level">Advanced</span>
+            </div>
+            <div class="skill-card">
+              <div class="skill-icon">🐙</div>
+              <h4>Git</h4>
+              <div class="skill-bar">
+                <div class="skill-progress" style="width: 85%"></div>
+              </div>
+              <span class="skill-level">Advanced</span>
+            </div>
+          </div> -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Projects Modal -->
+    <div id="projects-modal" class="modal hidden">
+      <div class="modal-content pixel-panel">
+        <button class="close-btn" onclick="closeModal('projects-modal')">
+          ×
+        </button>
+        <h2>🏪 Portfolio</h2>
+        <div class="modal-body">
+          <h3 style="text-align: center">As soon as posible! (ASAP)</h3>
+          <!-- <div class="projects-grid">
+            <div class="project-card">
+              <div class="project-thumbnail">
+                <div class="pixel-icon">🛒</div>
+              </div>
+              <div class="project-info">
+                <h4>E-Commerce Platform</h4>
+                <p>
+                  Platform e-commerce lengkap dengan payment gateway, inventory
+                  management, dan admin dashboard.
+                </p>
+                <div class="project-tags">
+                  <span class="tag">Laravel</span>
+                  <span class="tag">MySQL</span>
+                  <span class="tag">Redis</span>
+                </div>
+                <a href="#" class="project-link">View Project →</a>
+              </div>
+            </div>
+            <div class="project-card">
+              <div class="project-thumbnail">
+                <div class="pixel-icon">📱</div>
+              </div>
+              <div class="project-info">
+                <h4>REST API Service</h4>
+                <p>
+                  Microservice API untuk mobile app dengan authentication, rate
+                  limiting, dan comprehensive documentation.
+                </p>
+                <div class="project-tags">
+                  <span class="tag">Laravel</span>
+                  <span class="tag">REST API</span>
+                  <span class="tag">JWT</span>
+                </div>
+                <a href="#" class="project-link">View Project →</a>
+              </div>
+            </div>
+            <div class="project-card">
+              <div class="project-thumbnail">
+                <div class="pixel-icon">📊</div>
+              </div>
+              <div class="project-info">
+                <h4>Dashboard Analytics</h4>
+                <p>
+                  Real-time analytics dashboard dengan data visualization dan
+                  automated reporting system.
+                </p>
+                <div class="project-tags">
+                  <span class="tag">Laravel</span>
+                  <span class="tag">Chart.js</span>
+                  <span class="tag">WebSocket</span>
+                </div>
+                <a href="#" class="project-link">View Project →</a>
+              </div>
+            </div>
+            <div class="project-card">
+              <div class="project-thumbnail">
+                <div class="pixel-icon">🏍️</div>
+              </div>
+              <div class="project-info">
+                <h4>Touring Community</h4>
+                <p>
+                  Platform komunitas untuk riders dengan route planning, event
+                  management, dan photo gallery.
+                </p>
+                <div class="project-tags">
+                  <span class="tag">Laravel</span>
+                  <span class="tag">Maps API</span>
+                  <span class="tag">Social</span>
+                </div>
+                <a href="#" class="project-link">View Project →</a>
+              </div>
+            </div>
+          </div> -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact Modal -->
+    <div id="contact-modal" class="modal hidden">
+      <div class="modal-content pixel-panel">
+        <button class="close-btn" onclick="closeModal('contact-modal')">
+          ×
+        </button>
+        <h2>📮 Contact</h2>
+        <div class="modal-body">
+          <div class="contact-container">
+            <div class="contact-info">
+              <h3>Mari Berkolaborasi!</h3>
+              <p>
+                Punya project menarik atau ingin ngobrol tentang Laravel dan
+                touring? Hubungi saya!
+              </p>
+              <div class="contact-methods">
+                <div class="contact-item">
+                  <span class="contact-icon">📧</span>
+                  <div>
+                    <strong>Email</strong>
+                    <p>redho256@gmail.com</p>
+                  </div>
+                </div>
+                <div class="contact-item">
+                  <span class="contact-icon">💼</span>
+                  <div>
+                    <strong>LinkedIn</strong>
+                    <p>linkedin.com/in/redokhs</p>
+                  </div>
+                </div>
+                <div class="contact-item">
+                  <span class="contact-icon">🐙</span>
+                  <div>
+                    <strong>GitHub</strong>
+                    <p>github.com/redok25</p>
+                  </div>
+                </div>
+                <div class="contact-item">
+                  <span class="contact-icon">🏍️</span>
+                  <div>
+                    <strong>Instagram</strong>
+                    <p>@redok.hs</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="contact-form">
+              <h3>Kirim Pesan</h3>
+              <form id="contactForm" onsubmit="handleContactSubmit(event)">
+                <div class="form-group">
+                  <label for="name">Nama</label>
+                  <input type="text" id="name" name="name" required />
+                </div>
+                <div class="form-group">
+                  <label for="email">Email</label>
+                  <input type="email" id="email" name="email" required />
+                </div>
+                <div class="form-group">
+                  <label for="message">Pesan</label>
+                  <textarea
+                    id="message"
+                    name="message"
+                    rows="5"
+                    required
+                  ></textarea>
+                </div>
+                <button type="submit" class="submit-btn">Kirim Pesan 📨</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Offscreen Modal: shown when player leaves viewport (no close, single action) -->
+    <div
+      id="offscreen-modal"
+      class="modal hidden offscreen-modal"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="modal-content pixel-panel">
+        <h2>🚨 Bahaya!</h2>
+        <div class="modal-body">
+          <p>Tekan tombol di bawah untuk kembali ke area yang lebih aman.</p>
+        </div>
+        <div style="text-align: center; margin-top: 18px">
+          <button id="offscreen-return-btn" class="return-btn">Kembali</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/content.js"></script>
+    <script src="js/effects.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/world.js"></script>
+    <script src="js/interactions.js"></script>
+    <script src="js/game.js"></script>
+    <!-- Mobile / Touch Controls -->
+    <div id="mobile-controls" aria-hidden="false">
+      <button id="mc-left" class="mc-btn" aria-label="Move left">◀</button>
+      <button id="mc-right" class="mc-btn" aria-label="Move right">▶</button>
+      <button id="mc-interact" class="mc-btn mc-interact" aria-label="Interact">
+        E
+      </button>
+    </div>
+    <script src="js/mobile-controls.js"></script>
+    <script src="js/splash.js"></script>
+  </body>
+</html>

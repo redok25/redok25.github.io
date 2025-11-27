@@ -9,7 +9,7 @@ class Player {
     this.width = 200;
     this.height = 200;
     this.velocityX = 0;
-    this.maxSpeed = 7; // top speed (px/frame-ish)
+    this.maxSpeed = 10; // top speed (px/frame-ish)
     // Movement tuning: ground accel, braking, and friction
     this.accelGround = 0.6; // acceleration when pressing throttle
     this.brake = 1.2; // stronger deceleration when reversing direction
@@ -84,6 +84,13 @@ class Player {
     // Start unlocked so the player/camera can reach world left on initial load.
     this.minX = 0;
     this.lockBacktrack = false;
+
+    // Wheelie state
+    this.wheelieActive = false;
+    this.wheelieRotation = 0; // current rotation angle in radians
+    this.wheelieMaxRotation = 0.35; // max tilt angle (~20 degrees)
+    this.wheelieTransitionSpeed = 0.15; // how fast to transition in/out
+    this.wheelieMinSpeed = this.maxSpeed; // minimum velocity to perform wheelie
 
     // Internal flag to differentiate an opening 'splash' (which should lock
     // backtracking when complete) from ad-hoc scripted moves (like offscreen
@@ -235,6 +242,37 @@ class Player {
     const dtFactor = deltaTime ? deltaTime / 16.6667 : 1;
     this.wheelAngle += this.velocityX * this.wheelSpinMultiplier * dtFactor;
 
+    // Handle wheelie activation (spacebar)
+    const spacePressed = keys[" "] || keys["Space"];
+    const movingFastEnough = Math.abs(this.velocityX) >= this.wheelieMinSpeed;
+    
+    // Update canWheelie state for UI tooltip
+    this.canWheelie = movingFastEnough && !this.wheelieActive;
+    
+    if (spacePressed && movingFastEnough && !this.wheelieActive) {
+      this.wheelieActive = true;
+    } else if (!spacePressed && this.wheelieActive) {
+      this.wheelieActive = false;
+    }
+
+    // Update wheelie rotation with smooth transitions
+    if (this.wheelieActive && movingFastEnough) {
+      // Transition to wheelie rotation
+      this.wheelieRotation = Math.min(
+        this.wheelieMaxRotation,
+        this.wheelieRotation + this.wheelieTransitionSpeed * dtFactor
+      );
+    } else {
+      // Transition back to normal
+      this.wheelieRotation = Math.max(
+        0,
+        this.wheelieRotation - this.wheelieTransitionSpeed * dtFactor
+      );
+      if (this.wheelieRotation === 0) {
+        this.wheelieActive = false;
+      }
+    }
+
     // Enforce backtrack lock: don't allow player to move left past `minX`.
     // NOTE: camera/backtrack locking is handled by `Game` (camera clamp).
     // We intentionally do NOT prevent the player's world X from decreasing
@@ -301,11 +339,37 @@ class Player {
       return;
     }
 
-    // Draw sprite
+    // Draw sprite with wheelie rotation
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
     const screenX = this.x - cameraX;
+
+    // Apply wheelie rotation if active
+    if (this.wheelieRotation > 0) {
+      // Get rear wheel position as pivot point
+      const wheelOffsets = this.wheelOffsetsByState[this.currentAnimation] || 
+                          this.wheelOffsetsByState.idle;
+      
+      // Calculate pivot based on facing direction
+      let pivotX, pivotY;
+      if (this.facingRight) {
+        // Rear wheel is on the left when facing right
+        pivotX = screenX + (wheelOffsets && wheelOffsets[0] ? wheelOffsets[0].x : 43);
+        pivotY = this.y + (wheelOffsets && wheelOffsets[0] ? wheelOffsets[0].y : 174);
+      } else {
+        // Rear wheel is on the right when facing left (mirrored)
+        pivotX = screenX + (wheelOffsets && wheelOffsets[0] ? this.width - wheelOffsets[0].x : this.width - 43);
+        pivotY = this.y + (wheelOffsets && wheelOffsets[0] ? wheelOffsets[0].y : 174);
+      }
+      
+      // Translate to rear wheel, rotate, then translate back
+      ctx.translate(pivotX, pivotY);
+      // Rotate based on facing direction: negative for wheelie when facing right, positive when facing left
+      const rotationAngle = this.facingRight ? -this.wheelieRotation : this.wheelieRotation;
+      ctx.rotate(rotationAngle);
+      ctx.translate(-pivotX, -pivotY);
+    }
 
     // Flip sprite if moving/facing left
     if (!this.facingRight) {
@@ -321,13 +385,11 @@ class Player {
       ctx.drawImage(sprite, screenX, this.y, this.width, this.height);
     }
 
-    ctx.restore();
-
-    // Draw lightweight wheel overlays (spokes + rim) on top of the sprite.
+    // Draw wheels and exhaust BEFORE restoring context so they follow the rotation
     this.drawWheels(ctx, screenX);
-
-    // Draw exhaust on top of wheels so it is not occluded.
     this.drawExhaust(ctx, screenX);
+
+    ctx.restore();
   }
 
   // Draw rotating wheel overlays at the configured offsets.
@@ -343,10 +405,17 @@ class Player {
 
     for (let i = 0; i < offsetsArr.length; i++) {
       const off = offsetsArr[i];
-      // Mirror X offset when sprite is flipped
-      let cx = screenX + off.x;
-      if (!this.facingRight) cx = screenX + (this.width - off.x);
-      const cy = this.y + off.y;
+      // When facingRight is false, the context is already scaled(-1, 1)
+      // so we need to use negative coordinates
+      let cx, cy;
+      if (!this.facingRight) {
+        // Context is flipped, so use negative X coordinate
+        cx = -(screenX + this.width - off.x);
+        cy = this.y + off.y;
+      } else {
+        cx = screenX + off.x;
+        cy = this.y + off.y;
+      }
 
       ctx.translate(cx, cy);
 
@@ -403,25 +472,23 @@ class Player {
     for (let i = 0; i < offsets.length; i++) {
       const off = offsets[i];
 
-      // Compute center X; mirror when facing left
-      let cx = screenX + off.x;
-      if (!this.facingRight) cx = screenX + (this.width - off.x);
-      const cy = this.y + off.y;
+      // Compute center position accounting for context transformation
+      let cx, cy;
+      if (!this.facingRight) {
+        // Context is already flipped, use negative X coordinate
+        cx = -(screenX + this.width - off.x);
+        cy = this.y + off.y;
+      } else {
+        cx = screenX + off.x;
+        cy = this.y + off.y;
+      }
 
       const w = off.w || 40;
       const h = off.h || 16;
 
       if (this.exhaustLoaded && this.exhaustImage.complete) {
-        // If facing left, draw a mirrored exhaust so the nozzle points the correct way.
-        if (!this.facingRight) {
-          ctx.save();
-          ctx.translate(cx, cy);
-          ctx.scale(-1, 1);
-          ctx.drawImage(this.exhaustImage, -w / 2, -h / 2, w, h);
-          ctx.restore();
-        } else {
-          ctx.drawImage(this.exhaustImage, cx - w / 2, cy - h / 2, w, h);
-        }
+        // Draw exhaust image (no additional flipping needed, context is already transformed)
+        ctx.drawImage(this.exhaustImage, cx - w / 2, cy - h / 2, w, h);
       } else {
         // Simple fallback rectangle so exhaust position is visible even if image missing
         ctx.fillStyle = "rgba(160,80,20,0.9)";

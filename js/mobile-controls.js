@@ -8,6 +8,7 @@
   const leftBtn = $("mc-left");
   const rightBtn = $("mc-right");
   const interactBtn = $("mc-interact");
+  const wheelieBtn = $("mc-wheelie");
   const mobileControls = $("mobile-controls");
 
   // Helper to safely set keys on the running game instance
@@ -88,6 +89,17 @@
       }
     });
   }
+
+  // Wheelie button: hold to wheelie (Space)
+  bindButton(
+    wheelieBtn,
+    () => {
+      setKey(" ", true);
+    },
+    () => {
+      setKey(" ", false);
+    }
+  );
 
   // Show controls only on touch-capable or small screens
   function updateVisibility() {

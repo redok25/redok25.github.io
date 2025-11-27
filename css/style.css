@@ -864,6 +864,50 @@ body {
   border-color: var(--text-light);
 }
 
+#mobile-controls .mc-wheelie {
+  width: 54px;
+  height: 54px;
+  font-weight: bold;
+  margin-left: 4px;
+  background: linear-gradient(180deg, var(--accent), #d65a1a);
+  color: var(--text-light);
+  border-color: var(--text-light);
+}
+
+/* Wheelie Tooltip */
+.wheelie-tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  background: rgba(29, 29, 29, 0.9);
+  border: 2px solid var(--accent);
+  padding: 6px 12px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 105;
+  white-space: nowrap;
+  animation: floatUp 0.5s ease-out infinite alternate;
+}
+
+.wheelie-tooltip span {
+  color: var(--accent);
+  font-weight: bold;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.wheelie-tooltip.hidden {
+  display: none;
+}
+
+@keyframes floatUp {
+  from {
+    transform: translate(-50%, -100%);
+  }
+  to {
+    transform: translate(-50%, -110%);
+  }
+}
+
 /* Only show controls on small screens or touch devices */
 #mobile-controls {
   display: none;
@@ -1046,7 +1090,7 @@ body {
 
   #opening-story {
     width: 100%;
-    bottom: 80px; /* angkat agar tidak menimpa tombol mobile */
+    bottom: 100px; /* angkat agar tidak menimpa tombol mobile */
     padding: 10px 14px;
   }
 }

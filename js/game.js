@@ -315,23 +315,35 @@ class Game {
     // Create dust particles when moving: spawn for both rear and front wheels
     if (Math.abs(this.player.velocityX) > 1) {
       const wheelY = this.player.y + this.player.height - 10;
-      // reasonable wheel offsets relative to player.x
-      const rearOffsetX = 40;
-      const frontOffsetX = this.player.width - 40;
+      
+      // Determine wheel positions based on facing direction
+      // Default (facing right): Rear is low X (40), Front is high X (width - 40)
+      // Facing Left: Rear is high X (width - 40), Front is low X (40)
+      let rearX, frontX;
+      
+      if (this.player.facingRight) {
+        rearX = this.player.x + 40;
+        frontX = this.player.x + this.player.width - 40;
+      } else {
+        rearX = this.player.x + this.player.width - 40;
+        frontX = this.player.x + 40;
+      }
 
-      // rear wheel
-      this.effects.createDustParticles(this.player.x + rearOffsetX, wheelY, {
+      // rear wheel (always spawns dust)
+      this.effects.createDustParticles(rearX, wheelY, {
         count: 2,
         spreadX: 12,
         spreadY: 6,
       });
 
-      // front wheel
-      this.effects.createDustParticles(this.player.x + frontOffsetX, wheelY, {
-        count: 2,
-        spreadX: 12,
-        spreadY: 6,
-      });
+      // front wheel - only if not doing a wheelie
+      if (!this.player.wheelieActive) {
+        this.effects.createDustParticles(frontX, wheelY, {
+          count: 2,
+          spreadX: 12,
+          spreadY: 6,
+        });
+      }
     }
 
     // Ambient leaf spawn near nearby trees (probabilistic, scaled by proximity)
@@ -378,6 +390,29 @@ class Game {
 
     // Update interactions (pass cameraX so interaction system can compute screen positions)
     this.interactions.update(this.cameraX);
+
+    // Update wheelie tooltip
+    const wheelieTooltip = document.getElementById("wheelie-tooltip");
+    if (wheelieTooltip) {
+      if (this.player.canWheelie) {
+        wheelieTooltip.classList.remove("hidden");
+        
+        // Detect mobile/touch to show appropriate hint
+        const isMobile = matchMedia("(pointer: coarse)").matches || window.innerWidth <= 900;
+        const tooltipText = wheelieTooltip.querySelector("span");
+        if (tooltipText) {
+          tooltipText.textContent = isMobile ? "Tekan 💨 untuk Wheelie!" : "SPACE untuk Wheelie!";
+        }
+
+        // Position tooltip above player
+        const screenX = this.player.x - this.cameraX + this.player.width / 2;
+        const screenY = (this.player.y - 40) + 80; // slightly higher than interaction prompt
+        wheelieTooltip.style.left = `${screenX}px`;
+        wheelieTooltip.style.top = `${screenY}px`;
+      } else {
+        wheelieTooltip.classList.add("hidden");
+      }
+    }
   }
 
   render() {

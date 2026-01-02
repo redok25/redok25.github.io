@@ -143,6 +143,11 @@
           // On complete: show UI and tidy up splash + subtitle element
           if (uiOverlay) uiOverlay.style.display = "";
 
+          // Show Gesture Info if available
+          if (typeof window.showGestureInfo === "function") {
+              window.showGestureInfo();
+          }
+
           // Add traveled distance to world.splashDistance if available
           try {
             if (

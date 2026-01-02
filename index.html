@@ -402,6 +402,27 @@
       </div>
     </div>
 
+    <!-- Disaster Modal (Resize Glitch) -->
+    <div id="disaster-modal" class="modal hidden disaster-modal" role="dialog" aria-modal="true">
+      <div class="modal-content pixel-panel disaster-content">
+        <h2 style="text-align: center;">⚠️ 404 REALITY BROKEN ⚠️</h2>
+        <div class="modal-body">
+          <p style="text-align: center;">
+            Terdeteksi anomali dimensi! Perubahan ukuran layar telah menyebabkan
+            kerusakan struktural pada semesta pixel ini.
+          </p>
+          <p style="text-align: center; margin-top: 5px;" class="blink-text">
+            Satu-satunya cara selamat adalah mereset ulang alam semesta.
+          </p>
+        </div>
+        <div style="text-align: center; margin-top: 24px">
+          <button id="reload-btn" class="return-btn disaster-btn" style="line-height: 1;">
+            🔄 REBUILD UNIVERSE
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Scripts -->
     <script src="js/content.js"></script>
     <script src="js/effects.js"></script>
@@ -411,15 +432,26 @@
     <script src="js/interactions.js"></script>
     <script src="js/game.js"></script>
     <!-- Mobile / Touch Controls -->
-    <div id="mobile-controls" aria-hidden="false">
-      <button id="mc-left" class="mc-btn" aria-label="Move left">◀</button>
-      <button id="mc-right" class="mc-btn" aria-label="Move right">▶</button>
-      <button id="mc-interact" class="mc-btn mc-interact" aria-label="Interact">
-        E
-      </button>
-      <button id="mc-wheelie" class="mc-btn mc-wheelie" aria-label="Wheelie">
-        💨
-      </button>
+    <!-- Gesture Info Overlay (shown after splash on mobile) -->
+    <div id="gesture-info" class="gesture-info hidden">
+      <div class="gesture-content pixel-panel">
+        <h2>🎮 Controls</h2>
+        <div class="gesture-list">
+          <div class="gesture-item">
+            <span class="gesture-icon">↔️</span>
+            <p><strong>Swipe</strong> Kiri/Kanan untuk bergerak</p>
+          </div>
+          <div class="gesture-item">
+            <span class="gesture-icon">👆</span>
+            <p><strong>Swipe UP</strong> untuk Wheelie</p>
+          </div>
+          <div class="gesture-item">
+            <span class="gesture-icon">🔘</span>
+            <p><strong>Tap</strong> tombol interaksi saat muncul</p>
+          </div>
+        </div>
+        <button id="close-gesture-info" class="splash-btn">Siap!</button>
+      </div>
     </div>
     <script src="js/mobile-controls.js"></script>
     <script src="js/splash.js"></script>

@@ -8,8 +8,22 @@ class Game {
     this.ctx = this.canvas.getContext("2d");
 
     // Set canvas size
+    // Set canvas size
+    this.lastWidth = window.innerWidth;
     this.resizeCanvas();
-    window.addEventListener("resize", () => this.resizeCanvas());
+    
+    // Listen for resize but trigger disaster if width changes significantly
+    // (Handles the mobile-to-desktop glitch issue)
+    window.addEventListener("resize", () => {
+        const newWidth = window.innerWidth;
+        // Ignore small changes (address bar on mobile)
+        if (Math.abs(newWidth - this.lastWidth) > 50) {
+            this.handleDisaster();
+        } else {
+            this.resizeCanvas();
+        }
+        this.lastWidth = newWidth;
+    });
 
     // Game state
     this.paused = false;
@@ -221,6 +235,23 @@ class Game {
     }
   }
 
+  // Handle "Disaster" on resize
+  handleDisaster() {
+    this.paused = true;
+    const modal = document.getElementById("disaster-modal");
+    const reloadBtn = document.getElementById("reload-btn");
+    
+    if (modal) {
+        modal.classList.remove("hidden");
+        // Ensure it stays top
+        modal.style.display = "flex"; 
+    }
+    
+    if (reloadBtn) {
+        reloadBtn.onclick = () => window.location.reload();
+    }
+  }
+
   update(deltaTime) {
     if (this.paused) return;
     // Update player. When a scripted splash/camera scene is active or the
@@ -401,7 +432,7 @@ class Game {
         const isMobile = matchMedia("(pointer: coarse)").matches || window.innerWidth <= 900;
         const tooltipText = wheelieTooltip.querySelector("span");
         if (tooltipText) {
-          tooltipText.textContent = isMobile ? "Tekan 💨 untuk Wheelie!" : "SPACE untuk Wheelie!";
+          tooltipText.textContent = isMobile ? "SWIPE UP untuk Wheelie!" : "SPACE untuk Wheelie!";
         }
 
         // Position tooltip above player

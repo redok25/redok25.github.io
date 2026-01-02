@@ -15,6 +15,14 @@ class InteractionManager {
 
     // Setup interaction key listener
     this.setupKeyListener();
+    
+    // Setup click listener for prompt (Touch support)
+    if (this.promptElement) {
+        this.promptElement.addEventListener("click", (e) => {
+            e.preventDefault();
+            this.tryInteract();
+        });
+    }
   }
 
   setupKeyListener() {

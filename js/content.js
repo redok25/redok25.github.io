@@ -92,14 +92,15 @@ function handleContactSubmit(event) {
 }
 
 // Close modals with ESC key
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    const modals = document.querySelectorAll(".modal:not(.hidden)");
-    modals.forEach((modal) => {
-      modal.classList.add("hidden");
-      if (window.game) {
-        window.game.paused = false;
-      }
-    });
-  }
-});
+// Close modals with ESC key - DISABLED per user request
+// document.addEventListener("keydown", (e) => {
+//   if (e.key === "Escape") {
+//     const modals = document.querySelectorAll(".modal:not(.hidden)");
+//     modals.forEach((modal) => {
+//       modal.classList.add("hidden");
+//       if (window.game) {
+//         window.game.paused = false;
+//       }
+//     });
+//   }
+// });

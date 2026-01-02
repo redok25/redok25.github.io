@@ -1,15 +1,12 @@
-// Mobile controls: map on-screen buttons to existing keyboard-like `game.keys`.
-// This file expects `window.game` to be available (game.js constructs it on load).
+// Mobile controls: Gesture based (Swipe Left/Right, Swipe Up for Wheelie, Tap for Interact)
 (function () {
-  function $(sel) {
-    return document.getElementById(sel);
-  }
+  const GESTURE_THRESHOLD = 30; // Min px to trigger direction
+  const WHEELIE_THRESHOLD = 50; // Min px up to trigger wheelie
 
-  const leftBtn = $("mc-left");
-  const rightBtn = $("mc-right");
-  const interactBtn = $("mc-interact");
-  const wheelieBtn = $("mc-wheelie");
-  const mobileControls = $("mobile-controls");
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let isMoving = false;
+  let activePointerId = null;
 
   // Helper to safely set keys on the running game instance
   function setKey(key, value) {
@@ -22,97 +19,125 @@
     }
   }
 
-  // Attach pointer handlers so it works with touch and mouse
-  function bindButton(btn, onDown, onUp) {
-    if (!btn) return;
-    btn.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      onDown && onDown(e);
-      btn.setPointerCapture(e.pointerId);
-    });
-    btn.addEventListener("pointerup", (e) => {
-      e.preventDefault();
-      onUp && onUp(e);
-      try {
-        btn.releasePointerCapture(e.pointerId);
-      } catch (err) {}
-    });
-    btn.addEventListener("pointercancel", (e) => {
-      e.preventDefault();
-      onUp && onUp(e);
-    });
-    // Also treat leaving the element as release so users can slide away
-    btn.addEventListener("pointerleave", (e) => {
-      e.preventDefault();
-      onUp && onUp(e);
-    });
-  }
+  // Handle touch start
+  document.addEventListener(
+    "touchstart",
+    (e) => {
+      // Ignore if touching a button or modal
+      if (e.target.closest("button") || e.target.closest(".modal")) return;
 
-  // Left button: hold to move left
-  bindButton(
-    leftBtn,
-    () => {
-      setKey("ArrowLeft", true);
-      setKey("ArrowRight", false);
+      const touch = e.changedTouches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      activePointerId = touch.identifier;
     },
-    () => {
-      setKey("ArrowLeft", false);
-    }
+    { passive: false }
   );
 
-  // Right button: hold to move right
-  bindButton(
-    rightBtn,
-    () => {
-      setKey("ArrowRight", true);
-      setKey("ArrowLeft", false);
-    },
-    () => {
-      setKey("ArrowRight", false);
-    }
-  );
-
-  // Interact button: trigger interaction on press
-  if (interactBtn) {
-    interactBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      try {
-        if (window.game && window.game.interactions) {
-          window.game.interactions.tryInteract();
-        } else if (window.game && window.game.keys) {
-          // fallback: briefly set 'e' key
-          window.game.keys["e"] = true;
-          setTimeout(() => (window.game.keys["e"] = false), 120);
+  // Handle touch move
+  document.addEventListener(
+    "touchmove",
+    (e) => {
+      if (activePointerId === null) return;
+      
+      // Find the active touch
+      let currentTouch = null;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === activePointerId) {
+            currentTouch = e.changedTouches[i];
+            break;
         }
-      } catch (err) {
-        console.error("Interact failed:", err);
       }
+      if (!currentTouch) return;
+
+      const deltaX = currentTouch.clientX - touchStartX;
+      const deltaY = currentTouch.clientY - touchStartY;
+
+      // Vertical Swipe (Wheelie) - Check this first or independently
+      // If swiping UP significantly
+      if (deltaY < -WHEELIE_THRESHOLD) {
+         setKey(" ", true);
+      } else {
+         setKey(" ", false);
+      }
+
+      // Horizontal Swipe (Movement)
+      if (deltaX < -GESTURE_THRESHOLD) {
+        // Move Left
+        setKey("ArrowLeft", true);
+        setKey("ArrowRight", false);
+        isMoving = true;
+      } else if (deltaX > GESTURE_THRESHOLD) {
+        // Move Right
+        setKey("ArrowRight", true);
+        setKey("ArrowLeft", false);
+        isMoving = true;
+      } else {
+        // Within deadzone, stop if we were moving
+        if (isMoving) {
+          setKey("ArrowLeft", false);
+          setKey("ArrowRight", false);
+          isMoving = false;
+        }
+      }
+    },
+    { passive: false }
+  );
+
+  // Handle touch end/cancel
+  const endTouch = (e) => {
+     let hasActive = false;
+     for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === activePointerId) {
+            hasActive = true;
+            break;
+        }
+     }
+     if (!hasActive) return;
+
+    setKey("ArrowLeft", false);
+    setKey("ArrowRight", false);
+    setKey(" ", false);
+    isMoving = false;
+    activePointerId = null;
+  };
+
+  document.addEventListener("touchend", endTouch);
+  document.addEventListener("touchcancel", endTouch);
+
+  // Handle Instruction Overlay
+  const gestureInfo = document.getElementById("gesture-info");
+  const closeBtn = document.getElementById("close-gesture-info");
+
+  if (closeBtn && gestureInfo) {
+    closeBtn.addEventListener("click", () => {
+        gestureInfo.classList.add("hidden");
+        // Optional: save preference to localStorage?
     });
   }
 
-  // Wheelie button: hold to wheelie (Space)
-  bindButton(
-    wheelieBtn,
-    () => {
-      setKey(" ", true);
-    },
-    () => {
-      setKey(" ", false);
-    }
-  );
+  // Expose showGestureInfo for splash.js
+  window.showGestureInfo = function() {
+      // Check if mobile
+      const isTouch = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
+      if (isTouch && gestureInfo) {
+          gestureInfo.classList.remove("hidden");
+      }
+  };
 
-  // Show controls only on touch-capable or small screens
-  function updateVisibility() {
-    const isTouch =
-      matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
-    const smallScreen = window.innerWidth <= 900;
-    if (isTouch || smallScreen) {
-      mobileControls && mobileControls.classList.add("mc-visible");
-    } else {
-      mobileControls && mobileControls.classList.remove("mc-visible");
+  // Adjust UI Text for Mobile
+  function updateMobileText() {
+    const isTouch = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
+    if (isTouch) {
+        // Interaction Prompt
+        const interactPrompt = document.querySelector("#interaction-prompt span");
+        if (interactPrompt) {
+            interactPrompt.innerHTML = "Tap untuk Interaksi";
+        }
     }
   }
 
-  window.addEventListener("resize", updateVisibility);
-  updateVisibility();
+  // Run on load
+  updateMobileText();
+
 })();

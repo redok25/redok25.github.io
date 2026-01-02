@@ -50,6 +50,11 @@
       }
       if (!currentTouch) return;
 
+      // Prevent default scrolling behavior
+      if (e.cancelable) {
+         e.preventDefault();
+      }
+
       const deltaX = currentTouch.clientX - touchStartX;
       const deltaY = currentTouch.clientY - touchStartY;
 

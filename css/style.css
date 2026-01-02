@@ -34,6 +34,22 @@
   --pixel-size: 4px;
 }
 
+html {
+  overflow: hidden; /* Ensure HTML also doesn't scroll */
+  width: 100%;
+  height: 100%;
+}
+
+/* Hide scrollbar globally */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* Restore scrollbar for modals where needed */
+.modal-content::-webkit-scrollbar {
+  display: block;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -45,6 +61,10 @@ body {
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
   touch-action: none;
+  /* Strict iOS locking */
+  position: fixed;
+  width: 100%;
+  height: 100%;
 }
 
 /* === LOADING SCREEN === */

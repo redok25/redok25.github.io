@@ -969,6 +969,10 @@ body {
   color: var(--text-light);
 }
 
+.contact-link {
+  color: var(--text-light);
+}
+
 /* === FORM === */
 .form-group {
   margin-bottom: 20px;

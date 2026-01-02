@@ -75,32 +75,23 @@ function showCustomAlert(message, options = {}) {
 function handleContactSubmit(event) {
   event.preventDefault();
   const formData = new FormData(event.target);
-  const data = {
-    name: formData.get("name"),
-    email: formData.get("email"),
-    message: formData.get("message"),
-  };
+  const name = formData.get("name");
+  const email = formData.get("email");
+  const message = formData.get("message");
 
-  // Here you would normally send to a backend
-  console.log("Contact form submitted:", data);
+  // Format message for WhatsApp
+  const phoneNumber = "6285156264959"; // Format: CountryCode + Number
+  const text = `Halo, saya ${name} (${email}).%0A%0A${message}`;
+  
+  // Open WhatsApp in new tab
+  const whatsappUrl = `https://wa.me/${phoneNumber}?text=${text}`;
+  window.open(whatsappUrl, '_blank');
+
   showCustomAlert(
-    "Terima kasih! Pesan Anda telah dikirim. (Demo mode - tidak benar-benar terkirim)",
-    { type: "success", duration: 4500 }
+    "Mengarahkan ke WhatsApp...",
+    { type: "success", duration: 3000 }
   );
+  
   event.target.reset();
   closeModal("contact-modal");
 }
-
-// Close modals with ESC key
-// Close modals with ESC key - DISABLED per user request
-// document.addEventListener("keydown", (e) => {
-//   if (e.key === "Escape") {
-//     const modals = document.querySelectorAll(".modal:not(.hidden)");
-//     modals.forEach((modal) => {
-//       modal.classList.add("hidden");
-//       if (window.game) {
-//         window.game.paused = false;
-//       }
-//     });
-//   }
-// });

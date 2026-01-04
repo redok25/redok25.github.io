@@ -129,6 +129,76 @@ class World {
     } catch (e) {
       // ignore if objects not ready
     }
+
+    // NPCs
+    this.npcs = [];
+    this.spawnNPCs();
+  }
+
+  spawnNPCs() {
+    this.npcs = []; // Clear existing list if any
+
+    // Configuration
+    const safeStart = 400; // Don't spawn too close to start
+    const safeEnd = this.worldWidth - 500;
+    const density = 1000; // 1 NPC every ~1000 pixels
+    const npcCount = Math.floor((safeEnd - safeStart) / density);
+    
+    console.log(`World Width: ${this.worldWidth}, Spawning approx ${npcCount} NPCs`);
+
+    // Ground Y calculation
+    const grassOffset = this.terrainConfig && typeof this.terrainConfig.grassOffset === 'number' ? this.terrainConfig.grassOffset : 100;
+    const grassHeight = this.terrainConfig && typeof this.terrainConfig.grassHeight === 'number' ? this.terrainConfig.grassHeight : 20;
+    const grassTop = this.canvas.height - grassOffset;
+    const groundBaseY = grassTop + grassHeight;
+    const npcHeight = 87; 
+    const y = groundBaseY - npcHeight - 12.5;
+
+    // Available NPC types
+    const npcTypes = ['npc1', 'npc2', 'npc3'];
+
+    for (let i = 0; i < npcCount; i++) {
+        // Divide world into segments to ensure distribution, but add randomness within segment
+        const segmentSize = (safeEnd - safeStart) / npcCount;
+        const segmentStart = safeStart + (i * segmentSize);
+        const segmentEnd = segmentStart + segmentSize;
+        
+        // Random position within this segment (with some padding)
+        const padding = 100;
+        const minX = segmentStart + padding;
+        const maxX = segmentEnd - padding;
+        const x = Math.random() * (maxX - minX) + minX;
+
+        // Random NPC ID
+        const prevId = i > 0 ? this.npcs[i-1].id : null;
+        const prevPrevId = i > 1 ? this.npcs[i-2].id : null;
+        
+        // Filter out the previous ID to ensure we don't pick it again (no AA)
+        let availableTypes = npcTypes;
+        if (prevId) {
+            availableTypes = npcTypes.filter(type => type !== prevId);
+        }
+
+        // Try to filter out the one before previous too (avoid ABA), 
+        // but only if we still have choices left.
+        if (prevPrevId && availableTypes.length > 1) {
+             const betterTypes = availableTypes.filter(type => type !== prevPrevId);
+             if (betterTypes.length > 0) {
+                 availableTypes = betterTypes;
+             }
+        }
+        
+        let id = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+
+        console.log(`Spawning ${id} at x=${Math.floor(x)}`);
+        
+        this.npcs.push(new NPC({
+            x: x,
+            y: y,
+            id: id,
+            patrolRadius: 200 // Slightly larger patrol radius
+        }));
+    }
   }
 
   loadGrassTexture() {
@@ -669,6 +739,9 @@ class World {
         this.renderObject(obj, cameraX);
       }
     });
+
+    // Render NPCs
+    this.npcs.forEach(npc => npc.render(this.ctx, cameraX));
 
     // Render fog overlay (lighter now)
     this.renderFog();

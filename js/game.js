@@ -155,6 +155,24 @@ class Game {
       this.keys["ArrowRight"] = false;
       this.keys["ArrowLeft"] = false;
     });
+
+    // Click handler for NPC interaction
+    this.canvas.addEventListener("click", (e) => {
+        // Calculate mouse position relative to canvas
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // Check NPC clicks
+        if (this.world.npcs) {
+            this.world.npcs.forEach(npc => {
+                npc.handleClick(mouseX, mouseY, this.cameraX);
+            });
+        }
+    });
+
+    // Double tap support or similar for touch if needed, 
+    // but click usually fires on tap on mobile.
   }
 
   // Setup offscreen modal button and DOM references
@@ -443,6 +461,11 @@ class Game {
       } else {
         wheelieTooltip.classList.add("hidden");
       }
+    }
+
+    // Update NPCs
+    if (this.world.npcs) {
+      this.world.npcs.forEach(npc => npc.update(deltaTime));
     }
   }
 

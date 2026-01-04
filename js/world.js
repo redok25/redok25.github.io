@@ -141,7 +141,7 @@ class World {
     // Configuration
     const safeStart = 400; // Don't spawn too close to start
     const safeEnd = this.worldWidth - 500;
-    const density = 1000; // 1 NPC every ~1000 pixels
+    const density = 750; // 1 NPC every ~750 pixels
     const npcCount = Math.floor((safeEnd - safeStart) / density);
     
     console.log(`World Width: ${this.worldWidth}, Spawning approx ${npcCount} NPCs`);
@@ -155,7 +155,8 @@ class World {
     const y = groundBaseY - npcHeight - 12.5;
 
     // Available NPC types
-    const npcTypes = ['npc1', 'npc2', 'npc3'];
+    const npcTypes = ['npc1', 'npc2', 'npc3', 'npc4', 'npc5'];
+    let npcPool = [];
 
     for (let i = 0; i < npcCount; i++) {
         // Divide world into segments to ensure distribution, but add randomness within segment
@@ -169,26 +170,25 @@ class World {
         const maxX = segmentEnd - padding;
         const x = Math.random() * (maxX - minX) + minX;
 
-        // Random NPC ID
-        const prevId = i > 0 ? this.npcs[i-1].id : null;
-        const prevPrevId = i > 1 ? this.npcs[i-2].id : null;
-        
-        // Filter out the previous ID to ensure we don't pick it again (no AA)
-        let availableTypes = npcTypes;
-        if (prevId) {
-            availableTypes = npcTypes.filter(type => type !== prevId);
+        // Shuffle Sack / Bag logic: Exhaust all types before repeating
+        if (npcPool.length === 0) {
+            // Refill
+            npcPool = [...npcTypes];
+            // Fisher-Yates Shuffle
+            for (let j = npcPool.length - 1; j > 0; j--) {
+                const k = Math.floor(Math.random() * (j + 1));
+                [npcPool[j], npcPool[k]] = [npcPool[k], npcPool[j]];
+            }
+            
+            // Check boundary to avoid repeating the same one back-to-back from prev batch
+            const prevId = i > 0 ? this.npcs[i-1].id : null;
+            if (prevId && npcPool[0] === prevId && npcPool.length > 1) {
+                // Swap the first item with the last item to avoid duplicate
+                [npcPool[0], npcPool[npcPool.length - 1]] = [npcPool[npcPool.length - 1], npcPool[0]];
+            }
         }
-
-        // Try to filter out the one before previous too (avoid ABA), 
-        // but only if we still have choices left.
-        if (prevPrevId && availableTypes.length > 1) {
-             const betterTypes = availableTypes.filter(type => type !== prevPrevId);
-             if (betterTypes.length > 0) {
-                 availableTypes = betterTypes;
-             }
-        }
         
-        let id = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+        const id = npcPool.shift();
 
         console.log(`Spawning ${id} at x=${Math.floor(x)}`);
         

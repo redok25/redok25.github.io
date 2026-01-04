@@ -21,6 +21,9 @@ function openModal(modalId) {
     // Pause game
     if (window.game) {
       window.game.paused = true;
+      if (window.AudioManager) {
+          window.AudioManager.stopEngine();
+      }
     }
   }
 }

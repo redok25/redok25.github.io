@@ -14,32 +14,17 @@
 
     playBgm(nameOrPath) {
       try {
+        console.log(`AudioManager: Requesting BGM play for '${nameOrPath}'`);
         // allow passing a logical name or a direct path
         const map = {
-          menu: "assets/audio/menu.mp3",
-          level: "assets/audio/level.mp3",
           ambient: "assets/audio/ambient.mp3",
-          click: "assets/audio/click.ogg",
+          click: "assets/audio/click.mp3",
         };
         const src = map[nameOrPath] || nameOrPath;
         if (!src) return;
         if (this._currentBgm === src && !this._bgm.paused) return;
         this._bgm.src = src;
         this._bgm.loop = true;
-
-        // Fallback handler: if initial format fails (e.g. ogg on Safari), try m4a
-        const originalSrc = src;
-        this._bgm.onerror = () => {
-            if (this._bgm.src.endsWith(".m4a")) {
-                console.error("AudioManager: Failed to play BGM both formats.");
-                return;
-            }
-            console.warn("AudioManager: Format failed, trying fallback .m4a...");
-            // Replace extension with .m4a
-            const fallbackSrc = originalSrc.replace(/\.[^/.]+$/, ".m4a");
-            this._bgm.src = fallbackSrc;
-            this._bgm.play().catch(e => console.warn("Fallback play failed", e));
-        };
         // start playback at 0 volume then fade to desired volume for smoothness
         const targetVol = this._prevVolume || 0.6;
         try {
@@ -120,15 +105,8 @@
                 this._engineLoading = false;
             })
             .catch(e => {
-                // FALLBACK: If .ogg failed, try .m4a
-                if (!path.endsWith(".m4a")) {
-                    console.warn(`AudioManager: Engine sound ${path} failed, trying .m4a fallback...`);
-                    const fallbackPath = path.replace(/\.[^/.]+$/, ".m4a");
-                    this._loadEngineBuffer(fallbackPath);
-                } else {
-                    console.error("AudioManager: Failed to load engine sound (both formats)", e);
-                    this._engineLoading = false;
-                }
+                console.error("AudioManager: Failed to load engine sound", e);
+                this._engineLoading = false;
             });
     },
 
@@ -167,7 +145,7 @@
         }
     },
 
-    playEngine(path = "assets/audio/moving.ogg") {
+    playEngine(path = "assets/audio/moving.mp3") {
       try {
         const ctx = this._initWebAudio();
         if (!ctx) return; 
@@ -349,20 +327,22 @@
         if (typeof cb === "function") cb();
       }
     },
+    // Preload click sound
+    _clickAudio: (function() {
+        const a = new Audio("assets/audio/click.mp3");
+        a.preload = "auto";
+        a.volume = 0.6;
+        return a;
+    })(),
+
     // Play a short click SFX for UI interactions. Respects mute and current volume.
     playClick() {
       try {
-        const src = (function () {
-          const local = {
-            click: "assets/audio/click.ogg",
-          };
-          return local.click;
-        })();
-        if (!src) return;
         if (this._isMuted) return;
-        // small, non-looping audio for click
-        const s = new Audio(src);
-        s.preload = "auto";
+        
+        // Clone node allows overlapping clicks (rapid fire)
+        // If we just used this._clickAudio.play(), rapid clicks would just restart or fail
+        const s = this._clickAudio.cloneNode();
         s.volume = Math.max(0, Math.min(1, this._prevVolume || 0.6));
         s.play().catch(() => {});
       } catch (e) {}

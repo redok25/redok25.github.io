@@ -336,7 +336,7 @@ class World {
   _computeGrassVisibleHeights() {
     // create offscreen canvas to inspect pixels
     const off = document.createElement("canvas");
-    const ctx = off.getContext("2d");
+    const ctx = off.getContext("2d", { willReadFrequently: true });
     // Build a flat list of images from groups (if present) or fallback to grassSprites
     const allImgs =
       this.grassGroups && this.grassGroups.length > 0

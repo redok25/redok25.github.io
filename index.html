@@ -60,6 +60,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/visitor-counter.css" />
   </head>
   <body>
     <!-- Loading Screen -->
@@ -680,6 +681,59 @@
       </div>
     </div>
 
+    <!-- Visitor Counter Modal (Hidden Easter Egg) -->
+    <div id="visitor-counter-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content pixel-panel visitor-counter-content">
+        <button class="close-btn" onclick="closeVisitorCounter()">×</button>
+        <h2 style="text-align: center;">🎉 Easter Egg Ditemukan! 🎉</h2>
+        <div class="modal-body">
+          <div class="visitor-stats">
+            <div class="visitor-stat-card">
+              <div class="stat-icon">📊</div>
+              <div class="stat-info">
+                <div class="stat-label">Total Kunjungan</div>
+                <div class="stat-value" id="visitor-count-number">0</div>
+              </div>
+            </div>
+            <div class="visitor-stat-card">
+              <div class="stat-icon">👥</div>
+              <div class="stat-info">
+                <div class="stat-label">Pengunjung Unik</div>
+                <div class="stat-value" id="visitor-unique-count">0</div>
+              </div>
+            </div>
+            <div class="visitor-stat-card">
+              <div class="stat-icon">🎯</div>
+              <div class="stat-info">
+                <div class="stat-label">Kunjungan Anda</div>
+                <div class="stat-value" id="visitor-your-visits">0</div>
+              </div>
+            </div>
+            <div class="visitor-stat-card">
+              <div class="stat-icon">📅</div>
+              <div class="stat-info">
+                <div class="stat-label">Kunjungan Pertama Anda</div>
+                <div class="stat-text" id="visitor-first-visit">-</div>
+              </div>
+            </div>
+            <div class="visitor-stat-card">
+              <div class="stat-icon">🕐</div>
+              <div class="stat-info">
+                <div class="stat-label">Kunjungan Terakhir Anda</div>
+                <div class="stat-text" id="visitor-last-visit">-</div>
+              </div>
+            </div>
+          </div>
+          <p style="text-align: center; margin-top: 20px; font-size: 14px; opacity: 0.8;">
+            💡 Tip: Data ini unik untuk browser Anda dan tidak akan dihitung ulang saat refresh!
+          </p>
+          <p style="text-align: center; margin-top: 8px; font-size: 14px; opacity: 0.8;">
+            Terima kasih sudah mengunjungi portfolio saya! 🙏
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- Scripts -->
     <script src="js/content.js"></script>
     <script src="js/effects.js"></script>
@@ -713,5 +767,7 @@
     </div>
     <script src="js/mobile-controls.js"></script>
     <script src="js/splash.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/visitor-counter.js"></script>
   </body>
 </html>

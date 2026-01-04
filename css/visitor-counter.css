@@ -1,0 +1,193 @@
+/**
+ * Visitor Counter Modal Styles
+ * Easter Egg Feature
+ */
+
+/* Visitor Counter Modal Content */
+.visitor-counter-content {
+  max-width: 600px;
+  animation: slideInBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
+/* Visitor Stats Container */
+.visitor-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+/* Individual Stat Card */
+.visitor-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--primary-color, #00ff88);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  opacity: 0;
+  animation: fadeInSlide 0.5s ease-out forwards;
+}
+
+/* Stagger animation for cards */
+.visitor-stat-card:nth-child(1) { animation-delay: 0.1s; }
+.visitor-stat-card:nth-child(2) { animation-delay: 0.2s; }
+.visitor-stat-card:nth-child(3) { animation-delay: 0.3s; }
+.visitor-stat-card:nth-child(4) { animation-delay: 0.4s; }
+.visitor-stat-card:nth-child(5) { animation-delay: 0.5s; }
+
+.visitor-stat-card:hover {
+  transform: translateX(8px);
+  background: rgba(0, 255, 136, 0.1);
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+}
+
+/* Stat Icon */
+.visitor-stat-card .stat-icon {
+  font-size: 48px;
+  min-width: 60px;
+  text-align: center;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.5));
+}
+
+/* Stat Info Container */
+.visitor-stat-card .stat-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Stat Label */
+.visitor-stat-card .stat-label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Stat Value (for numbers) */
+.visitor-stat-card .stat-value {
+  font-size: 36px;
+  font-weight: bold;
+  color: var(--primary-color, #00ff88);
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+  font-family: 'VT323', monospace;
+  line-height: 1;
+}
+
+/* Stat Text (for dates) */
+.visitor-stat-card .stat-text {
+  font-size: 16px;
+  color: #ffffff;
+  font-family: 'VT323', monospace;
+}
+
+/* Fade In Slide Animation for Cards */
+@keyframes fadeInSlide {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide In Bounce Animation */
+@keyframes slideInBounce {
+  0% {
+    transform: translateY(-100%) scale(0.8);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(10%) scale(1.05);
+    opacity: 1;
+  }
+  80% {
+    transform: translateY(-5%) scale(0.98);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Slide Out Up Animation */
+@keyframes slideOutUp {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100%) scale(0.8);
+    opacity: 0;
+  }
+}
+
+/* Pulse Animation for Stats */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.visitor-stat-card .stat-value {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .visitor-counter-content {
+    max-width: 90%;
+    margin: 20px;
+  }
+
+  .visitor-stat-card {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .visitor-stat-card .stat-icon {
+    font-size: 36px;
+    min-width: 48px;
+  }
+
+  .visitor-stat-card .stat-value {
+    font-size: 28px;
+  }
+
+  .visitor-stat-card .stat-text {
+    font-size: 14px;
+  }
+
+  .visitor-stat-card .stat-label {
+    font-size: 12px;
+  }
+}
+
+/* Add sparkle effect to modal title */
+.visitor-counter-content h2 {
+  animation: colorShift 3s ease-in-out infinite;
+}
+
+@keyframes colorShift {
+  0%, 100% {
+    color: #00ff88;
+    text-shadow: 0 0 20px rgba(0, 255, 136, 0.8);
+  }
+  33% {
+    color: #00d4ff;
+    text-shadow: 0 0 20px rgba(0, 212, 255, 0.8);
+  }
+  66% {
+    color: #ff00ff;
+    text-shadow: 0 0 20px rgba(255, 0, 255, 0.8);
+  }
+}

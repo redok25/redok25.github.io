@@ -26,6 +26,20 @@
         if (this._currentBgm === src && !this._bgm.paused) return;
         this._bgm.src = src;
         this._bgm.loop = true;
+
+        // Fallback handler: if initial format fails (e.g. ogg on Safari), try m4a
+        const originalSrc = src;
+        this._bgm.onerror = () => {
+            if (this._bgm.src.endsWith(".m4a")) {
+                console.error("AudioManager: Failed to play BGM both formats.");
+                return;
+            }
+            console.warn("AudioManager: Format failed, trying fallback .m4a...");
+            // Replace extension with .m4a
+            const fallbackSrc = originalSrc.replace(/\.[^/.]+$/, ".m4a");
+            this._bgm.src = fallbackSrc;
+            this._bgm.play().catch(e => console.warn("Fallback play failed", e));
+        };
         // start playback at 0 volume then fade to desired volume for smoothness
         const targetVol = this._prevVolume || 0.6;
         try {
@@ -106,8 +120,15 @@
                 this._engineLoading = false;
             })
             .catch(e => {
-                console.error("AudioManager: Failed to load engine sound", e);
-                this._engineLoading = false;
+                // FALLBACK: If .ogg failed, try .m4a
+                if (!path.endsWith(".m4a")) {
+                    console.warn(`AudioManager: Engine sound ${path} failed, trying .m4a fallback...`);
+                    const fallbackPath = path.replace(/\.[^/.]+$/, ".m4a");
+                    this._loadEngineBuffer(fallbackPath);
+                } else {
+                    console.error("AudioManager: Failed to load engine sound (both formats)", e);
+                    this._engineLoading = false;
+                }
             });
     },
 

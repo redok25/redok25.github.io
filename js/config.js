@@ -6,7 +6,7 @@
 const VISITOR_CONFIG = {
   // JSONBin.io API Configuration
   JSONBIN_API_KEY: '$2a$10$raBke8RlM6i7cfGKrygMvuqlpC1bO3C.OPodRorPCDaGFU1NKveVK',
-  JSONBIN_BIN_ID: null, // Will be created automatically on first run
+  JSONBIN_BIN_ID: '695ab60ed0ea881f4054434d', // Your specific bin ID
   
   // API Endpoints
   JSONBIN_BASE_URL: 'https://api.jsonbin.io/v3',

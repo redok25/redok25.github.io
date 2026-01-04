@@ -55,7 +55,8 @@ class VisitorCounter {
    */
   async fetchFromJSONBin() {
     try {
-      const binId = localStorage.getItem(VISITOR_CONFIG.BIN_ID_KEY);
+      // Use configured bin ID first, fallback to localStorage
+      const binId = VISITOR_CONFIG.JSONBIN_BIN_ID || localStorage.getItem(VISITOR_CONFIG.BIN_ID_KEY);
       
       if (!binId) {
         debugLog('No bin ID found, will create new bin');
@@ -91,7 +92,8 @@ class VisitorCounter {
    */
   async saveToJSONBin(data) {
     try {
-      let binId = localStorage.getItem(VISITOR_CONFIG.BIN_ID_KEY);
+      // Use configured bin ID first, fallback to localStorage
+      let binId = VISITOR_CONFIG.JSONBIN_BIN_ID || localStorage.getItem(VISITOR_CONFIG.BIN_ID_KEY);
       let url, method;
 
       if (binId) {

@@ -11,6 +11,7 @@
     _isMuted: false,
     _prevVolume: 0.6,
     _fadeHandle: null,
+
     playBgm(nameOrPath) {
       try {
         // allow passing a logical name or a direct path
@@ -18,7 +19,7 @@
           menu: "assets/audio/menu.mp3",
           level: "assets/audio/level.mp3",
           ambient: "assets/audio/ambient.mp3",
-          click: "assets/audio/click.mp3",
+          click: "assets/audio/click.ogg",
         };
         const src = map[nameOrPath] || nameOrPath;
         if (!src) return;
@@ -69,6 +70,204 @@
         }
       } catch (e) {}
     },
+
+    // Engine SFX management (separate channel so it doesn't interrupt BGM)
+    // Engine sound specific (Web Audio API)
+    _audioCtx: null,
+    _engineBuffer: null,
+    _engineSource: null,
+    _engineGain: null,
+    _engineLoading: false,
+    _isStopping: false,
+
+    _initWebAudio() {
+        if (!this._audioCtx) {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (Ctx) this._audioCtx = new Ctx();
+        }
+        return this._audioCtx;
+    },
+
+    _engineLoopStart: 0,
+    _engineLoopEnd: 0,
+
+    _loadEngineBuffer(path) {
+         if (this._engineBuffer || this._engineLoading) return;
+         this._engineLoading = true;
+         const ctx = this._initWebAudio();
+         if (!ctx) return;
+
+         fetch(path)
+            .then(res => res.arrayBuffer())
+            .then(buf => ctx.decodeAudioData(buf))
+            .then(decoded => {
+                this._engineBuffer = decoded;
+                this._calculateLoopPoints(decoded); // Analyze buffer
+                this._engineLoading = false;
+            })
+            .catch(e => {
+                console.error("AudioManager: Failed to load engine sound", e);
+                this._engineLoading = false;
+            });
+    },
+
+    // Auto-detect silence at start/end to ensure seamless looping (Simple Trim)
+    _calculateLoopPoints(buffer) {
+        try {
+            const data = buffer.getChannelData(0);
+            const len = data.length;
+            const threshold = 0.005; // Very low threshold just to catch absolute silence
+
+            let start = 0;
+            let end = len - 1;
+
+            // Scan from start
+            while (start < len && Math.abs(data[start]) < threshold) {
+                start++;
+            }
+
+            // Scan from end
+            while (end > start && Math.abs(data[end]) < threshold) {
+                end--;
+            }
+
+            // Safety check
+            if (end - start < 1000) {
+                this._engineLoopStart = 0;
+                this._engineLoopEnd = buffer.duration;
+            } else {
+                this._engineLoopStart = start / buffer.sampleRate;
+                this._engineLoopEnd = end / buffer.sampleRate;
+            }
+            console.log(`AudioManager: Trimmed engine loop. Start: ${this._engineLoopStart.toFixed(3)}s, End: ${this._engineLoopEnd.toFixed(3)}s`);
+        } catch(e) {
+            this._engineLoopStart = 0;
+            this._engineLoopEnd = buffer.duration;
+        }
+    },
+
+    playEngine(path = "assets/audio/moving.ogg") {
+      try {
+        const ctx = this._initWebAudio();
+        if (!ctx) return; 
+        
+        // Reset stopping flag because we are playing now
+        this._isStopping = false;
+
+        if (!this._engineBuffer) {
+            this._loadEngineBuffer(path);
+            return; 
+        }
+
+        if (ctx.state === 'suspended') {
+            ctx.resume();
+        }
+
+        if (this._engineSource) {
+            const now = ctx.currentTime;
+            this._engineGain.gain.cancelScheduledValues(now);
+            this._engineGain.gain.setValueAtTime(this._engineGain.gain.value, now);
+            
+            const targetVol = (this._prevVolume || 0.6) * 0.8;
+            // Snappier volume recovery (0.1s)
+            this._engineGain.gain.linearRampToValueAtTime(targetVol, now + 0.1);
+            return;
+        }
+
+        this._engineSource = ctx.createBufferSource();
+        this._engineSource.buffer = this._engineBuffer;
+        this._engineSource.loop = true;
+        
+        // Loop points
+        if (this._engineLoopEnd > 0) {
+            this._engineSource.loopStart = this._engineLoopStart;
+            this._engineSource.loopEnd = this._engineLoopEnd;
+        }
+
+        this._engineGain = ctx.createGain();
+        this._engineGain.gain.value = 0; 
+
+        this._engineSource.connect(this._engineGain);
+        this._engineGain.connect(ctx.destination);
+
+        // Start from 0 to capture the natural attack of the sound (Fixes 'start glitch')
+        // The loop will still respect loopStart/loopEnd for subsequent repeats
+        this._engineSource.start(0, 0);
+
+        // Very fast fade in (0.05s) just to de-click
+        const now = ctx.currentTime;
+        const targetVol = (this._prevVolume || 0.6) * 0.8;
+        if (!this._isMuted) {
+             this._engineGain.gain.setValueAtTime(0, now);
+             this._engineGain.gain.linearRampToValueAtTime(targetVol, now + 0.05);
+        } else {
+             this._engineGain.gain.value = 0;
+        }
+
+        this._engineSource.onended = () => {
+             this._engineSource = null;
+             this._engineGain = null;
+             this._isStopping = false;
+        };
+
+      } catch (e) {
+          console.error("AudioManager.playEngine error", e);
+      }
+    },
+
+    // Modulate volume based on speed (simulates engine effort)
+    // ratio: 0.0 (stopped) to 1.0 (max speed)
+    setEngineVolumeBySpeed(ratio) {
+        try {
+            if (!this._engineGain) return;
+            if (this._isStopping) return;
+
+            const now = this._audioCtx.currentTime;
+            const baseVol = (this._prevVolume || 0.6) * 0.8;
+            
+            // Quadratic curve: Volume drops faster than speed
+            // This simulates "letting off the gas": Engine quiets down (idles) while bike still has momentum
+            // Ratio^1.5 or Ratio^2 feels good. Let's try Ratio^1.5 for a balance.
+            const curve = Math.pow(ratio, 1.5);
+            
+            // Map 0..1 to 0.1 .. 1.0
+            const dynamicVol = baseVol * (0.1 + (curve * 0.9)); 
+
+            // Smooth update (0.1s ramp)
+            this._engineGain.gain.setTargetAtTime(dynamicVol, now, 0.1);
+            
+        } catch(e) {}
+    },
+
+    stopEngine() {
+        try {
+            if (!this._engineSource || !this._engineGain) return;
+            if (this._isStopping) return;
+
+            this._isStopping = true;
+            
+            const ctx = this._initWebAudio();
+            const now = ctx.currentTime;
+            
+            this._engineGain.gain.cancelScheduledValues(now);
+            
+            // Get current volume to determine how "heavy" the stop should be
+            const currentVol = this._engineGain.gain.value;
+            this._engineGain.gain.setValueAtTime(currentVol, now);
+            
+            // Adaptive Fade:
+            // High RPM (High Vol) -> Longer drift (0.5s)
+            // Low RPM (Low Vol) -> Quick cut (0.15s)
+            // This fixes the "floating" feel at low speeds while keeping high speed smoothness
+            const duration = 0.15 + (currentVol * 0.4); 
+            
+            this._engineGain.gain.linearRampToValueAtTime(0, now + duration);
+            
+            const src = this._engineSource;
+            src.stop(now + duration + 0.05); 
+            
+        } catch(e) {}
+    },
     // Convenience: allow playing a file path directly
     playFile(path) {
       return this.playBgm(path);
@@ -84,6 +283,15 @@
           this._fadeHandle = null;
         }
         this._bgm.volume = vol;
+        
+        // Update engine volume if it's playing (Web Audio)
+        if (this._engineGain && this._audioCtx) {
+             const now = this._audioCtx.currentTime;
+             this._engineGain.gain.cancelScheduledValues(now);
+             const target = Math.max(0, vol * 0.8);
+             this._engineGain.gain.setValueAtTime(target, now);
+        }
+
       } catch (e) {}
     },
 
@@ -125,7 +333,7 @@
       try {
         const src = (function () {
           const local = {
-            click: "assets/audio/click.mp3",
+            click: "assets/audio/click.ogg",
           };
           return local.click;
         })();
@@ -145,6 +353,9 @@
       try {
         this._isMuted = true;
         this._bgm.muted = true;
+        if (this._engineGain) {
+             this._engineGain.gain.value = 0;
+        }
       } catch (e) {}
     },
     unmute() {
@@ -152,8 +363,13 @@
         this._isMuted = false;
         this._bgm.muted = false;
         // restore volume if needed
-        if (typeof this._prevVolume === "number")
-          this._bgm.volume = this._prevVolume;
+        if (typeof this._prevVolume === "number") {
+           this._bgm.volume = this._prevVolume;
+           if (this._engineGain) {
+                // Restore engine volume
+                this._engineGain.gain.value = Math.max(0, this._prevVolume * 0.8);
+           }
+        }
       } catch (e) {}
     },
     toggleMute() {

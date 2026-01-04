@@ -189,6 +189,17 @@ class Player {
       this.wheelAngle +=
         this.velocityX * this.wheelSpinMultiplier * dtFactorSplash;
 
+      // Ensure engine sound plays during splash
+      try {
+         if (window.AudioManager && window.AudioManager.playEngine) {
+             window.AudioManager.playEngine();
+         }
+         if (window.AudioManager && window.AudioManager.setEngineVolumeBySpeed) {
+             const ratio = Math.min(1, Math.abs(this.velocityX) / this.maxSpeed);
+             window.AudioManager.setEngineVolumeBySpeed(ratio);
+         }
+      } catch(e) {}
+
       return; // skip normal input handling while scripted move runs
     }
     // Handle input and animation transitions with smoother acceleration/braking
@@ -229,6 +240,25 @@ class Player {
         this.animationTimer = 0;
       }
     }
+
+    // Audio Engine Handling
+    try {
+        const speed = Math.abs(this.velocityX);
+        if (speed > 0.1) { // lowered threshold slightly
+             if (window.AudioManager && window.AudioManager.playEngine) {
+                 window.AudioManager.playEngine();
+             }
+             // Dynamic volume based on speed (smoother stop)
+             if (window.AudioManager && window.AudioManager.setEngineVolumeBySpeed) {
+                 const ratio = Math.min(1, speed / this.maxSpeed);
+                 window.AudioManager.setEngineVolumeBySpeed(ratio);
+             }
+        } else {
+             if (window.AudioManager && window.AudioManager.stopEngine) {
+                 window.AudioManager.stopEngine();
+             }
+        }
+    } catch(e) {}
 
     // Clamp speed
     if (this.velocityX > this.maxSpeed) this.velocityX = this.maxSpeed;

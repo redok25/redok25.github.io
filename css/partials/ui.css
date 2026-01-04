@@ -1,0 +1,255 @@
+/* === CANVAS === */
+#gameCanvas {
+  display: block;
+  width: 100%;
+  height: 100vh;
+  background: transparent; /* canvas drawn fully by JS background layers */
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* === UI OVERLAY === */
+#ui-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.controls-hint {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(29, 29, 29, 0.85);
+  border: 3px solid var(--panel-border);
+  padding: 15px 20px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+}
+
+.controls-hint p {
+  margin: 5px 0;
+  font-size: 18px;
+  color: var(--text-light);
+}
+
+.controls-hint kbd {
+  display: inline-block;
+  padding: 3px 8px;
+  background: var(--panel-border);
+  border: 2px solid var(--text-light);
+  margin: 0 2px;
+  font-family: "VT323", monospace;
+  font-size: 20px;
+  font-weight: bold;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Audio toggle button (top-right corner) */
+.audio-toggle {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  pointer-events: auto;
+  z-index: 101;
+  background: rgba(29, 29, 29, 0.9);
+  border: 3px solid var(--panel-border);
+  color: var(--text-light);
+  font-size: 20px;
+  width: 46px;
+  height: 46px;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.audio-toggle.muted {
+  opacity: 0.55;
+  background: rgba(50, 20, 20, 0.9);
+}
+
+.audio-toggle:active {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+
+/* Audio panel styles */
+.audio-panel {
+  position: absolute;
+  top: 64px;
+  right: 14px;
+  width: 220px;
+  background: rgba(16, 18, 24, 0.96);
+  border: 3px solid var(--panel-border);
+  padding: 12px;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+  z-index: 102;
+  border-radius: 6px;
+}
+
+.audio-panel.hidden {
+  display: none;
+}
+
+.audio-panel-inner label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-light);
+  margin-bottom: 8px;
+}
+
+.audio-panel-inner input[type="range"] {
+  width: 100%;
+  appearance: none;
+  height: 8px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  border-radius: 6px;
+  outline: none;
+  margin-bottom: 10px;
+}
+
+.audio-panel-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.audio-mute,
+.audio-close {
+  background: rgba(29, 29, 29, 0.9);
+  border: 2px solid var(--panel-border);
+  color: var(--text-light);
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.audio-mute:active,
+.audio-close:active {
+  transform: translate(2px, 2px);
+  box-shadow: none;
+}
+
+.interaction-prompt {
+  text-align: center;
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(29, 29, 29, 0.95);
+  border: 3px solid var(--primary);
+  padding: 12px 24px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+  animation: bounce 0.6s ease-in-out infinite;
+  pointer-events: auto; /* Allow clicking! */
+}
+
+.interaction-prompt.hidden {
+  display: none;
+}
+
+.interaction-prompt span {
+  font-size: 22px;
+  font-weight: bold;
+  color: var(--primary);
+}
+
+/* Offscreen interaction tooltip */
+.interaction-tooltip {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 105;
+}
+
+.interaction-tooltip.hidden {
+  display: none;
+}
+
+.interaction-tooltip .tooltip-inner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(29, 29, 29, 0.95);
+  border: 3px solid var(--panel-border);
+  color: var(--text-light);
+  padding: 8px 12px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.interaction-tooltip .tooltip-arrow {
+  font-size: 20px;
+  color: var(--primary);
+}
+
+.interaction-tooltip[data-side="left"] {
+  left: 12px;
+}
+
+.interaction-tooltip[data-side="right"] {
+  right: 12px;
+}
+
+.interaction-tooltip .tooltip-label {
+  white-space: nowrap;
+}
+
+/* Wheelie Tooltip */
+.wheelie-tooltip {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -100%);
+  background: rgba(29, 29, 29, 0.9);
+  border: 2px solid var(--accent);
+  padding: 6px 12px;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 105;
+  white-space: nowrap;
+  animation: floatUp 0.5s ease-out infinite alternate;
+}
+
+.wheelie-tooltip span {
+  color: var(--accent);
+  font-weight: bold;
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.wheelie-tooltip.hidden {
+  display: none;
+}
+
+/* === MOBILE INTERACTIONS === */
+/* Make prompt clickable and larger on touch devices */
+@media (pointer: coarse) {
+  .interaction-prompt {
+    cursor: pointer;
+    padding: 16px 32px;
+    background: rgba(40, 40, 40, 0.95);
+    border: 4px solid var(--primary);
+    /* Add 'tap me' visual cue */
+    box-shadow: 0 0 15px rgba(56, 183, 100, 0.4);
+  }
+  
+  .interaction-prompt:active {
+    transform: translate(-50%, -50%) scale(0.95);
+    background: rgba(60, 60, 60, 0.95);
+  }
+
+  /* Adjust controls hint for mobile */
+  .controls-hint {
+    display: none;
+  }
+}

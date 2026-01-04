@@ -1,0 +1,231 @@
+/* === MODALS === */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.modal.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.modal-content {
+  background: var(--panel-bg);
+  border: 4px solid var(--panel-border);
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.5);
+  max-width: 800px;
+  max-height: 85vh;
+  width: 90%;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Restore scrollbar for modals where needed */
+.modal-content::-webkit-scrollbar {
+  display: block;
+}
+
+/* === SCROLLBAR === */
+.modal-content::-webkit-scrollbar {
+  width: 12px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: var(--ground-dark);
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border: 2px solid var(--ground-dark);
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary);
+}
+
+.pixel-panel {
+  padding: 30px;
+}
+
+.pixel-panel h2 {
+  font-size: 36px;
+  color: var(--primary);
+  margin-bottom: 20px;
+  text-transform: uppercase;
+  border-bottom: 3px solid var(--panel-border);
+  padding-bottom: 10px;
+}
+
+.close-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 40px;
+  height: 40px;
+  background: var(--accent);
+  border: 3px solid var(--text-light);
+  color: var(--text-light);
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3);
+  transition: all 0.1s;
+}
+
+.close-btn:hover {
+  background: #d65a1a;
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.close-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: none;
+}
+
+/* Offscreen modal specific styling */
+.offscreen-modal .modal-content {
+  max-width: 420px;
+  width: 92%;
+  text-align: center;
+}
+
+.offscreen-modal .modal-body p {
+  font-size: 18px;
+  line-height: 1.4;
+  color: var(--text-light);
+}
+
+.return-btn {
+  font-family: "VT323", monospace;
+  font-size: 22px;
+  padding: 10px 22px;
+  background: var(--primary);
+  color: var(--text-light);
+  border: 4px solid var(--text-light);
+  cursor: pointer;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.35);
+}
+
+.return-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: none;
+}
+
+/* Custom alert styles */
+#custom-alert-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 9999;
+  pointer-events: none; /* allow clicks to pass through gaps */
+}
+
+.custom-alert {
+  min-width: 260px;
+  max-width: 360px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 12px 14px;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transform: translateY(-8px);
+  opacity: 0;
+  transition: transform 180ms ease, opacity 180ms ease;
+  pointer-events: auto;
+}
+
+.custom-alert--show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.custom-alert__body {
+  flex: 1 1 auto;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.custom-alert__close {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+}
+
+.custom-alert--success {
+  background: linear-gradient(180deg, #2ecc71, #27ae60);
+}
+.custom-alert--info {
+  background: linear-gradient(180deg, #3498db, #2c81c9);
+}
+.custom-alert--error {
+  background: linear-gradient(180deg, #e74c3c, #c0392b);
+}
+
+@media (max-width: 600px) {
+  #custom-alert-container {
+    left: 12px;
+    right: 12px;
+    top: 12px;
+  }
+  .custom-alert {
+    width: auto;
+    max-width: none;
+  }
+}
+
+/* === DISASTER MODAL === */
+.disaster-modal {
+  background: rgba(40, 0, 0, 0.95);
+  z-index: 20000; /* Highest priority */
+}
+
+.disaster-content {
+  border-color: #ff0000;
+  box-shadow: 0 0 20px #ff0000;
+  max-width: 500px;
+}
+
+.disaster-content h2 {
+  color: #ff0000;
+  border-bottom-color: #ff0000;
+  animation: glitchText 0.3s infinite;
+}
+
+.disaster-btn {
+  background: #ff0000;
+  color: #fff;
+  border-color: #fff;
+}
+
+.disaster-btn:hover {
+  background: #aa0000;
+}
+
+.blink-text {
+  animation: blink 0.5s steps(2) infinite;
+  color: #f77622;
+  font-weight: bold;
+}

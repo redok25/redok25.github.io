@@ -1,0 +1,69 @@
+/* === RESPONSIVE === */
+@media (max-width: 768px) {
+  .profile-section {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .stats {
+    flex-direction: column;
+  }
+
+  .skills-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .project-card {
+    flex-direction: column;
+  }
+
+  .contact-container {
+    grid-template-columns: 1fr;
+  }
+
+  .controls-hint {
+    font-size: 12px;
+    padding: 10px;
+  }
+
+  .pixel-panel {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-content {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .pixel-panel h2 {
+    font-size: 20px;
+  }
+
+  .controls-hint {
+    position: static;
+    margin: 10px;
+  }
+}
+
+/* === OPENING STORY: Mobile / Touch Adjustments === */
+@media (max-width: 900px) {
+  #splash-screen .splash-content {
+    width: 90%;
+  }
+
+  #opening-story {
+    width: 100%;
+    bottom: 100px; /* angkat agar tidak menimpa tombol mobile */
+    padding: 10px 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  #opening-story {
+    bottom: 110px; /* lebih tinggi pada layar sangat kecil */
+    padding: 8px 12px;
+  }
+}

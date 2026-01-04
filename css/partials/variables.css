@@ -1,0 +1,23 @@
+:root {
+  /* Retro Color Palette - 16-bit inspired */
+  --sky-top: #1a1c2c;
+  --sky-mid: #5d275d;
+  --sky-bottom: #b13e53;
+  --mountain-far: #3e2731;
+  --mountain-near: #5a3a41;
+  --ground: #4b692f;
+  --ground-dark: #323c39;
+  --road: #696a6a;
+
+  /* UI Colors */
+  --primary: #38b764;
+  --secondary: #257179;
+  --accent: #f77622;
+  --text-light: #f4f4f4;
+  --text-dark: #1a1c2c;
+  --panel-bg: #2d2d2d;
+  --panel-border: #5a5a5a;
+
+  /* Pixel perfect rendering */
+  --pixel-size: 4px;
+}

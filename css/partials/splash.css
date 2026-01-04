@@ -1,0 +1,101 @@
+/* === SPLASH SCREEN === */
+#splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    180deg,
+    rgba(26, 28, 44, 0.95),
+    rgba(17, 20, 30, 0.95)
+  );
+  z-index: 10001;
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+#splash-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.splash-content {
+  text-align: center;
+  max-width: 760px;
+  padding: 40px;
+  border: 4px solid var(--panel-border);
+}
+
+.splash-content h1 {
+  font-size: 48px;
+  color: var(--primary);
+  margin-bottom: 10px;
+}
+
+.splash-content p {
+  font-size: 20px;
+  color: var(--text-light);
+  margin-bottom: 24px;
+}
+
+.splash-btn {
+  font-family: "VT323", monospace;
+  font-size: 26px;
+  padding: 12px 28px;
+  background: var(--accent);
+  color: var(--text-light);
+  border: 4px solid var(--text-light);
+  cursor: pointer;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.35);
+}
+
+.splash-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: none;
+}
+
+/* === OPENING STORY (Subtitle) === */
+#opening-story {
+  position: fixed;
+  bottom: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 92%;
+  display: block;
+  background: rgba(8, 10, 16, 0.64);
+  border: 2px solid var(--panel-border);
+  padding: 12px 18px;
+  z-index: 10002;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  pointer-events: none;
+  opacity: 1;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
+}
+
+#opening-story.hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px);
+}
+
+.opening-content {
+  text-align: center;
+}
+
+.opening-content .story-line {
+  font-size: 18px;
+  color: var(--text-light);
+  margin: 6px 0;
+  opacity: 0;
+  transform: translateY(6px);
+  animation: subtitleIn 0.45s ease forwards;
+}
+
+.opening-content .story-line:nth-child(1) {
+  animation-delay: 0s;
+}
+.opening-content .story-line:nth-child(2) {
+  animation-delay: 1s;
+}

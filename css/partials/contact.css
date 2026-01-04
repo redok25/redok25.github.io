@@ -1,0 +1,108 @@
+/* === CONTACT SECTION === */
+.contact-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+.contact-info h3,
+.contact-form h3 {
+  font-size: 20px;
+  color: var(--primary);
+  margin-bottom: 15px;
+}
+
+.contact-info p {
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.contact-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.contact-item {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  padding: 12px;
+  background: var(--ground-dark);
+  border: 2px solid var(--panel-border);
+}
+
+.contact-icon {
+  font-size: 32px;
+}
+
+.contact-item strong {
+  display: block;
+  color: var(--primary);
+  margin-bottom: 3px;
+}
+
+.contact-item p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-light);
+}
+
+.contact-link {
+  color: var(--text-light);
+}
+
+/* === FORM === */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--primary);
+  font-weight: bold;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 12px;
+  background: var(--ground-dark);
+  border: 3px solid var(--panel-border);
+  color: var(--text-light);
+  font-family: "Courier New", monospace;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 12px 24px;
+  background: var(--primary);
+  color: var(--text-dark);
+  border: 3px solid var(--text-light);
+  font-family: "Courier New", monospace;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
+  transition: all 0.1s;
+}
+
+.submit-btn:hover {
+  background: var(--secondary);
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.submit-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: none;
+}

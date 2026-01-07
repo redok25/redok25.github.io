@@ -11,6 +11,16 @@ class EffectsManager {
     this.particles = [];
     this.clouds = [];
     this.windOffset = 0;
+    
+    // Rain properties
+    this.rainActive = false;
+    this.rainParticles = [];
+    this.rainIntensity = 0; // 0 to 1 for smooth fade in/out
+
+    // Time of Day
+    this.forcedTime = null; // 'morning', 'noon', 'afternoon', 'night', or null (auto)
+    this.timeOverlay = { color: 'rgba(0,0,0,0)', opacity: 0 };
+    this.timeTransition = 0; // for smoothing switches if needed
 
     // Cloud follow mode: 'parallax' = default slow parallax; 'screen' = fixed to screen; 'world' = moves exactly with world/camera
     this.cloudFollowMode = "parallax";
@@ -86,6 +96,8 @@ class EffectsManager {
 
   update(deltaTime, cameraX = 0) {
     this.windOffset += deltaTime * 0.001;
+    this.updateRain(deltaTime, cameraX);
+    this.updateTimeOfDay(deltaTime);
 
     // Update clouds
     this.clouds.forEach((cloud) => {
@@ -196,6 +208,8 @@ class EffectsManager {
   render(cameraX) {
     // Backwards-compatible render: draw clouds then particles
     this.renderClouds(cameraX);
+    this.renderTimeOverlay(); // Draw time overlay (behind rain)
+    this.renderRain(cameraX);
     this.renderParticles(cameraX);
   }
 
@@ -332,5 +346,154 @@ class EffectsManager {
 
   getWindSway() {
     return Math.sin(this.windOffset) * 3;
+  }
+
+  // Easter Egg: Rain
+  toggleRain(enable = null) {
+    if (enable !== null) {
+        this.rainActive = enable;
+    } else {
+        this.rainActive = !this.rainActive;
+    }
+    console.log(`Rain status: ${this.rainActive}`);
+  }
+
+  // Time of Day System
+  setTimeOfDay(mode) {
+    this.forcedTime = mode; // null, 'morning', 'noon', 'afternoon', 'night'
+    console.log(`Time set to: ${mode || 'Auto'}`);
+    // We rely on updateTimeOfDay to smooth the transition, or we could force it here.
+  }
+
+  updateTimeOfDay(deltaTime) {
+    let mode = this.forcedTime;
+    
+    // If auto, determine based on hour
+    if (!mode) {
+        const hour = new Date().getHours();
+        if (hour >= 5 && hour < 10) mode = 'morning';
+        else if (hour >= 10 && hour < 15) mode = 'noon';
+        else if (hour >= 15 && hour < 19) mode = 'afternoon';
+        else mode = 'night';
+    }
+
+    // Target overlay properties based on mode
+    let targetColor = [0, 0, 0]; // r, g, b
+    let targetAlpha = 0;
+
+    switch (mode) {
+        case 'morning':
+            targetColor = [255, 200, 100]; // Warm Yellow
+            targetAlpha = 0.1;
+            break;
+        case 'noon':
+            targetColor = [255, 255, 255]; // Clear
+            targetAlpha = 0;
+            break;
+        case 'afternoon':
+            targetColor = [255, 160, 80]; // Softer Golden Sunset
+            targetAlpha = 0.15;
+            break;
+        case 'night':
+            targetColor = [10, 10, 30]; // Dark Blue/Black
+            targetAlpha = 0.5;
+            break;
+    }
+
+    // Simple lerp for smooth transition could be added, but for now let's just set it
+    // Or implemented a basic transition state. Let's use current state.
+    // To do proper color interpolation we need to store current r,g,b,a.
+    if (!this.currentTimeState) {
+        this.currentTimeState = { r: targetColor[0], g: targetColor[1], b: targetColor[2], a: targetAlpha };
+    } else {
+        const speed = deltaTime * 0.002; // Slow transition
+        this.currentTimeState.r += (targetColor[0] - this.currentTimeState.r) * speed;
+        this.currentTimeState.g += (targetColor[1] - this.currentTimeState.g) * speed;
+        this.currentTimeState.b += (targetColor[2] - this.currentTimeState.b) * speed;
+        this.currentTimeState.a += (targetAlpha - this.currentTimeState.a) * speed;
+    }
+  }
+
+  renderTimeOverlay() {
+      if (!this.currentTimeState || this.currentTimeState.a <= 0.01) return;
+      
+      this.ctx.save();
+      this.ctx.fillStyle = `rgba(${Math.round(this.currentTimeState.r)}, ${Math.round(this.currentTimeState.g)}, ${Math.round(this.currentTimeState.b)}, ${this.currentTimeState.a})`;
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      this.ctx.restore();
+  }
+
+  updateRain(deltaTime, cameraX) {
+    // Smoothly transition intensity
+    const targetIntensity = this.rainActive ? 1 : 0;
+    if (this.rainIntensity < targetIntensity) {
+        this.rainIntensity = Math.min(targetIntensity, this.rainIntensity + deltaTime * 0.001); // 1 sec to fade in
+    } else if (this.rainIntensity > targetIntensity) {
+        this.rainIntensity = Math.max(targetIntensity, this.rainIntensity - deltaTime * 0.001); // 1 sec to fade out
+    }
+
+    // Spawn new rain drops if intensity > 0
+    if (this.rainIntensity > 0.01) {
+      // Spawn rate based on screen width and intensity
+      const spawnCount = Math.floor(5 * this.rainIntensity); 
+      // Always spawn at least 1 occasionally if low intensity
+      if (spawnCount === 0 && Math.random() < this.rainIntensity) {
+           this.spawnRainDrop(cameraX);
+      } else {
+          for (let i = 0; i < spawnCount; i++) {
+            this.spawnRainDrop(cameraX);
+          }
+      }
+    }
+
+    // Update existing rain drops
+    this.rainParticles = this.rainParticles.filter(drop => {
+        drop.y += drop.vy * (deltaTime * 0.001);
+        drop.x -= 200 * (deltaTime * 0.001); // Slight wind to left
+        
+        // Remove if far below screen
+        return drop.y < this.canvas.height + 100;
+    });
+  }
+
+  spawnRainDrop(cameraX) {
+      this.rainParticles.push({
+        x: cameraX + Math.random() * (this.canvas.width + 200), // Spawn wider to cover wind drift
+        y: -50 - Math.random() * 50, // Start above screen
+        vy: 800 + Math.random() * 400, // Fall speed (px/sec)
+        length: 20 + Math.random() * 15,
+        opacity: (0.6 + Math.random() * 0.4) * this.rainIntensity
+    });
+  }
+
+  renderRain(cameraX) {
+    if (this.rainParticles.length === 0 && this.rainIntensity <= 0.01) return;
+
+    this.ctx.save();
+    
+    // Rain Filter / Overlay
+    // Darken the screen slightly with a blueish tint, scaled by intensity
+    if (this.rainIntensity > 0) {
+        const alpha = 0.3 * this.rainIntensity;
+        this.ctx.fillStyle = `rgba(20, 25, 40, ${alpha})`;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    this.ctx.strokeStyle = "rgba(174, 194, 224, 0.6)";
+    this.ctx.lineWidth = 1;
+    this.ctx.beginPath();
+    
+    this.rainParticles.forEach(drop => {
+        const screenX = drop.x - cameraX;
+        
+        // Optimization: only draw if on screen
+        if (screenX > -50 && screenX < this.canvas.width + 50) {
+            this.ctx.moveTo(screenX, drop.y);
+            this.ctx.lineTo(screenX - 5, drop.y + drop.length); // Angled slightly
+        }
+    });
+    
+    this.ctx.stroke();
+    this.ctx.restore();
   }
 }

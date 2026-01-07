@@ -132,8 +132,74 @@ class Game {
       this.keys[e.key] = false;
     });
 
+    // Cheat Codes
+    this.keyHistory = [];
+    window.addEventListener("keydown", (e) => {
+      // Store last 10 keys (enough for short words)
+      this.keyHistory.push(e.key.toLowerCase());
+      if (this.keyHistory.length > 10) {
+        this.keyHistory.shift(); 
+      }
+      
+      const sequence = this.keyHistory.join("");
+      
+      // Check for "rain"
+      if (sequence.endsWith("rain")) {
+        console.log("Cheat activated: RAIN");
+        if (this.effects && typeof this.effects.toggleRain === "function") {
+            this.effects.toggleRain();
+            const isActive = this.effects.rainActive;
+            if (typeof showCustomAlert === "function") {
+                showCustomAlert(
+                    isActive ? "Hujan telah datang!" : "Hujan telah hilang!",
+                    { type: "success", duration: 3000 }
+                );
+            }
+        }
+        // Reset history to avoid double triggers if typing "rainstorm" etc.
+        this.keyHistory = [];
+      } else if (sequence.endsWith("morning")) {
+        console.log("Cheat activated: MORNING");
+        if (this.effects && typeof this.effects.setTimeOfDay === "function") {
+            this.effects.setTimeOfDay("morning");
+            if (typeof showCustomAlert === "function") showCustomAlert("Selamat pagi!", { type: "success" });
+        }
+        this.keyHistory = [];
+      } else if (sequence.endsWith("afternoon")) {
+        console.log("Cheat activated: AFTERNOON");
+        if (this.effects && typeof this.effects.setTimeOfDay === "function") {
+            this.effects.setTimeOfDay("afternoon");
+            if (typeof showCustomAlert === "function") showCustomAlert("Selamat sore!", { type: "success" });
+        }
+        this.keyHistory = [];
+      } else if (sequence.endsWith("noon")) {
+        console.log("Cheat activated: NOON");
+        if (this.effects && typeof this.effects.setTimeOfDay === "function") {
+            this.effects.setTimeOfDay("noon");
+            if (typeof showCustomAlert === "function") showCustomAlert("Selamat siang!", { type: "success" });
+        }
+        this.keyHistory = [];
+      } else if (sequence.endsWith("night")) {
+        console.log("Cheat activated: NIGHT");
+        if (this.effects && typeof this.effects.setTimeOfDay === "function") {
+            this.effects.setTimeOfDay("night");
+            if (typeof showCustomAlert === "function") showCustomAlert("Selamat malam!", { type: "success" });
+        }
+        this.keyHistory = [];
+      } else if (sequence.endsWith("reset")) {
+        console.log("Cheat activated: RESET TIME");
+        if (this.effects && typeof this.effects.setTimeOfDay === "function") {
+            this.effects.setTimeOfDay(null);
+            if (typeof showCustomAlert === "function") showCustomAlert("Kembali ke realita!", { type: "info" });
+        }
+        this.keyHistory = [];
+      }
+    });
+
     // Touch controls for mobile (optional)
     let touchStartX = 0;
+    
+    
     this.canvas.addEventListener("touchstart", (e) => {
       touchStartX = e.touches[0].clientX;
     });
@@ -173,6 +239,89 @@ class Game {
 
     // Double tap support or similar for touch if needed, 
     // but click usually fires on tap on mobile.
+    
+    // Automatically check real weather on start
+    // this.checkRealWeather(); // Disabled: Now triggered via Modal in splash.js
+  }
+
+  // Weather Permission Modal
+  showWeatherModal() {
+    const modal = document.getElementById("weather-modal");
+    const btnAllow = document.getElementById("btn-allow-weather");
+    const btnDeny = document.getElementById("btn-deny-weather");
+
+    if (!modal || !btnAllow || !btnDeny) return;
+
+    // Show modal
+    modal.classList.remove("hidden");
+
+    // Setup one-time listeners
+    const cleanup = () => {
+        modal.classList.add("hidden");
+        btnAllow.onclick = null;
+        btnDeny.onclick = null;
+        // Restore focus to game or unpause if needed
+    };
+
+    btnAllow.onclick = () => {
+        cleanup();
+        this.checkRealWeather();
+    };
+
+    btnDeny.onclick = () => {
+        cleanup();
+        console.log("Weather sync skipped by user.");
+    };
+  }
+
+  // Real-time Weather Sync
+  checkRealWeather() {
+      if ("geolocation" in navigator) {
+          console.log("Requesting location for weather sync...");
+          navigator.geolocation.getCurrentPosition(
+              (position) => {
+                  const lat = position.coords.latitude;
+                  const lon = position.coords.longitude;
+                  this.fetchWeather(lat, lon);
+              },
+              (error) => {
+                  console.log("Location access denied or error. Weather sync disabled.", error);
+                  if (typeof showCustomAlert === "function") {
+                       showCustomAlert("Izin lokasi diperlukan untuk fitur cuaca otomatis!", { type: "info" });
+                  }
+              }
+          );
+      } else {
+          console.log("Geolocation not supported.");
+      }
+  }
+
+  fetchWeather(lat, lon) {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+      
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.current_weather) {
+                const code = data.current_weather.weathercode;
+                console.log(`Real-time Weather Code: ${code}`);
+                
+                // WMO Weather interpretation codes
+                // Rain: 51, 53, 55, 61, 63, 65, 80, 81, 82
+                // Thunderstorm: 95, 96, 99
+                const rainCodes = [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99];
+                
+                if (rainCodes.includes(code)) {
+                    console.log("Weather is RAINY. Enabling effect.");
+                    this.effects.toggleRain(true);
+                    if (typeof showCustomAlert === "function") showCustomAlert(" Hujan telah datang!", { type: "success" });
+                } else {
+                    console.log("Weather is CLEAR/CLOUDY. Disabling rain.");
+                    this.effects.toggleRain(false);
+                }
+            }
+        })
+        .catch(err => console.error("Error fetching weather:", err));
   }
 
   // Setup offscreen modal button and DOM references
@@ -478,13 +627,21 @@ class Game {
     const windSway = this.effects.getWindSway();
     this.world.render(this.cameraX, windSway, this.effects);
 
-    // Render remaining effects (particles) after world so they appear above ground
-    this.effects.renderParticles(this.cameraX);
-
-    // Render player
+    // Render player (before overlays so it gets tinted)
     this.player.render(this.ctx, this.cameraX);
 
-    // Render interaction indicators
+    // Render particles (dust, leaves)
+    this.effects.renderParticles(this.cameraX);
+
+    // Time Overlay (Day/Night cycle)
+    if (this.effects.renderTimeOverlay) {
+        this.effects.renderTimeOverlay();
+    }
+    
+    // Rain (on top of everything)
+    this.effects.renderRain(this.cameraX);
+
+    // Render interaction indicators (UI stays on top and bright)
     this.interactions.render(this.ctx, this.cameraX);
 
     // Render debug info (optional)

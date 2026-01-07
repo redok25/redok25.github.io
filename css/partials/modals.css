@@ -229,3 +229,7 @@
   color: #f77622;
   font-weight: bold;
 }
+
+#weather-modal {
+  z-index: 10002; /* Higher than splash screen (10001) */
+}

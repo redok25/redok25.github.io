@@ -13,26 +13,8 @@
     // hide UI overlay until splash finishes
     if (uiOverlay) uiOverlay.style.display = "none";
 
-    startBtn.addEventListener("click", () => {
-      // Start BGM on user gesture (ensures browsers allow playback)
-      try {
-        if (
-          typeof AudioManager !== "undefined" &&
-          AudioManager &&
-          typeof AudioManager.playBgm === "function"
-        ) {
-          AudioManager.playBgm("ambient");
-          // play a short start SFX on initial Start press
-          if (typeof AudioManager.playStart === "function") {
-            try {
-              // AudioManager.playStart();
-            } catch (e) {}
-          }
-        }
-      } catch (e) {}
-      startBtn.disabled = true;
+    function launchGameSequence() {
       startBtn.textContent = "Berangkat...";
-
       const opening = document.getElementById("opening-story");
 
       setTimeout(() => {
@@ -53,6 +35,56 @@
 
       // Start the game and scripted move immediately while subtitles show
       beginGameAfterStory();
+    }
+
+    startBtn.addEventListener("click", () => {
+      // Start BGM on user gesture (ensures browsers allow playback)
+      try {
+        if (
+          typeof AudioManager !== "undefined" &&
+          AudioManager &&
+          typeof AudioManager.playBgm === "function"
+        ) {
+          AudioManager.playBgm("ambient");
+          // play a short start SFX on initial Start press
+          if (typeof AudioManager.playStart === "function") {
+             // AudioManager.playStart();
+          }
+        }
+      } catch (e) {}
+      
+      startBtn.disabled = true;
+
+      // Check for Weather Modal
+      const weatherModal = document.getElementById("weather-modal");
+      const btnAllow = document.getElementById("btn-allow-weather");
+      const btnDeny = document.getElementById("btn-deny-weather");
+      
+      if (weatherModal && btnAllow && btnDeny) {
+          weatherModal.classList.remove("hidden");
+          
+          const cleanup = () => {
+              weatherModal.classList.add("hidden");
+              btnAllow.onclick = null;
+              btnDeny.onclick = null;
+              launchGameSequence();
+          };
+
+          btnAllow.onclick = () => {
+              if (window.game && typeof window.game.checkRealWeather === "function") {
+                  window.game.checkRealWeather();
+              }
+              cleanup();
+          };
+
+          btnDeny.onclick = () => {
+              console.log("Weather sync skipped.");
+              cleanup();
+          };
+      } else {
+          // Fallback if modal missing
+          launchGameSequence();
+      }
     });
 
     async function beginGameAfterStory() {
@@ -142,6 +174,7 @@
 
           // On complete: show UI and tidy up splash + subtitle element
           if (uiOverlay) uiOverlay.style.display = "";
+
 
           // Show Gesture Info if available
           if (typeof window.showGestureInfo === "function") {

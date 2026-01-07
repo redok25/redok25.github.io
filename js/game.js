@@ -52,6 +52,7 @@ class Game {
 
     // Setup input
     this.setupInput();
+    this.setupWindowFocusHandling();
     this.setupOffscreenModal();
 
     // Record when page/game construction started so we can ensure the
@@ -266,6 +267,55 @@ class Game {
 
     // Automatically check real weather on start
     // this.checkRealWeather(); // Disabled: Now triggered via Modal in splash.js
+  }
+
+  // Ensure game pauses and input resets when tab loses focus or is hidden
+  setupWindowFocusHandling() {
+    const releaseAll = () => {
+      try {
+        // Clear all input states
+        this.keys = {};
+      } catch (e) {}
+      try {
+        // Stop player movement immediately
+        if (this.player) {
+          this.player.velocityX = 0;
+          this.player.currentAnimation = "idle";
+          this.player.animationTimer = 0;
+          this.player.wheelieActive = false;
+        }
+      } catch (e) {}
+      try {
+        if (window.AudioManager && window.AudioManager.stopEngine) {
+          window.AudioManager.stopEngine();
+        }
+      } catch (e) {}
+    };
+
+    const pauseNow = () => {
+      releaseAll();
+      this.paused = true;
+    };
+
+    const resumeNow = () => {
+      // Keep inputs released; resume loop timing cleanly
+      this.lastTime = performance.now();
+      this.paused = false;
+    };
+
+    // Page visibility
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) pauseNow();
+      else resumeNow();
+    });
+
+    // Window focus/blur
+    window.addEventListener("blur", () => {
+      pauseNow();
+    });
+    window.addEventListener("focus", () => {
+      resumeNow();
+    });
   }
 
   // Weather Permission Modal

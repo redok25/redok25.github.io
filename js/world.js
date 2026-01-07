@@ -7,6 +7,7 @@ class World {
     this.canvas = canvas;
     this.ctx = ctx;
     this.worldWidth = 7400; // Total world width
+    this.splashDistance = 2571; // Match value from splash.js
 
     // Background Layers
     this.bgLayers = [];
@@ -132,72 +133,133 @@ class World {
 
     // NPCs
     this.npcs = [];
+    this.specialNPCs = []; // Separate array for minigame NPCs
     this.spawnNPCs();
   }
 
   spawnNPCs() {
     this.npcs = []; // Clear existing list if any
+    this.specialNPCs = []; // Clear special NPCs list
 
+    // Spawn Special NPCs first (minigame NPCs)
+    this.spawnSpecialNPCs();
+
+    // Then spawn regular NPCs
+    this.spawnRegularNPCs();
+  }
+
+  spawnSpecialNPCs() {
+    // Ground Y calculation
+    const grassOffset =
+      this.terrainConfig && typeof this.terrainConfig.grassOffset === "number"
+        ? this.terrainConfig.grassOffset
+        : 100;
+    const grassHeight =
+      this.terrainConfig && typeof this.terrainConfig.grassHeight === "number"
+        ? this.terrainConfig.grassHeight
+        : 20;
+    const grassTop = this.canvas.height - grassOffset;
+    const groundBaseY = grassTop + grassHeight;
+    const npcHeight = 87;
+    const y = groundBaseY - npcHeight - 12.5;
+
+    // Special NPCs for minigames at fixed locations
+    const specialNPCConfigs = [
+      { x: 700 + (this.splashDistance || 0), minigameId: "wheelie_challenge" },
+      {
+        x: 2200 + (this.splashDistance || 0),
+        minigameId: "red_light_green_light",
+      },
+      { x: 3200 + (this.splashDistance || 0), minigameId: "drag_race" },
+    ];
+
+    specialNPCConfigs.forEach((spec) => {
+      this.specialNPCs.push(
+        new SpecialNPC({
+          x: spec.x,
+          y: y,
+          patrolRadius: 100,
+          minigameId: spec.minigameId,
+        })
+      );
+      console.log(`Spawned Special NPC (${spec.minigameId}) at ${spec.x}`);
+    });
+  }
+
+  spawnRegularNPCs() {
     // Configuration
     const safeStart = 400; // Don't spawn too close to start
     const safeEnd = this.worldWidth - 500;
     const density = 750; // 1 NPC every ~750 pixels
     const npcCount = Math.floor((safeEnd - safeStart) / density);
-    
-    console.log(`World Width: ${this.worldWidth}, Spawning approx ${npcCount} NPCs`);
+
+    console.log(
+      `World Width: ${this.worldWidth}, Spawning approx ${npcCount} NPCs`
+    );
 
     // Ground Y calculation
-    const grassOffset = this.terrainConfig && typeof this.terrainConfig.grassOffset === 'number' ? this.terrainConfig.grassOffset : 100;
-    const grassHeight = this.terrainConfig && typeof this.terrainConfig.grassHeight === 'number' ? this.terrainConfig.grassHeight : 20;
+    const grassOffset =
+      this.terrainConfig && typeof this.terrainConfig.grassOffset === "number"
+        ? this.terrainConfig.grassOffset
+        : 100;
+    const grassHeight =
+      this.terrainConfig && typeof this.terrainConfig.grassHeight === "number"
+        ? this.terrainConfig.grassHeight
+        : 20;
     const grassTop = this.canvas.height - grassOffset;
     const groundBaseY = grassTop + grassHeight;
-    const npcHeight = 87; 
+    const npcHeight = 87;
     const y = groundBaseY - npcHeight - 12.5;
 
     // Available NPC types
-    const npcTypes = ['npc1', 'npc2', 'npc3', 'npc4', 'npc5'];
+    const npcTypes = ["npc1", "npc2", "npc3", "npc4", "npc5"];
     let npcPool = [];
 
     for (let i = 0; i < npcCount; i++) {
-        // Divide world into segments to ensure distribution, but add randomness within segment
-        const segmentSize = (safeEnd - safeStart) / npcCount;
-        const segmentStart = safeStart + (i * segmentSize);
-        const segmentEnd = segmentStart + segmentSize;
-        
-        // Random position within this segment (with some padding)
-        const padding = 100;
-        const minX = segmentStart + padding;
-        const maxX = segmentEnd - padding;
-        const x = Math.random() * (maxX - minX) + minX;
+      // Divide world into segments to ensure distribution, but add randomness within segment
+      const segmentSize = (safeEnd - safeStart) / npcCount;
+      const segmentStart = safeStart + i * segmentSize;
+      const segmentEnd = segmentStart + segmentSize;
 
-        // Shuffle Sack / Bag logic: Exhaust all types before repeating
-        if (npcPool.length === 0) {
-            // Refill
-            npcPool = [...npcTypes];
-            // Fisher-Yates Shuffle
-            for (let j = npcPool.length - 1; j > 0; j--) {
-                const k = Math.floor(Math.random() * (j + 1));
-                [npcPool[j], npcPool[k]] = [npcPool[k], npcPool[j]];
-            }
-            
-            // Check boundary to avoid repeating the same one back-to-back from prev batch
-            const prevId = i > 0 ? this.npcs[i-1].id : null;
-            if (prevId && npcPool[0] === prevId && npcPool.length > 1) {
-                // Swap the first item with the last item to avoid duplicate
-                [npcPool[0], npcPool[npcPool.length - 1]] = [npcPool[npcPool.length - 1], npcPool[0]];
-            }
+      // Random position within this segment (with some padding)
+      const padding = 100;
+      const minX = segmentStart + padding;
+      const maxX = segmentEnd - padding;
+      const x = Math.random() * (maxX - minX) + minX;
+
+      // Shuffle Sack / Bag logic: Exhaust all types before repeating
+      if (npcPool.length === 0) {
+        // Refill
+        npcPool = [...npcTypes];
+        // Fisher-Yates Shuffle
+        for (let j = npcPool.length - 1; j > 0; j--) {
+          const k = Math.floor(Math.random() * (j + 1));
+          [npcPool[j], npcPool[k]] = [npcPool[k], npcPool[j]];
         }
-        
-        const id = npcPool.shift();
 
-        console.log(`Spawning ${id} at x=${Math.floor(x)}`);
-        
-        this.npcs.push(new NPC({
-            x: x,
-            y: y,
-            id: id,
-            patrolRadius: 200 // Slightly larger patrol radius
-        }));
+        // Check boundary to avoid repeating the same one back-to-back from prev batch
+        const prevId = i > 0 ? this.npcs[i - 1].id : null;
+        if (prevId && npcPool[0] === prevId && npcPool.length > 1) {
+          // Swap the first item with the last item to avoid duplicate
+          [npcPool[0], npcPool[npcPool.length - 1]] = [
+            npcPool[npcPool.length - 1],
+            npcPool[0],
+          ];
+        }
+      }
+
+      const id = npcPool.shift();
+
+      console.log(`Spawning ${id} at x=${Math.floor(x)}`);
+
+      this.npcs.push(
+        new NPC({
+          x: x,
+          y: y,
+          id: id,
+          patrolRadius: 200, // Slightly larger patrol radius
+        })
+      );
     }
   }
 
@@ -741,7 +803,12 @@ class World {
     });
 
     // Render NPCs
-    this.npcs.forEach(npc => npc.render(this.ctx, cameraX));
+    this.npcs.forEach((npc) => npc.render(this.ctx, cameraX));
+
+    // Render Special NPCs (Minigame NPCs)
+    this.specialNPCs.forEach((specialNpc) =>
+      specialNpc.render(this.ctx, cameraX)
+    );
 
     // Render fog overlay (lighter now)
     this.renderFog();

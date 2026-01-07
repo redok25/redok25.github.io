@@ -1,0 +1,231 @@
+/* Minigame HUD */
+.minigame-hud {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.minigame-stat {
+  font-family: "VT323", monospace;
+  font-size: 2rem;
+  color: #fff;
+  text-shadow: 2px 2px 0 #000;
+  margin: 5px 0;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 5px 15px;
+  border-radius: 4px;
+  border: 2px solid #fff;
+}
+
+.minigame-message {
+  font-family: "VT323", monospace;
+  font-size: 4rem;
+  color: #ffcc00;
+  text-shadow: 4px 4px 0 #000;
+  margin: 20px 0;
+  animation: pulse 0.5s infinite alternate;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 10px 30px;
+  border-radius: 8px;
+  border: 4px solid #fff;
+  text-align: center;
+}
+
+@keyframes pulse {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.1);
+  }
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Exit Minigame Button */
+.exit-minigame-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  font-family: "VT323", monospace;
+  font-size: 1.2rem;
+  padding: 8px 16px;
+  background: rgba(231, 76, 60, 0.9);
+  color: #fff;
+  border: 2px solid #fff;
+  cursor: pointer;
+  z-index: 1500;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  transition: all 0.2s;
+  pointer-events: auto;
+}
+
+.exit-minigame-btn.hidden {
+  display: none !important;
+  pointer-events: none;
+}
+
+.exit-minigame-btn:hover {
+  background: rgba(192, 57, 43, 1);
+  transform: scale(1.05);
+}
+
+.exit-minigame-btn:active {
+  transform: scale(0.95);
+}
+
+/* Minigame Start Modal */
+.minigame-start-content {
+  max-width: 450px;
+}
+
+.minigame-icon {
+  font-size: 4rem;
+  text-align: center;
+  margin-bottom: 15px;
+  animation: bounceVertical 1s infinite;
+}
+
+@keyframes bounceVertical {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.minigame-rules {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+.minigame-rules h4 {
+  margin: 0 0 10px 0;
+  color: #ffcc00;
+}
+
+.minigame-rules ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.minigame-rules li {
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+/* NPC Badge */
+.npc-badge {
+  position: absolute;
+  font-size: 1.5rem;
+  text-align: center;
+  animation: float 2s ease-in-out infinite;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* Minigame Intro Overlay */
+.minigame-intro {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.minigame-intro-content {
+  max-width: 600px;
+  padding: 40px;
+  text-align: center;
+}
+
+/* Fade Transition Overlay */
+.fade-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 3000;
+  transition: opacity 1s ease-in-out;
+}
+
+.intro-line {
+  font-family: "VT323", monospace;
+  font-size: 1.8rem;
+  color: #fff;
+  margin: 15px 0;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: slideUp 0.5s ease-out forwards;
+}
+
+.intro-line:nth-child(1) {
+  font-size: 2.5rem;
+  color: #ffcc00;
+  text-shadow: 3px 3px 0 #000;
+  animation-delay: 0.2s;
+}
+
+.intro-line:nth-child(2) {
+  font-style: italic;
+  color: #aaa;
+  animation-delay: 0.6s;
+}
+
+.intro-line:nth-child(3) {
+  animation-delay: 1s;
+}
+
+.intro-line:nth-child(4) {
+  color: #ff6b6b;
+  font-weight: bold;
+  animation-delay: 1.4s;
+}
+
+@keyframes slideUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

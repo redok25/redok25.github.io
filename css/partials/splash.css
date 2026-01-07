@@ -88,14 +88,4 @@
   font-size: 18px;
   color: var(--text-light);
   margin: 6px 0;
-  opacity: 0;
-  transform: translateY(6px);
-  animation: subtitleIn 0.45s ease forwards;
-}
-
-.opening-content .story-line:nth-child(1) {
-  animation-delay: 0s;
-}
-.opening-content .story-line:nth-child(2) {
-  animation-delay: 1s;
 }

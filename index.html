@@ -114,6 +114,16 @@
       </div>
     </div>
 
+    <!-- Minigame Intro Overlay (splash screen for minigames) -->
+    <div id="minigame-intro" class="minigame-intro hidden">
+      <div class="minigame-intro-content pixel-panel">
+        <p class="intro-line" id="intro-line-1"></p>
+        <p class="intro-line" id="intro-line-2"></p>
+        <p class="intro-line" id="intro-line-3"></p>
+        <p class="intro-line" id="intro-line-4"></p>
+      </div>
+    </div>
+
     <!-- Game Canvas -->
     <canvas id="gameCanvas"></canvas>
 
@@ -157,7 +167,8 @@
           🎮 Gunakan <kbd>A</kbd> <kbd>D</kbd> atau <kbd>←</kbd>
           <kbd>→</kbd> untuk bergerak
         </p>
-        <p>💬 Tekan <kbd>E</kbd> untuk berinteraksi</p>
+        <p>🧱 Objek: Tekan <kbd>E</kbd> untuk berinteraksi</p>
+        <p>👤 NPC: Klik untuk bicara/minigame</p>
       </div>
       <div id="interaction-prompt" class="interaction-prompt hidden">
         <span>Tekan <kbd>E</kbd> untuk berinteraksi</span>
@@ -177,6 +188,18 @@
       <div id="wheelie-tooltip" class="wheelie-tooltip hidden">
         <span>SPACE untuk Wheelie!</span>
       </div>
+
+      <!-- Minigame HUD -->
+      <div id="minigame-hud" class="minigame-hud hidden">
+        <div id="minigame-timer" class="minigame-stat">Time: 0.0s</div>
+        <div id="minigame-message" class="minigame-message hidden">GO!</div>
+        <div id="minigame-score" class="minigame-stat">Score: 0</div>
+      </div>
+
+      <!-- Exit Minigame Button -->
+      <button id="btn-exit-minigame" class="exit-minigame-btn hidden">
+        Keluar Mini Game
+      </button>
     </div>
 
     <!-- About Me Modal -->
@@ -839,20 +862,104 @@
       role="dialog"
       aria-modal="true"
     >
-      <div class="modal-content pixel-panel" style="max-width: 400px;">
+      <div class="modal-content pixel-panel" style="max-width: 400px">
         <h2 style="text-align: center">🌧️ Sinkronisasi Cuaca</h2>
         <div class="modal-body">
-          <p style="text-align: center; margin-bottom: 20px;">
-            Izinkan kami mengakses lokasi Anda untuk menyamakan cuaca di dalam game dengan cuaca asli di tempat Anda?
+          <p style="text-align: center; margin-bottom: 20px">
+            Izinkan kami mengakses lokasi Anda untuk menyamakan cuaca di dalam
+            game dengan cuaca asli di tempat Anda?
           </p>
-          <div style="display: flex; gap: 10px; justify-content: center;">
-            <button id="btn-allow-weather" class="splash-btn" style="flex: 1; font-size: 16px;">Izinkan</button>
-            <button id="btn-deny-weather" class="return-btn" style="flex: 1; font-size: 16px; background-color: #e74c3c;">Nanti Saja</button>
+          <div style="display: flex; gap: 10px; justify-content: center">
+            <button
+              id="btn-allow-weather"
+              class="splash-btn"
+              style="flex: 1; font-size: 16px"
+            >
+              Izinkan
+            </button>
+            <button
+              id="btn-deny-weather"
+              class="return-btn"
+              style="flex: 1; font-size: 16px; background-color: #e74c3c"
+            >
+              Nanti Saja
+            </button>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Minigame Result Modal -->
+    <div
+      id="minigame-result-modal"
+      class="modal hidden"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        class="modal-content pixel-panel result-content"
+        style="text-align: center; max-width: 400px"
+      >
+        <h2 id="result-title" style="margin-bottom: 10px">GAME OVER</h2>
+        <div id="result-icon" style="font-size: 4rem; margin: 15px 0">🏆</div>
+        <p id="result-message" style="margin-bottom: 20px; font-size: 1.2rem">
+          Score: 100
+        </p>
+        <button id="btn-result-close" class="splash-btn">Main Lagi?</button>
+      </div>
+    </div>
+
+    <!-- Fade Transition Overlay -->
+    <div id="fade-overlay" class="fade-overlay pointer-events-none"></div>
+
+    <!-- Minigame Start Modal -->
+    <div
+      id="minigame-start-modal"
+      class="modal hidden"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="modal-content pixel-panel minigame-start-content">
+        <h2 id="minigame-start-title" style="text-align: center">
+          🎮 Minigame
+        </h2>
+        <div class="modal-body">
+          <div id="minigame-start-icon" class="minigame-icon">🏍️</div>
+          <p
+            id="minigame-start-desc"
+            style="text-align: center; margin-bottom: 15px"
+          >
+            Deskripsi game akan muncul di sini.
+          </p>
+          <div class="minigame-rules">
+            <h4>📋 Cara Main:</h4>
+            <ul id="minigame-start-rules">
+              <li>Rule 1</li>
+              <li>Rule 2</li>
+            </ul>
+          </div>
+        </div>
+        <div
+          style="
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+          "
+        >
+          <button id="btn-start-minigame" class="splash-btn" style="flex: 1">
+            Mulai! 🚀
+          </button>
+          <button
+            id="btn-cancel-minigame"
+            class="return-btn"
+            style="flex: 1; background-color: #e74c3c"
+          >
+            Nanti Saja
+          </button>
+        </div>
+      </div>
+    </div>
     <!-- Visitor Counter Modal (Hidden Easter Egg) -->
     <div
       id="visitor-counter-modal"
@@ -921,6 +1028,8 @@
     <script src="js/world.js"></script>
     <script src="js/interactions.js"></script>
     <script src="js/npc.js"></script>
+    <script src="js/special-npc.js"></script>
+    <script src="js/minigames.js"></script>
     <script src="js/game.js"></script>
     <!-- Mobile / Touch Controls -->
     <!-- Gesture Info Overlay (shown after splash on mobile) -->
@@ -937,8 +1046,14 @@
             <p><strong>Swipe UP</strong> untuk Wheelie</p>
           </div>
           <div class="gesture-item">
-            <span class="gesture-icon">🔘</span>
-            <p><strong>Tap</strong> tombol interaksi saat muncul</p>
+            <div class="gesture-item">
+              <span class="gesture-icon">🧱</span>
+              <p><strong>Tap Objek</strong> untuk berinteraksi</p>
+            </div>
+            <div class="gesture-item">
+              <span class="gesture-icon">👤</span>
+              <p><strong>Tap NPC</strong> untuk bicara/minigame</p>
+            </div>
           </div>
         </div>
         <button id="close-gesture-info" class="splash-btn">Siap!</button>

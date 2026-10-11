@@ -27,6 +27,7 @@ class InteractionManager {
 
   setupKeyListener() {
     document.addEventListener("keydown", (e) => {
+      if (JOR.shouldIgnoreGameKey(e, document)) return;
       if (e.key === "e" || e.key === "E") {
         this.tryInteract("key");
       }
@@ -159,7 +160,8 @@ class InteractionManager {
   }
 
   tryInteract(source = "unknown") {
-    if (this.currentNearbyObject && window.game && !window.game.paused) {
+    const game = window.game;
+    if (this.currentNearbyObject && game && !game.paused && !JOR.isPauseHeld(game)) {
       const obj = this.currentNearbyObject;
 
       // Check if it's a regular NPC

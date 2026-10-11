@@ -120,6 +120,8 @@ class Game {
   setupInput() {
     // Keyboard input
     window.addEventListener("keydown", (e) => {
+      // Typing in a form or reading a dialog must not drive the bike.
+      if (JOR.shouldIgnoreGameKey(e, document)) return;
       this.keys[e.key] = true;
 
       // Prevent arrow key scrolling
@@ -137,6 +139,7 @@ class Game {
     // Cheat Codes
     this.keyHistory = [];
     window.addEventListener("keydown", (e) => {
+      if (JOR.shouldIgnoreGameKey(e, document)) return;
       // Store last 10 keys (enough for short words)
       this.keyHistory.push(e.key.toLowerCase());
       if (this.keyHistory.length > 10) {
@@ -269,53 +272,40 @@ class Game {
     // this.checkRealWeather(); // Disabled: Now triggered via Modal in splash.js
   }
 
-  // Ensure game pauses and input resets when tab loses focus or is hidden
+  // Clear held keys and stop the bike + engine sound.
+  releaseInput() {
+    this.keys = {};
+    if (this.player) {
+      this.player.velocityX = 0;
+      this.player.currentAnimation = "idle";
+      this.player.animationTimer = 0;
+      this.player.wheelieActive = false;
+    }
+    try {
+      if (window.AudioManager && window.AudioManager.stopEngine) {
+        window.AudioManager.stopEngine();
+      }
+    } catch (e) {}
+  }
+
+  // Blur owns its own pause: coming back never unpauses a dialog, splash or minigame.
   setupWindowFocusHandling() {
-    const releaseAll = () => {
-      try {
-        // Clear all input states
-        this.keys = {};
-      } catch (e) {}
-      try {
-        // Stop player movement immediately
-        if (this.player) {
-          this.player.velocityX = 0;
-          this.player.currentAnimation = "idle";
-          this.player.animationTimer = 0;
-          this.player.wheelieActive = false;
-        }
-      } catch (e) {}
-      try {
-        if (window.AudioManager && window.AudioManager.stopEngine) {
-          window.AudioManager.stopEngine();
-        }
-      } catch (e) {}
-    };
-
     const pauseNow = () => {
-      releaseAll();
-      this.paused = true;
+      this.releaseInput();
+      JOR.holdPause(this, "blur");
     };
-
     const resumeNow = () => {
-      // Keep inputs released; resume loop timing cleanly
+      // rAF stops while hidden: reset the clock so the first frame back has no huge dt
+      // (a Drag Race rival would otherwise "finish" instantly).
       this.lastTime = performance.now();
-      this.paused = false;
+      JOR.releasePause(this, "blur");
     };
 
-    // Page visibility
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden) pauseNow();
-      else resumeNow();
-    });
-
-    // Window focus/blur
-    window.addEventListener("blur", () => {
-      pauseNow();
-    });
-    window.addEventListener("focus", () => {
-      resumeNow();
-    });
+    document.addEventListener("visibilitychange", () =>
+      document.hidden ? pauseNow() : resumeNow()
+    );
+    window.addEventListener("blur", pauseNow);
+    window.addEventListener("focus", resumeNow);
   }
 
   // Weather Permission Modal
@@ -501,7 +491,7 @@ class Game {
   }
 
   update(deltaTime) {
-    if (this.paused) return;
+    if (this.paused || JOR.isPauseHeld(this)) return;
     // Update player. When a scripted splash/camera scene is active or the
     // offscreen modal is visible, pass an empty keys object so player input
     // is ignored while scripted movement or modal interaction runs.

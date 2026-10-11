@@ -267,7 +267,8 @@ class NPC {
     if (this.chats.length === 0) return;
     const randomMsg = this.chats[Math.floor(Math.random() * this.chats.length)];
     this.chatBubble = {
-      text: randomMsg,
+      // {projectCount}, {firstYear}, ... come from the Quick View project list (D498).
+      text: JOR.fillTokens(randomMsg, JOR.contentTokens(document)),
       timer: 3000, // Show for 3 seconds
     };
   }

@@ -42,7 +42,7 @@ const MINIGAME_INFO = {
   drag_race: {
     title: "🏁 Drag Race",
     icon: "🏁",
-    description: "Balapan lurus 2000px lawan NPC! Siapa yang sampai duluan?",
+    description: "Balapan lurus 3000px lawan NPC! Siapa yang sampai duluan?",
     rules: [
       "Tunggu hitungan mundur 3...2...1...",
       "FALSE START = Diskualifikasi!",
@@ -52,7 +52,7 @@ const MINIGAME_INFO = {
     introLines: [
       "🏁 DRAG RACE 🏁",
       '"Berani lawan aku?"',
-      "Balapan 201 meter!",
+      "Balapan 3000px!",
       "Siapa cepat, dia menang!",
     ],
   },

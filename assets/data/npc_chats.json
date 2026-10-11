@@ -19,8 +19,7 @@
   "Dia menggabungkan kecintaan pada coding dan petualangan.",
   "Silakan jelajahi proyek, kemampuan, dan kisah perjalanannya.",
   "Terima kasih sudah mampir!",
-  "Redok sudah berpengalaman lebih dari 3 tahun lho!",
-  "Katanya dia sudah menyelesaikan 11+ proyek.",
+  "Katanya dia sudah menyelesaikan {projectCount} proyek.",
   "Aku dengar dia minum kopi dalam jumlah tak terhingga...",
   "Redok sangat ahli di PHP dan Laravel.",
   "Dia juga menguasai penggunaan Git dan REST API.",
@@ -56,7 +55,7 @@
   "Kalau kalah, jangan sedih — coba lagi!",
   "Tombol keluar minigame ada di kanan bawah.",
   "Ayo pecahkan rekor waktumu di minigame!",
-  "NPC spesial punya ikon unik di atas kepala.",
+  "NPC spesial punya bubble ajakan di atas kepala.",
   "Kalau siap, aku ajak kamu main minigame!",
   "Jangan ngebut pas lampu merah ya!",
   "Balapan lurus? Drag Race jawabannya!"

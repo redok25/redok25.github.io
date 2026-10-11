@@ -7,6 +7,20 @@
   const dialog = document.getElementById("qv");
   if (!dialog || typeof dialog.showModal !== "function") return;
 
+  // The hash is cosmetic and the History API is rate-limited (Safari and Firefox throw,
+  // Chrome drops calls): write only when the section changes, and never let a failed
+  // write break open/close or the qv:* events.
+  let hashSection = null; // section currently in the URL, null = no Quick View hash
+  function setHash(section) {
+    if (section === hashSection) return;
+    hashSection = section;
+    try {
+      history.replaceState(null, "", section ? "#quick/" + section : location.pathname + location.search);
+    } catch (e) {
+      // Throttled: the URL stays stale until the next section change.
+    }
+  }
+
   function open(section) {
     const target = JOR.QV_SECTIONS.includes(section) ? section : "about";
     if (!dialog.open) {
@@ -15,17 +29,18 @@
     }
     const el = document.getElementById("qv-" + target);
     if (el) el.scrollIntoView({ block: "start" });
-    history.replaceState(null, "", "#quick/" + target);
+    setHash(target);
   }
 
   function close() {
     if (dialog.open) dialog.close();
   }
 
-  // Fires for the close button, Esc and backdrop clicks alike.
+  // Fires for the close button, Esc and backdrop clicks alike. The event goes out first
+  // so the game can resume no matter what the History API does.
   dialog.addEventListener("close", () => {
-    history.replaceState(null, "", location.pathname + location.search);
     document.dispatchEvent(new CustomEvent("qv:close"));
+    setHash(null);
   });
 
   // .qv-inner fills the dialog, so a click landing on the <dialog> itself is the backdrop.
@@ -49,7 +64,7 @@
       const hit = atBottom
         ? sections[sections.length - 1]
         : sections.find((el) => el.getBoundingClientRect().bottom > topEdge);
-      if (hit) history.replaceState(null, "", "#quick/" + hit.dataset.section);
+      if (hit) setHash(hit.dataset.section);
     },
     { passive: true }
   );

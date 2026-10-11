@@ -315,21 +315,44 @@
   }
 
   .qv-inner {
-    padding-top: 6px;
+    padding-top: 4px;
+  }
+
+  .qv-close {
+    width: 40px;
+    height: 40px;
   }
 
   .qv-section {
-    padding: 4px 0 6px;
+    padding: 2px 0 4px;
   }
 
   .qv-station {
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     font-size: 18px;
+    line-height: 1;
   }
 
-  /* Tighter About so the first project row clears the sticky bar at 375x667. */
+  /* The About label is decorative above the hero: keep it for screen readers, drop it from the layout. */
+  #qv-about .qv-station {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Tighter About so the first project row clears the sticky bar at 375x667 and 360x640.
+     The fixed close button now sits beside the hero, where the station label used to reserve its room. */
+  .qv-hero {
+    gap: 8px;
+    padding-right: 44px;
+  }
+
   .qv-headline {
-    margin: 4px 0;
+    margin: 3px 0;
     font-size: 16px;
   }
 
@@ -343,16 +366,31 @@
 
   .qv-stats,
   .qv-cta {
+    gap: 4px;
     margin: 4px 0;
   }
 
+  .qv .stat-value {
+    margin-bottom: 0;
+  }
+
+  /* 40px tap targets */
+  .qv-btn {
+    padding: 6px;
+  }
+
   /* Skills become one-line chips: "🐘 PHP 90" */
+  .qv .skills-grid {
+    gap: 4px;
+  }
+
   .qv .skill-card {
     display: flex;
     gap: 4px;
     align-items: center;
     justify-content: center;
-    padding: 4px;
+    padding: 2px 4px;
+    white-space: nowrap;
   }
 
   .qv .skill-icon {
@@ -370,6 +408,14 @@
     display: none;
   }
 
+  .qv .projects-grid {
+    gap: 6px;
+  }
+
+  .qv-year {
+    margin-top: 0;
+  }
+
   .qv-sticky {
     position: sticky;
     bottom: 0;
@@ -381,7 +427,7 @@
 
   .qv-sticky a {
     flex: 1;
-    padding: 10px 4px;
+    padding: 8px 4px;
     font-size: 18px;
     text-align: center;
     text-decoration: none;

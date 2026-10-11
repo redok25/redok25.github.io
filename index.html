@@ -86,7 +86,9 @@
       <style>
         html, body { overflow: auto; position: static; height: auto; touch-action: auto; }
         #loading-screen, #splash-screen, #gameCanvas, #ui-overlay, #qv-open, .qv-close { display: none !important; }
-        #qv { display: block; position: static; width: auto; max-width: 900px; height: auto; max-height: none; margin: 0 auto; }
+        #qv { display: block; position: static; width: auto; max-width: 900px; height: auto; max-height: none; margin: 0 auto; touch-action: auto; }
+        /* The contact form and copy button are JS-only: without JS the form would GET its fields into the URL. */
+        .contact-form, #contactForm, [data-copy] { display: none !important; }
       </style>
     </noscript>
   </head>

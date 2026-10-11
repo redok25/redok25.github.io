@@ -320,6 +320,7 @@ class Game {
 
   // Real weather is opt-in (D499): off by default, remembered, revocable.
   setupWeatherToggle() {
+    this.weatherReq = 0;
     this.weatherToggle = document.getElementById("weather-optin");
     if (!this.weatherToggle) return;
     this.weatherToggle.checked = JOR.store.get("jor.weatherOptIn", false) === true;
@@ -329,7 +330,10 @@ class Game {
       this.weatherToggle.blur();
       JOR.store.set("jor.weatherOptIn", this.weatherToggle.checked);
       if (this.weatherToggle.checked) this.checkRealWeather();
-      else this.effects.toggleRain(false);
+      else {
+        this.weatherReq++;
+        this.effects.toggleRain(false);
+      }
     });
   }
 
@@ -340,17 +344,23 @@ class Game {
   }
 
   checkRealWeather() {
+    // Each lookup gets a token; unchecking or a newer lookup makes older callbacks no-ops.
+    const req = ++this.weatherReq;
     if (!("geolocation" in navigator)) {
       this.disableRealWeather("Browser ini tidak mendukung lokasi.");
       return;
     }
     navigator.geolocation.getCurrentPosition(
-      (position) => this.fetchWeather(position.coords.latitude, position.coords.longitude),
-      () => this.disableRealWeather("Izin lokasi diperlukan untuk fitur cuaca otomatis!")
+      (position) => {
+        if (req === this.weatherReq) this.fetchWeather(position.coords.latitude, position.coords.longitude, req);
+      },
+      () => {
+        if (req === this.weatherReq) this.disableRealWeather("Izin lokasi diperlukan untuk fitur cuaca otomatis!");
+      }
     );
   }
 
-  fetchWeather(lat, lon) {
+  fetchWeather(lat, lon, req) {
     // Rounded coordinates: the weather API never gets the exact location.
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${JOR.roundCoord(lat)}&longitude=${JOR.roundCoord(lon)}&current_weather=true`;
 
@@ -360,6 +370,7 @@ class Game {
         return response.json();
       })
       .then((data) => {
+        if (req !== this.weatherReq) return;
         if (!data.current_weather) throw new Error("no current_weather");
         // WMO codes: drizzle/rain/showers 51-82, thunderstorm 95-99
         const rainCodes = [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99];
@@ -369,7 +380,9 @@ class Game {
           showCustomAlert("Hujan telah datang!", { type: "success" });
         }
       })
-      .catch(() => this.disableRealWeather("Cuaca asli gagal dimuat, coba lagi nanti."));
+      .catch(() => {
+        if (req === this.weatherReq) this.disableRealWeather("Cuaca asli gagal dimuat, coba lagi nanti.");
+      });
   }
 
   // Setup offscreen modal button and DOM references

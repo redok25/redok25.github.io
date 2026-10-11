@@ -26,7 +26,9 @@ class Game {
     });
 
     // Game state
-    this.paused = false;
+    // Paused until the visitor presses Start (splash.js unpauses). Starting paused
+    // also means a Quick View opened during loading never "resumes" the game early.
+    this.paused = true;
     this.lastTime = 0;
     this.keys = {};
 
@@ -53,6 +55,7 @@ class Game {
     // Setup input
     this.setupInput();
     this.setupWindowFocusHandling();
+    this.setupQuickViewHandling();
     this.setupOffscreenModal();
 
     // Record when page/game construction started so we can ensure the
@@ -306,6 +309,15 @@ class Game {
     );
     window.addEventListener("blur", pauseNow);
     window.addEventListener("focus", resumeNow);
+  }
+
+  // Quick View (qv.js) is standalone; the game only reacts to its events.
+  setupQuickViewHandling() {
+    document.addEventListener("qv:open", () => {
+      this.releaseInput();
+      JOR.holdPause(this, "quickview");
+    });
+    document.addEventListener("qv:close", () => JOR.releasePause(this, "quickview"));
   }
 
   // Weather Permission Modal

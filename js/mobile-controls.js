@@ -23,8 +23,15 @@
   document.addEventListener(
     "touchstart",
     (e) => {
-      // Ignore if touching a button or modal
-      if (e.target.closest("button") || e.target.closest(".modal")) return;
+      // Ignore buttons, legacy modals and dialogs (Quick View scrolls natively)
+      if (
+        e.target.closest("button") ||
+        e.target.closest(".modal") ||
+        e.target.closest("dialog")
+      ) {
+        activePointerId = null;
+        return;
+      }
 
       const touch = e.changedTouches[0];
       touchStartX = touch.clientX;

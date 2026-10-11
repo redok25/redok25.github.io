@@ -90,6 +90,25 @@
         <p>Sedang Disiapkan...</p>
       </div>
     </div>
+    <script>
+      // Loader hint lives outside the game so it still shows if game.js throws.
+      // It only offers a retry; the game keeps loading and replaces the loader when ready.
+      setTimeout(function () {
+        var loader = document.getElementById("loading-screen");
+        if (!loader || loader.classList.contains("hidden")) return;
+        var hint = document.createElement("p");
+        hint.className = "load-hint";
+        hint.textContent = "Gagal memuat dunia.";
+        var retry = document.createElement("button");
+        retry.type = "button";
+        retry.className = "splash-btn";
+        retry.textContent = "Coba lagi";
+        retry.onclick = function () {
+          location.reload();
+        };
+        loader.querySelector(".loading-content").append(hint, retry);
+      }, 8000);
+    </script>
 
     <!-- Splash Screen -->
     <div id="splash-screen" class="splash hidden">

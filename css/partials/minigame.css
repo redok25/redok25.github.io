@@ -46,8 +46,27 @@
   }
 }
 
-.hidden {
+/* Elements with their own fade rules stay rendered so opacity can transition;
+   everything else is simply removed. */
+.hidden:not(.modal):not(#loading-screen):not(#splash-screen):not(#opening-story):not(.gesture-info) {
   display: none !important;
+}
+
+/* Hidden faders: invisible and non-interactive once their fade-out ends. */
+.modal.hidden,
+#loading-screen.hidden,
+#splash-screen.hidden,
+#opening-story.hidden,
+.gesture-info.hidden {
+  visibility: hidden;
+  pointer-events: none;
+  transition-property: opacity, transform, visibility;
+}
+
+/* Hidden faders stay rendered: stop their infinite animations (spinner, glitch, pulse). */
+.modal.hidden *,
+#loading-screen.hidden * {
+  animation-play-state: paused;
 }
 
 /* Exit Minigame Button */

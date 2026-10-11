@@ -37,3 +37,8 @@
   color: var(--text-light);
   animation: blink 1s steps(2) infinite;
 }
+
+.load-hint {
+  margin: 16px 0 12px;
+  font-size: 20px;
+}

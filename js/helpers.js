@@ -1,8 +1,8 @@
 // ===================================
 // HELPERS.JS - Pure helpers shared by Quick View and the game.
-// Loaded first as a classic script in <head>; does no DOM work at load time.
+// ES module shared by Quick View (qv.js) and the game (main.js); does no DOM work at load time.
 // ===================================
-(function (root) {
+export function makeJOR(root) {
   const TYPING_TAGS = ["INPUT", "TEXTAREA", "SELECT"];
   const QV_SECTIONS = ["about", "skills", "projects", "contact"];
 
@@ -127,7 +127,7 @@
     // SecurityError when site data is blocked.
   }
 
-  root.JOR = {
+  return {
     QV_SECTIONS,
     isTypingTarget,
     isUiBlocking,
@@ -145,4 +145,9 @@
     createStore,
     store: createStore(storage),
   };
-})(window);
+}
+
+// One instance per page: qv.js and the game graph import the same module, so they share it.
+export const JOR = makeJOR(globalThis);
+// Transitional: the game scripts are still classic until Task 3, which removes this line.
+globalThis.JOR = JOR;

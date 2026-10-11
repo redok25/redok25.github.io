@@ -93,9 +93,9 @@
     <link rel="stylesheet" href="css/partials/responsive.css" />
     <link rel="stylesheet" href="css/partials/qv.css" />
     <link rel="stylesheet" href="css/visitor-counter.css" />
-    <!-- Pure helpers first: Quick View and the game both use window.JOR -->
-    <script src="js/helpers.js"></script>
-    <script src="js/qv.js" defer></script>
+    <!-- Quick View entry (ES module; imports helpers.js). Kept apart from the game entry
+         (js/main.js) so recruiters still get the content if the game fails to load. -->
+    <script type="module" src="js/qv.js"></script>
     <noscript>
       <style>
         html, body { overflow: auto; position: static; height: auto; touch-action: auto; }

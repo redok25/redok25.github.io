@@ -3,6 +3,7 @@
 // Standalone on purpose: it never reads window.game, so recruiters still get the
 // content when the game fails to load. The game listens for "qv:open" / "qv:close".
 // ===================================
+import { JOR } from "./helpers.js";
 (function () {
   const dialog = document.getElementById("qv");
   if (!dialog || typeof dialog.showModal !== "function") return;

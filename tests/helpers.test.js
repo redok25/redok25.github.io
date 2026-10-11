@@ -1,18 +1,13 @@
 // Run: node --test tests/helpers.test.js
-const test = require("node:test");
-const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
+import test from "node:test";
+import assert from "node:assert/strict";
+import { makeJOR } from "../js/helpers.js";
 
-const SRC = fs.readFileSync(path.join(__dirname, "..", "js", "helpers.js"), "utf8");
-
-// Run helpers.js in this realm (not node:vm): deepStrictEqual compares prototypes,
-// and objects from another realm would never match.
+// A fresh JOR per call, built against a fake window (e.g. one whose localStorage throws).
 function loadJOR(setupWindow) {
   const window = {};
   if (setupWindow) setupWindow(window);
-  new Function("window", SRC)(window);
-  return window.JOR;
+  return makeJOR(window);
 }
 
 const JOR = loadJOR();

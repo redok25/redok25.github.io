@@ -56,6 +56,7 @@ class Game {
     this.setupInput();
     this.setupWindowFocusHandling();
     this.setupQuickViewHandling();
+    this.setupWeatherToggle();
     this.setupOffscreenModal();
 
     // Record when page/game construction started so we can ensure the
@@ -270,9 +271,6 @@ class Game {
 
     // Double tap support or similar for touch if needed,
     // but click usually fires on tap on mobile.
-
-    // Automatically check real weather on start
-    // this.checkRealWeather(); // Disabled: Now triggered via Modal in splash.js
   }
 
   // Clear held keys and stop the bike + engine sound.
@@ -320,91 +318,58 @@ class Game {
     document.addEventListener("qv:close", () => JOR.releasePause(this, "quickview"));
   }
 
-  // Weather Permission Modal
-  showWeatherModal() {
-    const modal = document.getElementById("weather-modal");
-    const btnAllow = document.getElementById("btn-allow-weather");
-    const btnDeny = document.getElementById("btn-deny-weather");
-
-    if (!modal || !btnAllow || !btnDeny) return;
-
-    // Show modal
-    modal.classList.remove("hidden");
-
-    // Setup one-time listeners
-    const cleanup = () => {
-      modal.classList.add("hidden");
-      btnAllow.onclick = null;
-      btnDeny.onclick = null;
-      // Restore focus to game or unpause if needed
-    };
-
-    btnAllow.onclick = () => {
-      cleanup();
-      this.checkRealWeather();
-    };
-
-    btnDeny.onclick = () => {
-      cleanup();
-      console.log("Weather sync skipped by user.");
-    };
+  // Real weather is opt-in (D499): off by default, remembered, revocable.
+  setupWeatherToggle() {
+    this.weatherToggle = document.getElementById("weather-optin");
+    if (!this.weatherToggle) return;
+    this.weatherToggle.checked = JOR.store.get("jor.weatherOptIn", false) === true;
+    if (this.weatherToggle.checked) this.checkRealWeather();
+    this.weatherToggle.addEventListener("change", () => {
+      // Hand focus back to the page so Space/arrows drive the bike, not the checkbox.
+      this.weatherToggle.blur();
+      JOR.store.set("jor.weatherOptIn", this.weatherToggle.checked);
+      if (this.weatherToggle.checked) this.checkRealWeather();
+      else this.effects.toggleRain(false);
+    });
   }
 
-  // Real-time Weather Sync
+  disableRealWeather(message) {
+    if (this.weatherToggle) this.weatherToggle.checked = false;
+    JOR.store.set("jor.weatherOptIn", false);
+    if (typeof showCustomAlert === "function") showCustomAlert(message, { type: "info" });
+  }
+
   checkRealWeather() {
-    if ("geolocation" in navigator) {
-      console.log("Requesting location for weather sync...");
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude;
-          const lon = position.coords.longitude;
-          this.fetchWeather(lat, lon);
-        },
-        (error) => {
-          console.log(
-            "Location access denied or error. Weather sync disabled.",
-            error
-          );
-          if (typeof showCustomAlert === "function") {
-            showCustomAlert(
-              "Izin lokasi diperlukan untuk fitur cuaca otomatis!",
-              { type: "info" }
-            );
-          }
-        }
-      );
-    } else {
-      console.log("Geolocation not supported.");
+    if (!("geolocation" in navigator)) {
+      this.disableRealWeather("Browser ini tidak mendukung lokasi.");
+      return;
     }
+    navigator.geolocation.getCurrentPosition(
+      (position) => this.fetchWeather(position.coords.latitude, position.coords.longitude),
+      () => this.disableRealWeather("Izin lokasi diperlukan untuk fitur cuaca otomatis!")
+    );
   }
 
   fetchWeather(lat, lon) {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+    // Rounded coordinates: the weather API never gets the exact location.
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${JOR.roundCoord(lat)}&longitude=${JOR.roundCoord(lon)}&current_weather=true`;
 
     fetch(url)
-      .then((response) => response.json())
+      .then((response) => {
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return response.json();
+      })
       .then((data) => {
-        if (data.current_weather) {
-          const code = data.current_weather.weathercode;
-          console.log(`Real-time Weather Code: ${code}`);
-
-          // WMO Weather interpretation codes
-          // Rain: 51, 53, 55, 61, 63, 65, 80, 81, 82
-          // Thunderstorm: 95, 96, 99
-          const rainCodes = [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99];
-
-          if (rainCodes.includes(code)) {
-            console.log("Weather is RAINY. Enabling effect.");
-            this.effects.toggleRain(true);
-            if (typeof showCustomAlert === "function")
-              showCustomAlert(" Hujan telah datang!", { type: "success" });
-          } else {
-            console.log("Weather is CLEAR/CLOUDY. Disabling rain.");
-            this.effects.toggleRain(false);
-          }
+        if (!data.current_weather) throw new Error("no current_weather");
+        // WMO codes: drizzle/rain/showers 51-82, thunderstorm 95-99
+        const rainCodes = [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99];
+        const raining = rainCodes.includes(data.current_weather.weathercode);
+        this.effects.toggleRain(raining);
+        if (raining && typeof showCustomAlert === "function") {
+          showCustomAlert("Hujan telah datang!", { type: "success" });
         }
       })
-      .catch((err) => console.error("Error fetching weather:", err));
+      .catch(() => this.disableRealWeather("Cuaca asli gagal dimuat, coba lagi nanti."));
   }
 
   // Setup offscreen modal button and DOM references

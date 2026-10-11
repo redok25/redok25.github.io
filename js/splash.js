@@ -58,36 +58,7 @@
       
       startBtn.disabled = true;
 
-      // Check for Weather Modal
-      const weatherModal = document.getElementById("weather-modal");
-      const btnAllow = document.getElementById("btn-allow-weather");
-      const btnDeny = document.getElementById("btn-deny-weather");
-      
-      if (weatherModal && btnAllow && btnDeny) {
-          weatherModal.classList.remove("hidden");
-          
-          const cleanup = () => {
-              weatherModal.classList.add("hidden");
-              btnAllow.onclick = null;
-              btnDeny.onclick = null;
-              launchGameSequence();
-          };
-
-          btnAllow.onclick = () => {
-              if (window.game && typeof window.game.checkRealWeather === "function") {
-                  window.game.checkRealWeather();
-              }
-              cleanup();
-          };
-
-          btnDeny.onclick = () => {
-              console.log("Weather sync skipped.");
-              cleanup();
-          };
-      } else {
-          // Fallback if modal missing
-          launchGameSequence();
-      }
+      launchGameSequence();
     });
 
     async function beginGameAfterStory() {

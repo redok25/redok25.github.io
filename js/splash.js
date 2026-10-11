@@ -121,7 +121,9 @@
           autoHideTimer = setTimeout(() => {
             try {
               openingEl.classList.add("hidden");
-              openingEl.remove();
+              setTimeout(() => {
+                try { openingEl.remove(); } catch (e) {}
+              }, 420);
             } catch (e) {}
             autoHideTimer = null;
           }, estimatedMs);
@@ -147,11 +149,11 @@
       };
       const onSkipKey = (e) => {
         // While Quick View is open, Esc belongs to the dialog.
-        if (e.key === "Escape" && !JOR.shouldIgnoreGameKey(e, document)) skipIntro();
+        if (e.key === "Escape" && !e.repeat && !JOR.shouldIgnoreGameKey(e, document)) skipIntro();
       };
       const onSkipTap = (e) => {
         if (performance.now() - introStartedAt < 1000) return;
-        if (e.target.closest("#qv, #qv-open, #skip-intro")) return;
+        if (e.target.closest("#qv, #qv-open, #skip-intro, .modal")) return;
         skipIntro();
       };
       const cleanupSkip = () => {
@@ -159,7 +161,7 @@
         document.removeEventListener("keydown", onSkipKey);
         document.removeEventListener("pointerdown", onSkipTap);
       };
-      if (skipBtn) {
+      if (skipBtn && !isReturningVisitor()) {
         skipBtn.classList.remove("hidden");
         skipBtn.onclick = skipIntro;
       }
@@ -225,9 +227,12 @@
             /* ignore */
           }
 
-          // remove the original splash if still present
+          // fade out the original splash if still present, then remove it (#splash-screen fades 0.4s)
           try {
-            splash.remove();
+            splash.classList.add("hidden");
+            setTimeout(() => {
+              try { splash.remove(); } catch (e) {}
+            }, 450);
           } catch (e) {}
         }
       );

@@ -81,8 +81,27 @@
     <link rel="stylesheet" href="css/visitor-counter.css" />
     <!-- Pure helpers first: Quick View and the game both use window.JOR -->
     <script src="js/helpers.js"></script>
+    <script src="js/qv.js" defer></script>
+    <noscript>
+      <style>
+        html, body { overflow: auto; position: static; height: auto; touch-action: auto; }
+        #loading-screen, #splash-screen, #gameCanvas, #ui-overlay, #qv-open, .qv-close { display: none !important; }
+        #qv { display: block; position: static; width: auto; max-width: 900px; height: auto; max-height: none; margin: 0 auto; }
+      </style>
+    </noscript>
   </head>
   <body>
+    <!-- Quick View entry: plain HTML so it works before (and without) the game -->
+    <button
+      id="qv-open"
+      class="qv-open-btn"
+      type="button"
+      data-qv-open="about"
+      aria-haspopup="dialog"
+    >
+      📋 Quick View
+    </button>
+
     <!-- Loading Screen -->
     <div id="loading-screen">
       <div class="loading-content">
@@ -116,6 +135,9 @@
         <h1>Journey of Redok</h1>
         <p>Siap untuk menjelajah? Langsung klik tombol di bawah!</p>
         <button id="start-explore" class="splash-btn">Gasskan!</button>
+        <button type="button" class="splash-btn splash-btn--ghost" data-qv-open="about">
+          Lihat ringkasan
+        </button>
       </div>
     </div>
 
@@ -223,132 +245,126 @@
       </button>
     </div>
 
-    <!-- About Me Modal -->
-    <div id="about-modal" class="modal hidden">
-      <div class="modal-content pixel-panel">
-        <button class="close-btn" onclick="closeModal('about-modal')">×</button>
-        <h2>🏕️ About Me</h2>
-        <div class="modal-body">
-          <div class="profile-section">
-            <div class="profile-image">
-              <div class="pixel-avatar">👨‍💻</div>
-            </div>
-            <div class="profile-info">
-              <h3>Redho Harli Saputra</h3>
-              <p class="subtitle">Web Developer</p>
-              <p class="bio">
-                Profesional IT dengan passion yang kuat terhadap industri
-                teknologi dan kemahiran dalam berbagai bahasa pemrograman. Telah
-                mencapai pencapaian penting di sektor IT, khususnya dalam
-                pengembangan web. Sangat antusias terhadap pemrograman, terutama
-                dalam pengembangan website, menyukai tantangan teknis, dan
-                beradaptasi dengan cepat terhadap teknologi baru.
-              </p>
-              <div class="stats">
-                <div class="stat-item">
-                  <span class="stat-value">3+</span>
-                  <span class="stat-label">Tahun Pengalaman</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-value">15+</span>
-                  <span class="stat-label">Project Selesai</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-value">∞</span>
-                  <span class="stat-label">Kopi Diminum</span>
-                </div>
-              </div>
+    <!-- Quick View: the single source of portfolio content; world stations open its sections -->
+    <dialog id="qv" class="qv" aria-labelledby="qv-name">
+      <div class="qv-inner">
+        <button class="qv-close" type="button" data-qv-close aria-label="Tutup Quick View">×</button>
+
+        <section id="qv-about" class="qv-section" data-section="about">
+          <h3 class="qv-station">🏕️ About</h3>
+          <div class="qv-hero">
+            <div class="pixel-avatar">👨‍💻</div>
+            <div>
+              <h2 id="qv-name" class="qv-name">Redho Harli Saputra</h2>
+              <p class="qv-role">Web Developer</p>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+          <p class="qv-headline">
+            Saya seorang PHP &amp; Laravel developer yang menggabungkan kecintaan
+            pada coding dan petualangan, silakan jelajahi proyek, kemampuan, dan
+            kisah perjalanan saya.
+          </p>
+          <!-- D502: first bio sentence visible, the rest behind "Tentang saya" (verbatim split) -->
+          <p class="bio qv-bio-lead">
+            Profesional IT dengan passion yang kuat terhadap industri
+            teknologi dan kemahiran dalam berbagai bahasa pemrograman.
+          </p>
+          <details class="qv-bio">
+            <summary>Tentang saya</summary>
+            <p class="bio">
+              Telah mencapai pencapaian penting di sektor IT, khususnya dalam
+              pengembangan web. Sangat antusias terhadap pemrograman, terutama
+              dalam pengembangan website, menyukai tantangan teknis, dan
+              beradaptasi dengan cepat terhadap teknologi baru.
+            </p>
+          </details>
+          <div class="qv-stats">
+            <div class="qv-stat">
+              <span class="stat-value" data-stat="projects">15</span>
+              <span class="stat-label">Project</span>
+            </div>
+            <div class="qv-stat">
+              <span class="stat-value" data-stat="years">2021–2025</span>
+              <span class="stat-label">Tahun Project</span>
+            </div>
+            <div class="qv-stat">
+              <span class="stat-value">∞</span>
+              <span class="stat-label">Kopi Diminum</span>
+            </div>
+          </div>
+          <div class="qv-cta">
+            <a class="qv-btn" href="mailto:redho256@gmail.com">📧 Email</a>
+            <button class="qv-btn" type="button" data-copy="redho256@gmail.com">📋 Salin email</button>
+            <a class="qv-btn" href="https://linkedin.com/in/redokhs" target="_blank" rel="noopener">💼 LinkedIn</a>
+            <a class="qv-btn" href="https://github.com/redok25" target="_blank" rel="noopener">🐙 GitHub</a>
+          </div>
+        </section>
 
-    <!-- Skills Modal -->
-    <div id="skills-modal" class="modal hidden">
-      <div class="modal-content pixel-panel">
-        <button class="close-btn" onclick="closeModal('skills-modal')">
-          ×
-        </button>
-        <h2>🪧 Tech Stack</h2>
-        <div class="modal-body">
+        <section id="qv-skills" class="qv-section" data-section="skills">
+          <h3 class="qv-station">🪧 Tech Stack</h3>
           <div class="skills-grid">
-            <div class="skill-card">
+            <div class="skill-card" data-level="90">
               <div class="skill-icon">🐘</div>
-              <h4>PHP</h4>
-              <div class="skill-bar">
-                <div class="skill-progress" style="width: 90%"></div>
-              </div>
+              <h4>PHP <span class="skill-num">90</span></h4>
+              <div class="skill-bar"><div class="skill-progress" style="width: 90%"></div></div>
               <span class="skill-level">Expert</span>
             </div>
-            <div class="skill-card">
+            <div class="skill-card" data-level="90">
               <div class="skill-icon">🔺</div>
-              <h4>Laravel</h4>
-              <div class="skill-bar">
-                <div class="skill-progress" style="width: 90%"></div>
-              </div>
+              <h4>Laravel <span class="skill-num">90</span></h4>
+              <div class="skill-bar"><div class="skill-progress" style="width: 90%"></div></div>
               <span class="skill-level">Expert</span>
             </div>
-            <div class="skill-card">
+            <div class="skill-card" data-level="85">
               <div class="skill-icon">⚔️</div>
-              <h4>Blade</h4>
-              <div class="skill-bar">
-                <div class="skill-progress" style="width: 85%"></div>
-              </div>
+              <h4>Blade <span class="skill-num">85</span></h4>
+              <div class="skill-bar"><div class="skill-progress" style="width: 85%"></div></div>
               <span class="skill-level">Advanced</span>
             </div>
-            <div class="skill-card">
+            <div class="skill-card" data-level="85">
               <div class="skill-icon">🗄️</div>
-              <h4>MySQL</h4>
-              <div class="skill-bar">
-                <div class="skill-progress" style="width: 85%"></div>
-              </div>
+              <h4>MySQL <span class="skill-num">85</span></h4>
+              <div class="skill-bar"><div class="skill-progress" style="width: 85%"></div></div>
               <span class="skill-level">Advanced</span>
             </div>
-            <div class="skill-card">
+            <div class="skill-card" data-level="88">
               <div class="skill-icon">🔌</div>
-              <h4>REST API</h4>
-              <div class="skill-bar">
-                <div class="skill-progress" style="width: 88%"></div>
-              </div>
+              <h4>REST API <span class="skill-num">88</span></h4>
+              <div class="skill-bar"><div class="skill-progress" style="width: 88%"></div></div>
               <span class="skill-level">Advanced</span>
             </div>
-            <div class="skill-card">
+            <div class="skill-card" data-level="85">
               <div class="skill-icon">🐙</div>
-              <h4>Git</h4>
-              <div class="skill-bar">
-                <div class="skill-progress" style="width: 85%"></div>
-              </div>
+              <h4>Git <span class="skill-num">85</span></h4>
+              <div class="skill-bar"><div class="skill-progress" style="width: 85%"></div></div>
               <span class="skill-level">Advanced</span>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+        </section>
 
-    <!-- Projects Modal -->
-    <div id="projects-modal" class="modal hidden">
-      <div class="modal-content pixel-panel">
-        <button class="close-btn" onclick="closeModal('projects-modal')">
-          ×
-        </button>
-        <h2>🏪 Portfolio</h2>
-        <div class="modal-body">
+        <section id="qv-projects" class="qv-section" data-section="projects">
+          <h3 class="qv-station">🏪 Portfolio</h3>
           <div class="projects-grid">
+            <h4 class="qv-year">2025</h4>
             <!-- Project 1 - KHGT (2025) -->
-            <div class="project-card">
+            <div class="project-card" id="p-khgt" data-year="2025">
               <div class="project-thumbnail">
                 <div class="pixel-icon">🌙</div>
               </div>
               <div class="project-info">
                 <h4>KHGT</h4>
                 <span class="project-year">2025</span>
-                <p>
-                  Website resmi Muhammadiyah yang menyajikan Kalender Hijriah
-                  Global Terpadu. Menampilkan kalender Hijriah terstandarisasi
-                  berdasarkan perhitungan astronomi dengan konversi Gregorian
-                  dan penentuan awal bulan yang konsisten.
-                </p>
+                <details class="project-desc">
+                  <summary>
+                    Website resmi Muhammadiyah yang menyajikan Kalender Hijriah
+                    Global Terpadu.
+                  </summary>
+                  <p>
+                    Menampilkan kalender Hijriah terstandarisasi berdasarkan
+                    perhitungan astronomi dengan konversi Gregorian dan
+                    penentuan awal bulan yang konsisten.
+                  </p>
+                </details>
                 <div class="project-tags">
                   <span class="tag">Full-Stack</span>
                   <span class="tag">Calendar</span>
@@ -364,19 +380,23 @@
             </div>
 
             <!-- Project 2 - MASA (2025) -->
-            <div class="project-card">
+            <div class="project-card" id="p-masa" data-year="2025">
               <div class="project-thumbnail">
                 <div class="pixel-icon">📱</div>
               </div>
               <div class="project-info">
                 <h4>MASA (Muhammadiyah Super App)</h4>
                 <span class="project-year">2025</span>
-                <p>
-                  Aplikasi mobile yang dikembangkan sebagai solusi gaya hidup
-                  digital untuk Muslim modern yang mendukung Dakwah Digital.
-                  Menyediakan fitur ibadah praktis yang terintegrasi dengan
-                  ekosistem digital Muhammadiyah.
-                </p>
+                <details class="project-desc">
+                  <summary>
+                    Aplikasi mobile yang dikembangkan sebagai solusi gaya hidup
+                    digital untuk Muslim modern yang mendukung Dakwah Digital.
+                  </summary>
+                  <p>
+                    Menyediakan fitur ibadah praktis yang terintegrasi dengan
+                    ekosistem digital Muhammadiyah.
+                  </p>
+                </details>
                 <div class="project-tags">
                   <span class="tag">Mobile</span>
                   <span class="tag">Backend</span>
@@ -392,19 +412,24 @@
             </div>
 
             <!-- Project 3 - SatuMu (2025) -->
-            <div class="project-card">
+            <div class="project-card" id="p-satumu" data-year="2025">
               <div class="project-thumbnail">
                 <div class="pixel-icon">🏢</div>
               </div>
               <div class="project-info">
                 <h4>SatuMu</h4>
                 <span class="project-year">2025</span>
-                <p>
-                  Platform digital terintegrasi resmi untuk organisasi
-                  Muhammadiyah. Berfungsi sebagai gerbang layanan digital yang
-                  mengintegrasikan data keanggotaan, struktur organisasi,
-                  kontribusi, dan layanan lainnya dalam satu sistem.
-                </p>
+                <details class="project-desc">
+                  <summary>
+                    Platform digital terintegrasi resmi untuk organisasi
+                    Muhammadiyah.
+                  </summary>
+                  <p>
+                    Berfungsi sebagai gerbang layanan digital yang
+                    mengintegrasikan data keanggotaan, struktur organisasi,
+                    kontribusi, dan layanan lainnya dalam satu sistem.
+                  </p>
+                </details>
                 <div class="project-tags">
                   <span class="tag">Full-Stack</span>
                   <span class="tag">Platform</span>
@@ -419,20 +444,25 @@
               </div>
             </div>
 
+            <h4 class="qv-year">2024</h4>
             <!-- Project 4 - Muhammadiyah ID (2024) -->
-            <div class="project-card">
+            <div class="project-card" id="p-muhammadiyah-id" data-year="2024">
               <div class="project-thumbnail">
                 <div class="pixel-icon">🔐</div>
               </div>
               <div class="project-info">
                 <h4>Muhammadiyah ID</h4>
                 <span class="project-year">2024</span>
-                <p>
-                  Portal identitas digital resmi Muhammadiyah. Menyediakan akun
-                  terpusat tunggal untuk mengakses berbagai layanan dalam
-                  ekosistem Muhammadiyah dengan fokus pada keamanan dan
-                  integrasi layanan.
-                </p>
+                <details class="project-desc">
+                  <summary>
+                    Portal identitas digital resmi Muhammadiyah.
+                  </summary>
+                  <p>
+                    Menyediakan akun terpusat tunggal untuk mengakses berbagai
+                    layanan dalam ekosistem Muhammadiyah dengan fokus pada
+                    keamanan dan integrasi layanan.
+                  </p>
+                </details>
                 <div class="project-tags">
                   <span class="tag">Full-Stack</span>
                   <span class="tag">SSO</span>
@@ -448,19 +478,24 @@
             </div>
 
             <!-- Project 5 - SI JATAM (2024) -->
-            <div class="project-card">
+            <div class="project-card" id="p-si-jatam" data-year="2024">
               <div class="project-thumbnail">
                 <div class="pixel-icon">🌱</div>
               </div>
               <div class="project-info">
                 <h4>SI JATAM</h4>
                 <span class="project-year">2024</span>
-                <p>
-                  Platform berbasis web yang melacak petani yang berafiliasi
-                  dengan JATAM (Jamaah Tani Muhammadiyah) di seluruh Indonesia.
-                  Dilengkapi peta interaktif untuk pemantauan real-time
-                  distribusi petani, lahan garapan, dan komoditas utama.
-                </p>
+                <details class="project-desc">
+                  <summary>
+                    Platform berbasis web yang melacak petani yang berafiliasi
+                    dengan JATAM (Jamaah Tani Muhammadiyah) di seluruh
+                    Indonesia.
+                  </summary>
+                  <p>
+                    Dilengkapi peta interaktif untuk pemantauan real-time
+                    distribusi petani, lahan garapan, dan komoditas utama.
+                  </p>
+                </details>
                 <div class="project-tags">
                   <span class="tag">Full-Stack</span>
                   <span class="tag">Agriculture</span>
@@ -476,20 +511,24 @@
             </div>
 
             <!-- Project 6 - EPNBP Minerba (2024) -->
-            <div class="project-card">
+            <div class="project-card" id="p-epnbp-minerba" data-year="2024">
               <div class="project-thumbnail">
                 <div class="pixel-icon">💰</div>
               </div>
               <div class="project-info">
                 <h4>EPNBP Minerba (Modul E-Rekon)</h4>
                 <span class="project-year">2024</span>
-                <p>
-                  Modul E-Rekon dirancang untuk menghitung rekonsiliasi royalti,
-                  iuran tetap, dan PHT dari setiap transaksi. Memungkinkan
-                  penerbitan laporan rekonsiliasi untuk setiap provinsi di
-                  Indonesia, memastikan transparansi dan akurasi dalam
-                  pengelolaan PNBP sektor mineral dan batubara.
-                </p>
+                <details class="project-desc">
+                  <summary>
+                    Modul E-Rekon dirancang untuk menghitung rekonsiliasi
+                    royalti, iuran tetap, dan PHT dari setiap transaksi.
+                  </summary>
+                  <p>
+                    Memungkinkan penerbitan laporan rekonsiliasi untuk setiap
+                    provinsi di Indonesia, memastikan transparansi dan akurasi
+                    dalam pengelolaan PNBP sektor mineral dan batubara.
+                  </p>
+                </details>
                 <div class="project-tags">
                   <span class="tag">Full-Stack</span>
                   <span class="tag">Finance</span>
@@ -505,14 +544,14 @@
             </div>
 
             <!-- Project 7 - MOMS Mineral (2024) -->
-            <div class="project-card">
+            <div class="project-card" id="p-moms-mineral" data-year="2024">
               <div class="project-thumbnail">
                 <div class="pixel-icon">⛏️</div>
               </div>
               <div class="project-info">
                 <h4>MOMS Mineral</h4>
                 <span class="project-year">2024</span>
-                <p>
+                <p class="project-lead">
                   Sistem pengawasan (Mineral Online Monitoring System) yang
                   dirancang untuk membantu pemerintah pusat dalam mengontrol dan
                   memantau aktivitas pertambangan mineral secara real-time,
@@ -532,20 +571,25 @@
               </div>
             </div>
 
+            <h4 class="qv-year">2023</h4>
             <!-- Project 8 - Portal Data IMM (2023) -->
-            <div class="project-card">
+            <div class="project-card" id="p-portal-data-imm" data-year="2023">
               <div class="project-thumbnail">
                 <div class="pixel-icon">📁</div>
               </div>
               <div class="project-info">
                 <h4>Portal Data IMM Djazman Al-Kindi</h4>
                 <span class="project-year">2023</span>
-                <p>
-                  Portal berbasis web untuk mengelola informasi, anggota,
-                  kegiatan, dan sumber daya organisasi secara efisien.
-                  Memfasilitasi kolaborasi dan pengambilan keputusan berbasis
-                  data untuk organisasi.
-                </p>
+                <details class="project-desc">
+                  <summary>
+                    Portal berbasis web untuk mengelola informasi, anggota,
+                    kegiatan, dan sumber daya organisasi secara efisien.
+                  </summary>
+                  <p>
+                    Memfasilitasi kolaborasi dan pengambilan keputusan berbasis
+                    data untuk organisasi.
+                  </p>
+                </details>
                 <div class="project-tags">
                   <span class="tag">Backend</span>
                   <span class="tag">Organization</span>
@@ -555,14 +599,14 @@
             </div>
 
             <!-- Project 9 - IndiBook (2023) -->
-            <div class="project-card">
+            <div class="project-card" id="p-indibook" data-year="2023">
               <div class="project-thumbnail">
                 <div class="pixel-icon">📚</div>
               </div>
               <div class="project-info">
                 <h4>IndiBook</h4>
                 <span class="project-year">2023</span>
-                <p>
+                <p class="project-lead">
                   Aplikasi interaktif untuk mengeksplorasi kekayaan sastra
                   budaya Indonesia seperti pantun, syair, dan serat wulangreh
                   dengan cara modern dan menarik, dilengkapi latihan menulis dan
@@ -582,20 +626,26 @@
               </div>
             </div>
 
+            <h4 class="qv-year">2022</h4>
             <!-- Project 10 - E-Rapor (2022) -->
-            <div class="project-card">
+            <div class="project-card" id="p-erapor-sokonandi" data-year="2022">
               <div class="project-thumbnail">
                 <div class="pixel-icon">🏫</div>
               </div>
               <div class="project-info">
                 <h4>E-Rapor SD Muhammadiyah Sokonandi</h4>
                 <span class="project-year">2022</span>
-                <p>
-                  Solusi digital untuk mempermudah proses pencatatan, pelaporan,
-                  dan evaluasi perkembangan siswa. Guru dapat mengisi nilai, dan
-                  orang tua dapat mengakses hasil secara online, meningkatkan
-                  transparansi dalam pendidikan.
-                </p>
+                <details class="project-desc">
+                  <summary>
+                    Solusi digital untuk mempermudah proses pencatatan,
+                    pelaporan, dan evaluasi perkembangan siswa.
+                  </summary>
+                  <p>
+                    Guru dapat mengisi nilai, dan orang tua dapat mengakses
+                    hasil secara online, meningkatkan transparansi dalam
+                    pendidikan.
+                  </p>
+                </details>
                 <div class="project-tags">
                   <span class="tag">Full-Stack</span>
                   <span class="tag">Education</span>
@@ -611,19 +661,24 @@
             </div>
 
             <!-- Project 11 - Emonev (2022) -->
-            <div class="project-card">
+            <div class="project-card" id="p-emonev-madiun" data-year="2022">
               <div class="project-thumbnail">
                 <div class="pixel-icon">📊</div>
               </div>
               <div class="project-info">
                 <h4>Emonev Kab. Madiun</h4>
                 <span class="project-year">2022</span>
-                <p>
-                  Aplikasi web Pengendalian dan Evaluasi Perencanaan Pembangunan
-                  Daerah untuk Bappeda Madiun. Mengintegrasikan pemantauan dan
-                  evaluasi proyek pembangunan daerah untuk perencanaan dan
-                  pengambilan keputusan yang lebih baik.
-                </p>
+                <details class="project-desc">
+                  <summary>
+                    Aplikasi web Pengendalian dan Evaluasi Perencanaan
+                    Pembangunan Daerah untuk Bappeda Madiun.
+                  </summary>
+                  <p>
+                    Mengintegrasikan pemantauan dan evaluasi proyek pembangunan
+                    daerah untuk perencanaan dan pengambilan keputusan yang
+                    lebih baik.
+                  </p>
+                </details>
                 <div class="project-tags">
                   <span class="tag">Backend</span>
                   <span class="tag">Planning</span>
@@ -633,19 +688,24 @@
             </div>
 
             <!-- Project 12 - E-Jumantik (2022) -->
-            <div class="project-card">
+            <div class="project-card" id="p-e-jumantik" data-year="2022">
               <div class="project-thumbnail">
                 <div class="pixel-icon">🦟</div>
               </div>
               <div class="project-info">
                 <h4>E-Jumantik</h4>
                 <span class="project-year">2022</span>
-                <p>
-                  Aplikasi untuk petugas Jumantik mencatat dan mengelola data
-                  jentik di Yogyakarta. Fitur membantu pelacakan dan pemantauan
-                  keberadaan jentik, pencatatan data dengan mudah, dan
-                  menghasilkan laporan akurat.
-                </p>
+                <details class="project-desc">
+                  <summary>
+                    Aplikasi untuk petugas Jumantik mencatat dan mengelola data
+                    jentik di Yogyakarta.
+                  </summary>
+                  <p>
+                    Fitur membantu pelacakan dan pemantauan keberadaan jentik,
+                    pencatatan data dengan mudah, dan menghasilkan laporan
+                    akurat.
+                  </p>
+                </details>
                 <div class="project-tags">
                   <span class="tag">Laravel</span>
                   <span class="tag">Full-Stack</span>
@@ -660,21 +720,27 @@
               </div>
             </div>
 
+            <h4 class="qv-year">2021</h4>
             <!-- Project 13 - SIG Tata Ruang (2021) -->
-            <div class="project-card">
+            <div class="project-card" id="p-sig-tata-ruang-bengkulu" data-year="2021">
               <div class="project-thumbnail">
                 <div class="pixel-icon">🌐</div>
               </div>
               <div class="project-info">
                 <h4>SIG Tata Ruang Kota Bengkulu</h4>
                 <span class="project-year">2021</span>
-                <p>
-                  Sistem Informasi Geografis Tata Ruang Kota Bengkulu mencakup
-                  pemetaan peta kecamatan dan kelurahan, serta peta tata ruang
-                  yang merinci detail administrasi dan penggunaan lahan kota.
-                  Menyediakan informasi lokasi bangunan penting dan IMB di Kota
-                  Bengkulu.
-                </p>
+                <details class="project-desc">
+                  <summary>
+                    Sistem Informasi Geografis Tata Ruang Kota Bengkulu
+                    mencakup pemetaan peta kecamatan dan kelurahan, serta peta
+                    tata ruang yang merinci detail administrasi dan penggunaan
+                    lahan kota.
+                  </summary>
+                  <p>
+                    Menyediakan informasi lokasi bangunan penting dan IMB di
+                    Kota Bengkulu.
+                  </p>
+                </details>
                 <div class="project-tags">
                   <span class="tag">Full-Stack</span>
                   <span class="tag">GIS</span>
@@ -684,14 +750,14 @@
             </div>
 
             <!-- Project 14 - Webservice BPHTB (2021) -->
-            <div class="project-card">
+            <div class="project-card" id="p-bphtb-fakfak" data-year="2021">
               <div class="project-thumbnail">
                 <div class="pixel-icon">🏛️</div>
               </div>
               <div class="project-info">
                 <h4>Webservice BPHTB Kab. Fakfak</h4>
                 <span class="project-year">2021</span>
-                <p>
+                <p class="project-lead">
                   Memungkinkan Kementerian Agraria dan Tata Ruang/BPN mengakses
                   data BPHTB dari Pemda Fakfak secara efisien, memastikan
                   pengambilan data yang aman dan terkontrol untuk perencanaan
@@ -706,19 +772,23 @@
             </div>
 
             <!-- Project 15 - YogsMaps (2021) -->
-            <div class="project-card">
+            <div class="project-card" id="p-yogsmaps" data-year="2021">
               <div class="project-thumbnail">
                 <div class="pixel-icon">📍</div>
               </div>
               <div class="project-info">
                 <h4>YogsMaps</h4>
                 <span class="project-year">2021</span>
-                <p>
-                  Aplikasi Sistem Informasi Geografis (GIS) yang menampilkan
-                  data wilayah Yogyakarta dengan MapBox API. Pengguna dapat
-                  dengan mudah mengeksplorasi informasi spasial dengan antarmuka
-                  yang responsif dan user-friendly.
-                </p>
+                <details class="project-desc">
+                  <summary>
+                    Aplikasi Sistem Informasi Geografis (GIS) yang menampilkan
+                    data wilayah Yogyakarta dengan MapBox API.
+                  </summary>
+                  <p>
+                    Pengguna dapat dengan mudah mengeksplorasi informasi
+                    spasial dengan antarmuka yang responsif dan user-friendly.
+                  </p>
+                </details>
                 <div class="project-tags">
                   <span class="tag">PHP Native</span>
                   <span class="tag">MapBox API</span>
@@ -733,18 +803,11 @@
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+        </section>
 
-    <!-- Contact Modal -->
-    <div id="contact-modal" class="modal hidden">
-      <div class="modal-content pixel-panel">
-        <button class="close-btn" onclick="closeModal('contact-modal')">
-          ×
-        </button>
-        <h2>📮 Contact</h2>
-        <div class="modal-body">
+        <section id="qv-contact" class="qv-section" data-section="contact">
+          <h3 class="qv-station">📮 Contact</h3>
+        <div class="qv-contact-body">
           <div class="contact-container">
             <div class="contact-info">
               <h3>Mari Berkolaborasi!</h3>
@@ -825,8 +888,15 @@
             </div>
           </div>
         </div>
+        </section>
+
+        <nav class="qv-sticky" aria-label="Kontak cepat">
+          <a href="mailto:redho256@gmail.com">📧 Email</a>
+          <a href="https://wa.me/6285156264959" target="_blank" rel="noopener">💬 WhatsApp</a>
+          <a href="https://linkedin.com/in/redokhs" target="_blank" rel="noopener">💼 LinkedIn</a>
+        </nav>
       </div>
-    </div>
+    </dialog>
 
     <!-- Offscreen Modal: shown when player leaves viewport (no close, single action) -->
     <div

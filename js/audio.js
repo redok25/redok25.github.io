@@ -475,6 +475,8 @@
         try {
           if (!ev || !ev.key) return;
           if (ev.key !== "Escape" && ev.key !== "Esc") return;
+          // A modal dialog (Quick View) gets Esc first; the panel can wait.
+          if (document.querySelector("dialog[open]")) return;
           const panel = document.getElementById("audio-control-panel");
           const btn = document.getElementById("audio-toggle");
           if (!panel) return;

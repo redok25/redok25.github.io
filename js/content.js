@@ -14,18 +14,17 @@ function closeModal(modalId) {
   }
 }
 
+// World stations open the matching Quick View section (D496).
+const STATION_SECTIONS = {
+  "about-modal": "about",
+  "skills-modal": "skills",
+  "projects-modal": "projects",
+  "contact-modal": "contact",
+};
+
 function openModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) {
-    modal.classList.remove("hidden");
-    // Pause game
-    if (window.game) {
-      window.game.paused = true;
-      if (window.AudioManager) {
-          window.AudioManager.stopEngine();
-      }
-    }
-  }
+  const section = STATION_SECTIONS[modalId];
+  if (section && window.QV) window.QV.open(section);
 }
 
 // Custom styled alert (replaces native alert)

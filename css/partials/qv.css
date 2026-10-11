@@ -1,0 +1,409 @@
+/* === QUICK VIEW === */
+.qv-open-btn {
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 10010; /* above loader 9999, splash 10001, gesture info 10005 */
+  padding: 6px 14px;
+  font-family: "VT323", monospace;
+  font-size: 22px;
+  color: var(--text-dark);
+  background: var(--primary);
+  border: 3px solid var(--text-light);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  animation: qv-pulse 0.5s ease-in-out 2 alternate; /* grow and settle once */
+}
+
+.qv-open-btn:hover,
+.qv-open-btn:focus-visible {
+  background: var(--secondary);
+  color: var(--text-light);
+}
+
+@keyframes qv-pulse {
+  to {
+    transform: scale(1.12);
+  }
+}
+
+.splash-btn--ghost {
+  margin-top: 14px;
+  font-size: 20px;
+  padding: 8px 20px;
+  background: transparent;
+}
+
+.qv {
+  width: min(480px, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-left: 4px solid var(--panel-border);
+  background: var(--panel-bg);
+  color: var(--text-light);
+  font-family: "VT323", monospace;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+.qv::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.qv-inner {
+  min-height: 100%;
+  padding: 12px 16px 0;
+}
+
+.qv-close {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 36px;
+  height: 36px;
+  font-family: inherit;
+  font-size: 24px;
+  color: var(--text-light);
+  background: var(--accent);
+  border: 3px solid var(--text-light);
+  cursor: pointer;
+}
+
+.qv-section {
+  padding: 10px 0 16px;
+  border-bottom: 3px solid var(--panel-border);
+  scroll-margin-top: 4px;
+}
+
+.qv-station {
+  padding-right: 44px;
+  margin-bottom: 6px;
+  font-size: 20px;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+
+.qv-hero {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* profile.css makes the avatar a 120px box: shrink the box, not just the emoji. */
+.qv .pixel-avatar {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  font-size: 32px;
+  border-width: 2px;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.qv-name {
+  font-size: 28px;
+  line-height: 1;
+  color: var(--primary);
+}
+
+.qv-role {
+  font-size: 20px;
+}
+
+.qv-headline {
+  margin: 6px 0;
+  font-size: 18px;
+  line-height: 1.2;
+}
+
+.qv-stats {
+  display: flex;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.qv-stat {
+  flex: 1;
+  padding: 2px 4px;
+  text-align: center;
+  background: var(--ground-dark);
+  border: 2px solid var(--panel-border);
+}
+
+.qv .stat-value {
+  font-size: 22px;
+}
+
+.qv-cta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.qv-btn {
+  display: block;
+  padding: 4px 6px;
+  font-family: inherit;
+  font-size: 18px;
+  text-align: center;
+  text-decoration: none;
+  color: var(--text-dark);
+  background: var(--primary);
+  border: 2px solid var(--text-light);
+  cursor: pointer;
+}
+
+.qv .bio {
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.qv-bio summary {
+  cursor: pointer;
+  font-size: 17px;
+  color: var(--primary);
+}
+
+.qv-bio .bio {
+  margin-top: 4px;
+}
+
+/* Skills: compact cards, number always visible */
+.qv .skills-grid {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.qv .skill-card {
+  padding: 6px;
+}
+
+.qv .skill-card:hover {
+  transform: none;
+}
+
+.qv .skill-icon {
+  margin-bottom: 2px;
+  font-size: 22px;
+}
+
+.qv .skill-card h4 {
+  margin-bottom: 2px;
+  font-size: 17px;
+}
+
+.qv .skill-num {
+  color: var(--primary);
+}
+
+.qv .skill-bar {
+  height: 8px;
+  margin: 4px 0;
+}
+
+.qv-section.is-visible .skill-progress {
+  transform-origin: left;
+  animation: qv-bar 0.8s ease-out both;
+}
+
+@keyframes qv-bar {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* Projects: one compact row each, grouped by year */
+.qv .projects-grid {
+  gap: 8px;
+}
+
+.qv-year {
+  margin-top: 4px;
+  font-size: 22px;
+  color: var(--accent);
+  border-bottom: 2px dashed var(--panel-border);
+}
+
+.qv .project-card {
+  flex-direction: row;
+  gap: 10px;
+  padding: 8px;
+}
+
+.qv .project-thumbnail {
+  width: 44px;
+  height: 44px;
+}
+
+.qv .pixel-icon {
+  font-size: 24px;
+}
+
+.qv .project-info h4 {
+  margin-bottom: 0;
+  font-size: 19px;
+}
+
+/* Row text: first sentence always visible, the rest expands from it. */
+.qv .project-desc summary,
+.qv .project-desc p,
+.qv .project-lead {
+  margin: 2px 0 6px;
+  font-size: 17px;
+  line-height: 1.25;
+}
+
+.qv .project-desc summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.qv .project-desc summary::-webkit-details-marker {
+  display: none;
+}
+
+.qv .project-desc summary::after {
+  content: " ▸";
+  color: var(--primary);
+}
+
+.qv .project-desc[open] summary::after {
+  content: " ▾";
+}
+
+.qv .project-tags {
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.qv .tag {
+  padding: 1px 6px;
+}
+
+.qv .project-link {
+  padding: 2px 10px;
+  font-size: 16px;
+}
+
+.qv .contact-container {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.qv .contact-item {
+  padding: 6px;
+}
+
+.qv .contact-icon {
+  font-size: 22px;
+}
+
+.qv-sticky {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .qv {
+    width: 100vw;
+    border-left: 0;
+  }
+
+  .qv-inner {
+    padding-top: 6px;
+  }
+
+  .qv-section {
+    padding: 4px 0 6px;
+  }
+
+  .qv-station {
+    margin-bottom: 4px;
+    font-size: 18px;
+  }
+
+  /* Tighter About so the first project row clears the sticky bar at 375x667. */
+  .qv-headline {
+    margin: 4px 0;
+    font-size: 16px;
+  }
+
+  .qv .bio {
+    font-size: 16px;
+  }
+
+  .qv-bio-lead {
+    margin-bottom: 2px;
+  }
+
+  .qv-stats,
+  .qv-cta {
+    margin: 4px 0;
+  }
+
+  /* Skills become one-line chips: "🐘 PHP 90" */
+  .qv .skill-card {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+  }
+
+  .qv .skill-icon {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  .qv .skill-card h4 {
+    margin: 0;
+    font-size: 16px;
+  }
+
+  .qv .skill-bar,
+  .qv .skill-level {
+    display: none;
+  }
+
+  .qv-sticky {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    margin: 0 -16px;
+    background: var(--panel-bg);
+    border-top: 3px solid var(--panel-border);
+  }
+
+  .qv-sticky a {
+    flex: 1;
+    padding: 10px 4px;
+    font-size: 18px;
+    text-align: center;
+    text-decoration: none;
+    color: var(--text-light);
+  }
+
+  .qv-sticky a + a {
+    border-left: 2px solid var(--panel-border);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qv-open-btn,
+  .qv-section.is-visible .skill-progress {
+    animation: none;
+  }
+}
+
+/* The always-on Quick View button sits top-left: keep toasts and the minigame HUD clear of it. */
+@media (max-width: 600px) {
+  #custom-alert-container,
+  .minigame-hud {
+    top: 64px;
+  }
+}

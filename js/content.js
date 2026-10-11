@@ -2,18 +2,6 @@
 // CONTENT.JS - Portfolio Content
 // ===================================
 
-// Modal control functions
-function closeModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) {
-    modal.classList.add("hidden");
-    // Resume game
-    if (window.game) {
-      window.game.paused = false;
-    }
-  }
-}
-
 // World stations open the matching Quick View section (D496).
 const STATION_SECTIONS = {
   "about-modal": "about",
@@ -42,10 +30,10 @@ function showCustomAlert(message, options = {}) {
   const alertEl = document.createElement("div");
   alertEl.className = `custom-alert custom-alert--${type}`;
   alertEl.setAttribute("role", "alert");
-  alertEl.innerHTML = `
-    <div class="custom-alert__body">${message}</div>
-    <button class="custom-alert__close" aria-label="Close alert">&times;</button>
-  `;
+  alertEl.innerHTML =
+    '<div class="custom-alert__body"></div>' +
+    '<button class="custom-alert__close" aria-label="Close alert">&times;</button>';
+  alertEl.querySelector(".custom-alert__body").textContent = message;
 
   const closeBtn = alertEl.querySelector(".custom-alert__close");
   const removeAlert = () => {
@@ -73,27 +61,20 @@ function showCustomAlert(message, options = {}) {
   }
 }
 
-// Contact form handler
+const WHATSAPP_NUMBER = "6285156264959"; // Format: CountryCode + Number
+
+// Contact form handler: hands the message to WhatsApp, fully URL-encoded.
 function handleContactSubmit(event) {
   event.preventDefault();
-  const formData = new FormData(event.target);
-  const name = formData.get("name");
-  const email = formData.get("email");
-  const message = formData.get("message");
-
-  // Format message for WhatsApp
-  const phoneNumber = "6285156264959"; // Format: CountryCode + Number
-  const text = `Halo, saya ${name} (${email}).%0A%0A${message}`;
-  
-  // Open WhatsApp in new tab
-  const whatsappUrl = `https://wa.me/${phoneNumber}?text=${text}`;
-  window.open(whatsappUrl, '_blank');
-
-  showCustomAlert(
-    "Mengarahkan ke WhatsApp...",
-    { type: "success", duration: 3000 }
-  );
-  
+  const form = new FormData(event.target);
+  const url = JOR.buildWhatsAppUrl(WHATSAPP_NUMBER, {
+    name: form.get("name"),
+    email: form.get("email"),
+    message: form.get("message"),
+  });
+  window.open(url, "_blank", "noopener");
   event.target.reset();
-  closeModal("contact-modal");
+  // Close Quick View first: the toast lives below the dialog's top layer.
+  if (window.QV) window.QV.close();
+  showCustomAlert("Mengarahkan ke WhatsApp...", { type: "success", duration: 3000 });
 }

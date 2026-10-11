@@ -71,7 +71,7 @@
   background: var(--ground-dark);
   border: 3px solid var(--panel-border);
   color: var(--text-light);
-  font-family: "Courier New", monospace;
+  font-family: "VT323", monospace;
   font-size: 14px;
   transition: border-color 0.2s;
 }
@@ -88,7 +88,7 @@
   background: var(--primary);
   color: var(--text-dark);
   border: 3px solid var(--text-light);
-  font-family: "Courier New", monospace;
+  font-family: "VT323", monospace;
   font-size: 16px;
   font-weight: bold;
   cursor: pointer;

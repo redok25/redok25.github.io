@@ -1,5 +1,9 @@
 // splash.js - controls the initial splash flow and triggers the player splash move
 (function () {
+  function isReturningVisitor() {
+    return !!(window.JOR && JOR.visit && JOR.visit.returning);
+  }
+
   function init() {
     const splash = document.getElementById("splash-screen");
     const startBtn = document.getElementById("start-explore");
@@ -7,6 +11,8 @@
 
     // timer handle to auto-hide opening subtitle (can be cleared when movement completes)
     let autoHideTimer = null;
+    // Set by the ride's completion callback; late timers must not undo its cleanup.
+    let introFinished = false;
 
     if (!splash || !startBtn) return;
 
@@ -17,20 +23,17 @@
       startBtn.textContent = "Berangkat...";
       const opening = document.getElementById("opening-story");
 
+      // Set before the ride starts so the ride's completion callback is always the last
+      // writer: a skip can finish the ride before the 500ms timeout below fires.
+      if (window.game) window.game._splashCameraActive = true;
+
       setTimeout(() => {
         // Immediately hide the initial splash modal
         splash.classList.add("hidden");
-
-        // Show the short opening story overlay (as subtitle) if exists
-        if (opening) {
+        // Subtitle only while the ride still runs, and never for returning visitors.
+        if (opening && opening.isConnected && !introFinished && !isReturningVisitor()) {
           opening.classList.remove("hidden");
         }
-
-        // Tell the game we'll run a scripted splash so camera uses the
-        // splash-follow behaviour while player moves.
-        try {
-          if (window.game) window.game._splashCameraActive = true;
-        } catch (e) {}
       }, 500);
 
       // Start the game and scripted move immediately while subtitles show
@@ -163,10 +166,41 @@
         console.warn("Starting splash move before all player assets loaded");
       }
 
+      // Skip: jump the bike to the ride's end; the next player.update() runs the
+      // normal completion callback (camera, UI, backtrack lock, subtitle).
+      const skipBtn = document.getElementById("skip-intro");
+      const introStartedAt = performance.now();
+      const skipIntro = () => {
+        const p = window.game && window.game.player;
+        if (p && p.splashMoving && p._isOpeningSplash) p.x = p.splashTargetX;
+      };
+      const onSkipKey = (e) => {
+        // While Quick View is open, Esc belongs to the dialog.
+        if (e.key === "Escape" && !JOR.shouldIgnoreGameKey(e, document)) skipIntro();
+      };
+      const onSkipTap = (e) => {
+        if (performance.now() - introStartedAt < 1000) return;
+        if (e.target.closest("#qv, #qv-open, #skip-intro")) return;
+        skipIntro();
+      };
+      const cleanupSkip = () => {
+        if (skipBtn) skipBtn.classList.add("hidden");
+        document.removeEventListener("keydown", onSkipKey);
+        document.removeEventListener("pointerdown", onSkipTap);
+      };
+      if (skipBtn) {
+        skipBtn.classList.remove("hidden");
+        skipBtn.onclick = skipIntro;
+      }
+      document.addEventListener("keydown", onSkipKey);
+      document.addEventListener("pointerdown", onSkipTap);
+
       window.game.player.startSplashMove(
         splashDistance,
         splashSpeed,
         (traveled) => {
+          introFinished = true;
+          cleanupSkip();
           // scripted splash finished: restore normal camera follow
           try {
             if (window.game) window.game._splashCameraActive = false;
@@ -226,6 +260,7 @@
           } catch (e) {}
         }
       );
+      if (isReturningVisitor()) skipIntro();
     }
   }
 

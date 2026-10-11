@@ -89,3 +89,17 @@
   color: var(--text-light);
   margin: 6px 0;
 }
+
+.skip-intro-btn {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 10003; /* above the opening subtitle */
+  padding: 6px 16px;
+  font-family: "VT323", monospace;
+  font-size: 22px;
+  color: var(--text-light);
+  background: rgba(8, 10, 16, 0.8);
+  border: 3px solid var(--text-light);
+  cursor: pointer;
+}

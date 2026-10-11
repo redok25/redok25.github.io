@@ -38,7 +38,9 @@
   animation: blink 1s steps(2) infinite;
 }
 
-.load-hint {
+/* Scoped under .loading-content: `.loading-content p` (blink, 24px) would otherwise win. */
+.loading-content .load-hint {
   margin: 16px 0 12px;
   font-size: 20px;
+  animation: none;
 }

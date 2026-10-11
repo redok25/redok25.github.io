@@ -72,7 +72,7 @@
   border: 3px solid var(--panel-border);
   color: var(--text-light);
   font-family: "VT323", monospace;
-  font-size: 14px;
+  font-size: 18px; /* >= 16px stops iOS Safari zooming on focus; VT323 renders small */
   transition: border-color 0.2s;
 }
 

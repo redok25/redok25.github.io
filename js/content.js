@@ -73,7 +73,6 @@ function handleContactSubmit(event) {
     message: form.get("message"),
   });
   window.open(url, "_blank", "noopener");
-  event.target.reset();
   // Close Quick View first: the toast lives below the dialog's top layer.
   if (window.QV) window.QV.close();
   showCustomAlert("Mengarahkan ke WhatsApp...", { type: "success", duration: 3000 });

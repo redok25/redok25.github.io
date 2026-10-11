@@ -44,8 +44,13 @@
   });
 
   // .qv-inner fills the dialog, so a click landing on the <dialog> itself is the backdrop.
+  // Close only when the press also started there (a text drag-select ends on the backdrop too).
+  let downOnBackdrop = false;
+  dialog.addEventListener("pointerdown", (e) => {
+    downOnBackdrop = e.target === dialog;
+  });
   dialog.addEventListener("click", (e) => {
-    if (e.target === dialog) close();
+    if (e.target === dialog && downOnBackdrop) close();
   });
 
   // Keep #quick/<section> in sync while scrolling (S8): the section at the top of the

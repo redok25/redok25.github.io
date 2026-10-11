@@ -2,6 +2,9 @@
 // VISITOR-COUNTER.JS - "visitor" easter egg, local-only.
 // Counts this browser's visits (one per day) in localStorage. No network, no fingerprint.
 // ===================================
+import { JOR } from "./helpers.js";
+import { app } from "./state.js";
+import { onAction } from "./actions.js";
 
 class VisitorCounter {
   constructor() {
@@ -47,7 +50,7 @@ class VisitorCounter {
       el.style.animation = "";
     });
     modal.classList.remove("hidden");
-    if (window.game) JOR.holdPause(window.game, "visitor");
+    if (app.game) JOR.holdPause(app.game, "visitor");
     this.playDiscoverySound();
   }
 
@@ -117,22 +120,21 @@ class VisitorCounter {
     const modal = document.getElementById(this.modalId);
     if (!modal) return;
     modal.classList.add("hidden");
-    if (window.game) JOR.releasePause(window.game, "visitor");
+    if (app.game) JOR.releasePause(app.game, "visitor");
   }
 }
 
-// Initialize when DOM is ready
+// Initialize when DOM is ready (a module runs after parsing, so this is usually immediate).
+let visitorCounter = null;
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
-    window.visitorCounter = new VisitorCounter();
+    visitorCounter = new VisitorCounter();
   });
 } else {
-  window.visitorCounter = new VisitorCounter();
+  visitorCounter = new VisitorCounter();
 }
 
-// Global function to close modal (inline onclick in index.html)
-function closeVisitorCounter() {
-  if (window.visitorCounter) {
-    window.visitorCounter.closeModal();
-  }
-}
+// The modal's close button (data-action="close-visitor-counter" in index.html).
+onAction("close-visitor-counter", () => {
+  if (visitorCounter) visitorCounter.closeModal();
+});

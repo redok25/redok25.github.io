@@ -1,8 +1,9 @@
 // ===================================
 // NPC.JS - Non-Playable Character
 // ===================================
+import { JOR } from "./helpers.js";
 
-class NPC {
+export class NPC {
   constructor(config) {
     this.x = config.x || 0;
     this.y = config.y || 0;

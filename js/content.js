@@ -1,6 +1,7 @@
 // ===================================
 // CONTENT.JS - Portfolio Content
 // ===================================
+import { JOR } from "./helpers.js";
 
 // World stations open the matching Quick View section (D496).
 const STATION_SECTIONS = {
@@ -10,13 +11,13 @@ const STATION_SECTIONS = {
   "contact-modal": "contact",
 };
 
-function openModal(modalId) {
+export function openModal(modalId) {
   const section = STATION_SECTIONS[modalId];
   if (section && window.QV) window.QV.open(section);
 }
 
 // Custom styled alert (replaces native alert)
-function showCustomAlert(message, options = {}) {
+export function showCustomAlert(message, options = {}) {
   const { type = "info", duration = 4000 } = options;
 
   // Create container if missing
@@ -64,7 +65,7 @@ function showCustomAlert(message, options = {}) {
 const WHATSAPP_NUMBER = "6285156264959"; // Format: CountryCode + Number
 
 // Contact form handler: hands the message to WhatsApp, fully URL-encoded.
-function handleContactSubmit(event) {
+export function handleContactSubmit(event) {
   event.preventDefault();
   const form = new FormData(event.target);
   const url = JOR.buildWhatsAppUrl(WHATSAPP_NUMBER, {

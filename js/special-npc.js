@@ -1,8 +1,9 @@
 // ===================================
 // SPECIAL-NPC.JS - Minigame NPC Engine
 // ===================================
+import { app } from "./state.js";
 
-class SpecialNPC {
+export class SpecialNPC {
   constructor(config) {
     this.x = config.x || 0;
     this.y = config.y || 0;
@@ -214,8 +215,8 @@ class SpecialNPC {
       mouseY >= screenY &&
       mouseY <= screenY + this.height
     ) {
-      if (this.minigameId && window.game && window.game.minigames) {
-        window.game.minigames.startMinigame(this.minigameId);
+      if (this.minigameId && app.game && app.game.minigames) {
+        app.game.minigames.startMinigame(this.minigameId);
       }
       return true;
     }

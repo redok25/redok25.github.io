@@ -2,7 +2,7 @@
 // EFFECTS.JS - Visual Effects System
 // ===================================
 
-class EffectsManager {
+export class EffectsManager {
   // accept world reference so clouds can be placed in world space and parallax relative to camera
   constructor(canvas, ctx, world) {
     this.canvas = canvas;

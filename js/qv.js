@@ -4,6 +4,12 @@
 // content when the game fails to load. The game listens for "qv:open" / "qv:close".
 // ===================================
 import { JOR } from "./helpers.js";
+import { handleContactSubmit } from "./content.js";
+import { onAction } from "./actions.js";
+
+// The contact form lives in Quick View, so it must work even when the game entry fails.
+onAction("contact-submit", handleContactSubmit);
+
 (function () {
   const dialog = document.getElementById("qv");
   if (!dialog || typeof dialog.showModal !== "function") return;

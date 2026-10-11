@@ -1,8 +1,13 @@
 // ===================================
 // INTERACTIONS.JS - Interaction System
 // ===================================
+import { JOR } from "./helpers.js";
+import { NPC } from "./npc.js";
+import { SpecialNPC } from "./special-npc.js";
+import { openModal } from "./content.js";
+import { app } from "./state.js";
 
-class InteractionManager {
+export class InteractionManager {
   constructor(player, world) {
     this.player = player;
     this.world = world;
@@ -160,7 +165,7 @@ class InteractionManager {
   }
 
   tryInteract(source = "unknown") {
-    const game = window.game;
+    const game = app.game;
     if (this.currentNearbyObject && game && !game.paused && !JOR.isPauseHeld(game)) {
       const obj = this.currentNearbyObject;
 

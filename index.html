@@ -894,7 +894,7 @@
             </div>
             <div class="contact-form">
               <h3>Kirim Pesan</h3>
-              <form id="contactForm" onsubmit="handleContactSubmit(event)">
+              <form id="contactForm" data-action="contact-submit">
                 <div class="form-group">
                   <label for="name">Nama</label>
                   <input type="text" id="name" name="name" required />
@@ -1054,7 +1054,7 @@
       aria-modal="true"
     >
       <div class="modal-content pixel-panel visitor-counter-content">
-        <button class="close-btn" onclick="closeVisitorCounter()">×</button>
+        <button class="close-btn" data-action="close-visitor-counter">×</button>
         <h2 style="text-align: center">🎉 Easter Egg Ditemukan! 🎉</h2>
         <div class="modal-body">
           <div class="visitor-stats">
@@ -1107,16 +1107,6 @@
     </div>
 
     <!-- Scripts -->
-    <script src="js/content.js"></script>
-    <script src="js/effects.js"></script>
-    <script src="js/audio.js"></script>
-    <script src="js/player.js"></script>
-    <script src="js/world.js"></script>
-    <script src="js/interactions.js"></script>
-    <script src="js/npc.js"></script>
-    <script src="js/special-npc.js"></script>
-    <script src="js/minigames.js"></script>
-    <script src="js/game.js"></script>
     <!-- Mobile / Touch Controls -->
     <!-- Gesture Info Overlay (shown after splash on mobile) -->
     <div id="gesture-info" class="gesture-info hidden">
@@ -1143,8 +1133,7 @@
         <button id="close-gesture-info" class="splash-btn">Siap!</button>
       </div>
     </div>
-    <script src="js/mobile-controls.js"></script>
-    <script src="js/splash.js"></script>
-    <script src="js/visitor-counter.js"></script>
+    <!-- Game entry (ES module graph; see js/main.js for the init order) -->
+    <script type="module" src="js/main.js"></script>
   </body>
 </html>

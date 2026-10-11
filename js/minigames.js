@@ -1,6 +1,7 @@
 // ===================================
 // MINIGAMES.JS - Minigame System
 // ===================================
+import { AudioManager } from "./audio.js";
 
 // Minigame metadata for modals
 const MINIGAME_INFO = {
@@ -58,7 +59,7 @@ const MINIGAME_INFO = {
   },
 };
 
-class MinigameManager {
+export class MinigameManager {
   constructor(game) {
     this.game = game;
     this.activeMinigame = null;
@@ -125,8 +126,8 @@ class MinigameManager {
         if (this.game) this.game.paused = false;
 
         // Stop engine sound when closing result modal
-        if (window.AudioManager && window.AudioManager.stopEngine) {
-          window.AudioManager.stopEngine();
+        if (AudioManager && AudioManager.stopEngine) {
+          AudioManager.stopEngine();
         }
       });
     }
@@ -163,8 +164,8 @@ class MinigameManager {
     if (this.game) this.game.paused = true;
 
     // Stop engine sound during modal
-    if (window.AudioManager && window.AudioManager.stopEngine) {
-      window.AudioManager.stopEngine();
+    if (AudioManager && AudioManager.stopEngine) {
+      AudioManager.stopEngine();
     }
   }
 
@@ -193,8 +194,8 @@ class MinigameManager {
     if (this.game) this.game.paused = true;
 
     // Stop engine sound during intro
-    if (window.AudioManager && window.AudioManager.stopEngine) {
-      window.AudioManager.stopEngine();
+    if (AudioManager && AudioManager.stopEngine) {
+      AudioManager.stopEngine();
     }
 
     // populate text...
@@ -295,8 +296,8 @@ class MinigameManager {
     this.game.paused = true; // Pause game while result shows
 
     // Stop engine sound during result modal
-    if (window.AudioManager && window.AudioManager.stopEngine) {
-      window.AudioManager.stopEngine();
+    if (AudioManager && AudioManager.stopEngine) {
+      AudioManager.stopEngine();
     }
   }
 

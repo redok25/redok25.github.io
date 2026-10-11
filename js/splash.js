@@ -1,7 +1,11 @@
 // splash.js - controls the initial splash flow and triggers the player splash move
+import { JOR } from "./helpers.js";
+import { AudioManager } from "./audio.js";
+import { showGestureInfo } from "./mobile-controls.js";
+import { app } from "./state.js";
 (function () {
   function isReturningVisitor() {
-    return !!(window.JOR && JOR.visit && JOR.visit.returning);
+    return !!(JOR.visit && JOR.visit.returning);
   }
 
   function init() {
@@ -25,7 +29,7 @@
 
       // Set before the ride starts so the ride's completion callback is always the last
       // writer: a skip can finish the ride before the 500ms timeout below fires.
-      if (window.game) window.game._splashCameraActive = true;
+      if (app.game) app.game._splashCameraActive = true;
 
       setTimeout(() => {
         // Immediately hide the initial splash modal
@@ -63,21 +67,21 @@
 
     async function beginGameAfterStory() {
       // ensure game exists
-      if (!window.game || !window.game.player) {
+      if (!app.game || !app.game.player) {
         // fallback: just ensure UI shown and unpause
         if (uiOverlay) uiOverlay.style.display = "";
-        if (window.game) window.game.paused = false;
+        if (app.game) app.game.paused = false;
         return;
       }
 
       // Unpause the game so update/render run
-      window.game.paused = false;
+      app.game.paused = false;
       // Wait for player assets (sprites + exhaust) to load so visuals are ready
       const waitForPlayerAssets = (timeoutMs = 3000) => {
         return new Promise((resolve) => {
           const start = Date.now();
           const check = () => {
-            const p = window.game && window.game.player;
+            const p = app.game && app.game.player;
             if (
               p &&
               p.spritesLoaded &&
@@ -144,7 +148,7 @@
       const skipBtn = document.getElementById("skip-intro");
       const introStartedAt = performance.now();
       const skipIntro = () => {
-        const p = window.game && window.game.player;
+        const p = app.game && app.game.player;
         if (p && p.splashMoving && p._isOpeningSplash) p.x = p.splashTargetX;
       };
       const onSkipKey = (e) => {
@@ -168,7 +172,7 @@
       document.addEventListener("keydown", onSkipKey);
       document.addEventListener("pointerdown", onSkipTap);
 
-      window.game.player.startSplashMove(
+      app.game.player.startSplashMove(
         splashDistance,
         splashSpeed,
         (traveled) => {
@@ -176,7 +180,7 @@
           cleanupSkip();
           // scripted splash finished: restore normal camera follow
           try {
-            if (window.game) window.game._splashCameraActive = false;
+            if (app.game) app.game._splashCameraActive = false;
           } catch (e) {}
 
           // On complete: show UI and tidy up splash + subtitle element
@@ -184,24 +188,24 @@
 
 
           // Show Gesture Info if available
-          if (typeof window.showGestureInfo === "function") {
-              window.showGestureInfo();
+          if (typeof showGestureInfo === "function") {
+              showGestureInfo();
           }
 
           // Add traveled distance to world.splashDistance if available
           try {
             if (
-              window.game &&
-              window.game.world &&
+              app.game &&
+              app.game.world &&
               typeof traveled === "number"
             ) {
-              window.game.world.splashDistance =
-                (window.game.world.splashDistance || 0) + traveled;
+              app.game.world.splashDistance =
+                (app.game.world.splashDistance || 0) + traveled;
               console.log(
                 "Splash traveled:",
                 traveled,
                 "-> world.splashDistance =",
-                window.game.world.splashDistance
+                app.game.world.splashDistance
               );
             }
           } catch (e) {
@@ -245,7 +249,7 @@
     // small poll to ensure `game` instance is available (Game constructor runs on load too)
     let tries = 0;
     const readyCheck = setInterval(() => {
-      if (window.game || tries > 30) {
+      if (app.game || tries > 30) {
         clearInterval(readyCheck);
         // init now regardless; if game not present fallback behavior handles it
         init();

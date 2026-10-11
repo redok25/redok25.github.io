@@ -149,5 +149,3 @@ export function makeJOR(root) {
 
 // One instance per page: qv.js and the game graph import the same module, so they share it.
 export const JOR = makeJOR(globalThis);
-// Transitional: the game scripts are still classic until Task 3, which removes this line.
-globalThis.JOR = JOR;

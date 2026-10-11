@@ -1,8 +1,10 @@
 // ===================================
 // WORLD.JS - World & Environment
 // ===================================
+import { NPC } from "./npc.js";
+import { SpecialNPC } from "./special-npc.js";
 
-class World {
+export class World {
   constructor(canvas, ctx) {
     this.canvas = canvas;
     this.ctx = ctx;

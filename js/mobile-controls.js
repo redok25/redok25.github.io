@@ -1,5 +1,5 @@
 // Mobile controls: Gesture based (Swipe Left/Right, Swipe Up for Wheelie, Tap for Interact)
-(function () {
+import { app } from "./state.js";
   const GESTURE_THRESHOLD = 30; // Min px to trigger direction
   const WHEELIE_THRESHOLD = 50; // Min px up to trigger wheelie
 
@@ -11,8 +11,8 @@
   // Helper to safely set keys on the running game instance
   function setKey(key, value) {
     try {
-      if (window.game && window.game.keys) {
-        window.game.keys[key] = value;
+      if (app.game && app.game.keys) {
+        app.game.keys[key] = value;
       }
     } catch (e) {
       // ignore
@@ -129,13 +129,13 @@
   }
 
   // Expose showGestureInfo for splash.js
-  window.showGestureInfo = function() {
+  export function showGestureInfo() {
       // Check if mobile
       const isTouch = matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
       if (isTouch && gestureInfo) {
           gestureInfo.classList.remove("hidden");
       }
-  };
+  }
 
   // Adjust UI Text for Mobile
   function updateMobileText() {
@@ -152,4 +152,3 @@
   // Run on load
   updateMobileText();
 
-})();

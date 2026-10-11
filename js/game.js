@@ -1,6 +1,15 @@
 // ===================================
 // GAME.JS - Main Game Engine
 // ===================================
+import { JOR } from "./helpers.js";
+import { Player } from "./player.js";
+import { World } from "./world.js";
+import { EffectsManager } from "./effects.js";
+import { InteractionManager } from "./interactions.js";
+import { MinigameManager } from "./minigames.js";
+import { showCustomAlert } from "./content.js";
+import { AudioManager } from "./audio.js";
+import { app } from "./state.js";
 
 class Game {
   constructor() {
@@ -70,7 +79,8 @@ class Game {
     this.waitForAssetsThenStart();
 
     // Make game accessible globally
-    window.game = this;
+    app.game = this;
+    window.game = this; // Debug handle for the console/devtools only; modules read app.game.
   }
 
   // Poll components until everything is loaded, then hide loading screen and start loop
@@ -283,8 +293,8 @@ class Game {
       this.player.wheelieActive = false;
     }
     try {
-      if (window.AudioManager && window.AudioManager.stopEngine) {
-        window.AudioManager.stopEngine();
+      if (AudioManager && AudioManager.stopEngine) {
+        AudioManager.stopEngine();
       }
     } catch (e) {}
   }

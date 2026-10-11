@@ -1,11 +1,10 @@
 // Simple AudioManager singleton
 // Provides basic BGM playback and lightweight stubs for SFX used by game code.
-(function () {
   const bgm = new Audio();
   bgm.loop = true;
   bgm.preload = "auto";
 
-  const AudioManager = {
+  export const AudioManager = {
     _bgm: bgm,
     _currentBgm: null,
     _isMuted: false,
@@ -387,8 +386,6 @@
     },
   };
 
-  // expose globally
-  window.AudioManager = AudioManager;
   // attach UI handler when page loads: open panel, volume slider, and mute toggle
   try {
     const attach = () => {
@@ -583,4 +580,3 @@
       true
     );
   } catch (e) {}
-})();

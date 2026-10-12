@@ -153,3 +153,25 @@ test("createWordBuffer: printable keys only, longest word fits, order wins", () 
   assert.equal(next("Shift"), null, "multi-char key names are ignored");
   assert.deepEqual(type("NOON"), ["noon"], "case-insensitive");
 });
+
+test("fixedSteps: 3 s of frames gives the same step count at 30/60/144 Hz", () => {
+  const stepsFor = (hz) => {
+    let acc = 0, total = 0;
+    for (let i = 0; i < 3 * hz; i++) {
+      const r = JOR.fixedSteps(acc, 1000 / hz);
+      acc = r.acc;
+      total += r.steps;
+    }
+    return total;
+  };
+  for (const hz of [30, 60, 144]) {
+    assert.ok(Math.abs(stepsFor(hz) - 180) <= 1, `${hz} Hz -> ${stepsFor(hz)} steps`);
+  }
+});
+
+test("fixedSteps: negative dt is 0, huge dt is clamped to 3 steps", () => {
+  assert.deepEqual(JOR.fixedSteps(0, -5), { steps: 0, acc: 0 });
+  const r = JOR.fixedSteps(0, 5000);
+  assert.equal(r.steps, 3);
+  assert.ok(r.acc < JOR.STEP_MS);
+});

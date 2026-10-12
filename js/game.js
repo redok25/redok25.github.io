@@ -39,6 +39,7 @@ class Game {
     // owner holds until the visitor presses Start (splash.js releases it).
     JOR.holdPause(this, "splash");
     this.lastTime = 0;
+    this.simAcc = 0;
     this.keys = {};
 
     // Offscreen modal state: true when modal is visible and blocking player input
@@ -622,16 +623,53 @@ class Game {
   }
 
   gameLoop(currentTime) {
-    // Calculate delta time
-    const deltaTime = currentTime - this.lastTime;
+    const dt = currentTime - this.lastTime;
     this.lastTime = currentTime;
-
-    // Update and render
-    this.update(deltaTime);
-    this.render();
-
-    // Continue loop
+    try {
+      let steps = 0;
+      if (this.paused) {
+        this.simAcc = 0; // a pause never banks time
+      } else {
+        const r = JOR.fixedSteps(this.simAcc || 0, dt);
+        this.simAcc = r.acc;
+        // Re-check every step: a step can open a modal (minigame result) and pause.
+        for (; steps < r.steps && !this.paused; steps++) {
+          this.prevCameraX = this.cameraX;
+          this.prevPlayerX = this.player.x;
+          this.update(JOR.STEP_MS);
+        }
+        if (this.paused) this.simAcc = 0;
+      }
+      this.stepsLastFrame = steps;
+      // Quick View covers the game: skip drawing it underneath.
+      if (!JOR.isPauseHeld(this, "quickview")) this.renderInterpolated();
+    } catch (e) {
+      // Keep the loop alive; log the first failure only.
+      if (!this._loopErrorLogged) console.error("Game loop error:", e);
+      this._loopErrorLogged = true;
+    }
     requestAnimationFrame((time) => this.gameLoop(time));
+  }
+
+  // Draw between the last two sim steps (only camera and player move fast enough to judder).
+  // ponytail: two values; add the Drag rival or rain here if they visibly judder at 144 Hz.
+  renderInterpolated() {
+    const camX = this.cameraX;
+    const playerX = this.player.x;
+    let alpha = this.paused ? 1 : (this.simAcc || 0) / JOR.STEP_MS;
+    const prevCam = this.prevCameraX ?? camX;
+    const prevX = this.prevPlayerX ?? playerX;
+    // Teleports (minigame start/exit, intro skip) must not sweep across the screen.
+    const half = this.canvas.width / 2;
+    if (Math.abs(camX - prevCam) > half || Math.abs(playerX - prevX) > half) alpha = 1;
+    this.cameraX = prevCam + (camX - prevCam) * alpha;
+    this.player.x = prevX + (playerX - prevX) * alpha;
+    try {
+      this.render();
+    } finally {
+      this.cameraX = camX;
+      this.player.x = playerX;
+    }
   }
 }
 

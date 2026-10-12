@@ -108,6 +108,22 @@ export function makeJOR(root) {
     };
   }
 
+  // Fixed timestep (F6): the sim always advances in STEP_MS steps, so px/step constants
+  // mean the same speed at 30, 60 or 144 Hz. dt is clamped to [0, 50] ms (tab switches,
+  // stalls) and at most 3 steps run per frame, so a slow frame never snowballs.
+  const STEP_MS = 1000 / 60;
+
+  function fixedSteps(acc, dt) {
+    acc += Math.min(Math.max(dt, 0), 50);
+    let steps = 0;
+    // 1e-9 ms of slack: float error would otherwise turn a clamped 50 ms (3 * STEP_MS) into 2 steps.
+    while (acc >= STEP_MS - 1e-9 && steps < 3) {
+      acc -= STEP_MS;
+      steps++;
+    }
+    return { steps, acc: Math.max(acc, 0) };
+  }
+
   function createStore(storage) {
     const memory = {};
     return {
@@ -154,6 +170,8 @@ export function makeJOR(root) {
     releasePause,
     isPauseHeld,
     createWordBuffer,
+    STEP_MS,
+    fixedSteps,
     createStore,
     store: createStore(storage),
   };

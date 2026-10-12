@@ -550,13 +550,14 @@ class RedLightGreenLight extends Minigame {
 }
 
 // 4. Drag Race
-class DragRace extends Minigame {
+export class DragRace extends Minigame {
   constructor(game, manager) {
     super(game, manager);
     this.state = "WAITING"; // WAITING, COUNTDOWN, RACING, FINISHED
     this.npcX = game.player.x;
     this.targetDist = 3000; // Increased from 2000 to 3000px
-    this.npcSpeed = 9.5; // Slightly slower than player max (10)
+    // px per sim step (60/s). 9.2 = 552 px/s: a 250 ms reaction wins, 400 ms loses (F6).
+    this.npcSpeed = 9.2;
     this.countdown = 3;
     this.countTimer = 0;
     this.startX = null;
@@ -593,7 +594,7 @@ class DragRace extends Minigame {
       this.manager.updateTimer(`${this.countdown}...`);
     } else if (this.state === "RACING") {
       // Move NPC
-      this.npcX += this.npcSpeed * (dt / 16.66);
+      this.npcX += this.npcSpeed; // one fixed step
 
       const finishX = this.startX + this.targetDist;
 

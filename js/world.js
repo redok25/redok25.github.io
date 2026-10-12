@@ -3,7 +3,7 @@
 // ===================================
 import { NPC } from "./npc.js";
 import { SpecialNPC } from "./special-npc.js";
-import { createBiomeFade, stepBiomeFade, biomeWeight } from "./journey.js";
+import { CHAPTERS, createBiomeFade, stepBiomeFade, biomeWeight } from "./journey.js";
 
 const NPC_HEIGHT = 87; // NPC draw height (npc.js / special-npc.js default)
 const BIOMES = ["normal", "autumn", "winter"];
@@ -11,6 +11,24 @@ const BIOMES = ["normal", "autumn", "winter"];
 const WINTER_SKY = ["#a7b8c8", "#eef3f7"];
 // Autumn trees (V2): an orange wash over each tree sprite's opaque pixels.
 const AUTUMN_TREE_TINT = "rgba(214, 110, 30, 0.55)";
+// Decoration props (V4; sprites restored from commit 3c215ff, license D512): passive scenery
+// in the tree plane, never in getObjects(). x = left edge in world px (R3 zones). Scale is
+// nearest-neighbour. lift raises a prop off its ground line: the laundry hangs on Fence 1's
+// top rail (sprite row 5 x 3 = 15 px below the fence top).
+const PROPS = [
+  { file: "house", x: 150, scale: 3 }, // the bike leaves from its door (start x 200)
+  { file: "fence-1", x: 760, scale: 3 },
+  { file: "laundry", x: 759, scale: 3, lift: 3 },
+  { file: "fence-2", x: 991, scale: 3 },
+  { file: "wooden-shed", x: 4661, scale: 3 }, // roofs the Skills sign (center 4835)
+  { file: "barrel", x: 4676, scale: 3 },
+  { file: "standing-torch", x: 5747, scale: 2 }, // either side of the warung (5771-6112)
+  { file: "standing-torch", x: 6110, scale: 2 },
+  { file: "standing-torch", x: 6890, scale: 2 }, // by the mailbox (6771-6871)
+  { file: "stacked-rocks", x: 7040, scale: 3 },
+];
+// A prop's foot ends 12 px above the road: the grass strip (drawn after it) covers 8 px of it.
+const PROP_SINK = 12;
 
 // Pre-tinted copy of a loaded sprite: the color lands on its opaque pixels only (source-atop).
 function tintCopy(img, color) {
@@ -138,6 +156,8 @@ export class World {
 
     // Load object sprites
     this.loadObjectSprites();
+    // Decoration props (V4): sized and grounded at draw time, so layout() has nothing to re-bake.
+    this.loadProps();
     // grass texture (used for the top grass strip)
     this.grassTexture = null;
     this.loadGrassTexture();
@@ -524,12 +544,22 @@ export class World {
       return;
     }
 
+    // group-3 (flowers, the manifest's third group) blooms in Bab 1 only (V4, R3): 3 of 4
+    // clusters there are flowers; everywhere else picks from the grass groups.
+    const flowers = groups.length > 2 ? groups[2] : null;
+    const grass = flowers ? groups.slice(0, 2) : groups;
+    const bab1 = CHAPTERS[1];
+
     // iterate across world by group centers
     let gx = 0;
     let groupIndex = 0;
     while (gx < this.worldWidth) {
       // choose group (randomize for variety)
-      const group = groups[Math.floor(Math.random() * groups.length)];
+      const inBab1 = gx >= bab1.startX && gx < bab1.endX;
+      const group =
+        flowers && inBab1 && Math.random() < 0.75
+          ? flowers
+          : grass[Math.floor(Math.random() * grass.length)];
 
       // cluster center with a small random shift
       const center = gx + (Math.random() - 0.5) * groupSpacing * 0.3;
@@ -565,6 +595,39 @@ export class World {
       gx += groupSpacing * (0.9 + Math.random() * 0.2);
       groupIndex++;
     }
+  }
+
+  loadProps() {
+    const images = {};
+    this.props = PROPS.map((prop) => {
+      if (!images[prop.file]) {
+        const img = new Image();
+        img.onerror = () => console.error(`Failed to load prop ${prop.file}`);
+        img.src = `assets/sprites/platformer/props/${prop.file}.png`;
+        images[prop.file] = img;
+      }
+      return { ...prop, lift: prop.lift || 0, img: images[prop.file] };
+    });
+  }
+
+  // Props (V4) between the trees and the ground strip, culled with the objects' 200 px margin.
+  renderProps(cameraX) {
+    const ground = this.groundY();
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (const prop of this.props) {
+      const img = prop.img;
+      if (!img.complete || !img.naturalWidth) continue;
+      // Short screens (667x375 landscape) shrink a tall prop so its top stays on screen.
+      const s = Math.min(prop.scale, (ground - 24) / img.naturalHeight);
+      const w = Math.round(img.naturalWidth * s);
+      const h = Math.round(img.naturalHeight * s);
+      const screenX = Math.floor(prop.x - cameraX);
+      if (screenX + w < -200 || screenX > this.canvas.width + 200) continue;
+      ctx.drawImage(img, screenX, ground - h - PROP_SINK - prop.lift, w, h);
+    }
+    ctx.restore();
   }
 
   loadObjectSprites() {
@@ -693,6 +756,9 @@ export class World {
         this.renderTree(screenX, tree.y, tree.width, tree.height, sprite, windSway, overlay, fade.t);
       }
     });
+
+    // Decoration props (V4): in front of the trees, behind the ground strip and the stations.
+    this.renderProps(cameraX);
 
     // Render ground
     this.renderGround(cameraX);

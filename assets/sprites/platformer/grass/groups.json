@@ -1,6 +1,7 @@
 {
   "groups": [
     ["group-1/1.png", "group-1/2.png"],
-    ["group-2/1.png", "group-2/2.png", "group-2/3.png", "group-2/4.png"]
+    ["group-2/1.png", "group-2/2.png", "group-2/3.png", "group-2/4.png"],
+    ["group-3/1.png", "group-3/2.png", "group-3/3.png", "group-3/4.png", "group-3/5.png"]
   ]
 }

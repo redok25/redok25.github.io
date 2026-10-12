@@ -581,6 +581,8 @@ class Game {
 
     // Update interactions (pass cameraX so interaction system can compute screen positions)
     this.interactions.update(this.cameraX);
+    // Skill gauges (W2) fill as the bike rides past; inert during a course (R7).
+    if (!this.minigames.activeMinigame) this.world.updateGauges(this.player.x + this.player.width / 2);
 
     // Update NPCs
     if (this.world.npcs) {

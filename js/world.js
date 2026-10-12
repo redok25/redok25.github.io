@@ -43,6 +43,16 @@ const SIGN_INK = "#3b2414";
 const SIGN_FACE = "#f4e4c1";
 const SIGN_WOOD = "#5a3a22";
 
+// Skill gauges (W2, R3, R26): centre x of the six posts in Bab 2, in Quick View order.
+// Passive scenery in the props plane: never E targets, never in getObjects().
+const GAUGE_X = [4100, 4200, 4300, 4400, 4500, 4600];
+const GAUGE_W = 72;
+const GAUGE_H = 118;
+const GAUGE_RADIUS = 300; // the bike's centre within this fills a gauge
+const GAUGE_FILL_STEP = 1 / 48; // empty -> full in 0.8 s of sim steps
+const GAUGE_FILL = "#38b764";
+const GAUGE_BAR = { x: 9, y: 27, w: 54, h: 10 }; // the bar well inside the baked panel
+
 // Pre-tinted copy of a loaded sprite: the color lands on its opaque pixels only (source-atop).
 function tintCopy(img, color) {
   const canvas = document.createElement("canvas");
@@ -202,10 +212,11 @@ export class World {
     this.specialNPCs = []; // Separate array for minigame NPCs
     this.spawnNPCs();
 
-    // Year billboards (W1): data from Quick View markup (none on a page without #qv, e.g.
-    // tests/check.html), panels baked to canvases. Canvas text needs VT323 or it bakes in
-    // the fallback font: bake now, then once more when the font is in (or failed).
+    // Year billboards (W1) and skill gauges (W2): data from Quick View markup (none on a page
+    // without #qv, e.g. tests/check.html), panels baked to canvases. Canvas text needs VT323
+    // or it bakes in the fallback font: bake now, then once more when the font is in (or failed).
     this.billboards = this.buildBillboards();
+    this.gauges = this.buildGauges();
     this.bakeSigns();
     if (document.fonts && document.fonts.load) {
       document.fonts.load('16px "VT323"').then(() => this.bakeSigns(), () => {});
@@ -254,6 +265,7 @@ export class World {
     this.npcs.forEach((npc) => (npc.y = npcY));
     this.specialNPCs.forEach((npc) => (npc.y = npcY));
     this.billboards.forEach((b) => (b.y = ground - BILLBOARD_SINK - b.height));
+    this.gauges.forEach((g) => (g.y = ground - PROP_SINK - g.height));
     this._fog = null;
     this._sky = null; // the winter sky gradient spans the canvas height
   }
@@ -794,6 +806,8 @@ export class World {
 
     // Decoration props (V4): in front of the trees, behind the ground strip and the stations.
     this.renderProps(cameraX);
+    // Skill gauges (W2): in the props plane, the grass strip covers their feet.
+    this.renderGauges(cameraX);
 
     // Render ground
     this.renderGround(cameraX);
@@ -1120,6 +1134,7 @@ export class World {
   // (Re)bake every sign panel; cheap (a handful of small canvases), runs twice per load.
   bakeSigns() {
     this.billboards.forEach((b) => this.bakeBillboard(b));
+    this.gauges.forEach((g) => this.bakeGauge(g));
   }
 
   // A wooden panel on two posts: the year, "N proyek", and that year's project icons.
@@ -1151,6 +1166,70 @@ export class World {
       const screenX = Math.floor(b.x - cameraX);
       if (screenX + b.width < -200 || screenX > this.canvas.width + 200) continue;
       this.ctx.drawImage(b.canvas, screenX, b.y);
+    }
+  }
+
+  buildGauges() {
+    const ground = this.groundY();
+    return JOR.skillLevels(document)
+      .slice(0, GAUGE_X.length)
+      .map((skill, i) => ({
+        name: skill.name,
+        level: skill.level,
+        x: GAUGE_X[i] - GAUGE_W / 2,
+        y: ground - PROP_SINK - GAUGE_H,
+        width: GAUGE_W,
+        height: GAUGE_H,
+        fill: 0,
+        canvas: null,
+      }));
+  }
+
+  // A small sign on a post: the skill name, an empty bar and the level as Quick View shows it.
+  bakeGauge(g) {
+    const c = g.canvas || (g.canvas = document.createElement("canvas"));
+    c.width = g.width;
+    c.height = g.height;
+    const x = c.getContext("2d");
+    x.clearRect(0, 0, c.width, c.height);
+    x.fillStyle = SIGN_WOOD;
+    x.fillRect(32, 58, 8, g.height - 58);
+    x.fillStyle = SIGN_INK;
+    x.fillRect(0, 0, g.width, 62);
+    x.fillStyle = SIGN_FACE;
+    x.fillRect(3, 3, g.width - 6, 56);
+    x.fillStyle = SIGN_INK;
+    x.fillRect(GAUGE_BAR.x - 1, GAUGE_BAR.y - 1, GAUGE_BAR.w + 2, GAUGE_BAR.h + 2);
+    x.fillStyle = "#d8c8a4";
+    x.fillRect(GAUGE_BAR.x, GAUGE_BAR.y, GAUGE_BAR.w, GAUGE_BAR.h);
+    x.fillStyle = SIGN_INK;
+    x.textAlign = "center";
+    x.font = '16px "VT323", monospace';
+    x.fillText(g.name, g.width / 2, 20);
+    x.font = '20px "VT323", monospace';
+    x.fillText(String(g.level), g.width / 2, 55);
+  }
+
+  // Fills as the bike rides past (sim steps; never empties within a page load). Game.update
+  // skips it during a minigame course (R7).
+  updateGauges(centerX) {
+    for (const g of this.gauges) {
+      if (g.fill < 1 && Math.abs(centerX - (g.x + g.width / 2)) <= GAUGE_RADIUS) {
+        g.fill = Math.min(1, g.fill + GAUGE_FILL_STEP);
+      }
+    }
+  }
+
+  renderGauges(cameraX) {
+    const ctx = this.ctx;
+    for (const g of this.gauges) {
+      const screenX = Math.floor(g.x - cameraX);
+      if (screenX + g.width < -200 || screenX > this.canvas.width + 200) continue;
+      ctx.drawImage(g.canvas, screenX, g.y);
+      if (g.fill > 0) {
+        ctx.fillStyle = GAUGE_FILL;
+        ctx.fillRect(screenX + GAUGE_BAR.x, g.y + GAUGE_BAR.y, Math.round(GAUGE_BAR.w * (g.level / 100) * g.fill), GAUGE_BAR.h);
+      }
     }
   }
 

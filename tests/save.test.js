@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { makeJOR } from "../js/helpers.js";
-import { createSave, SAVE_KEY } from "../js/save.js";
+import { createSave, SAVE_KEY, getStamps, addStamp } from "../js/save.js";
 
 const memoryStorage = (init = {}) => {
   const data = { ...init };
@@ -56,4 +56,28 @@ test("save: a failed write keeps the legacy keys (no history loss on a full quot
   const s = createSave(storeOf(storage));
   assert.equal(s.get("visits").count, 2);
   assert.ok("jor.visits" in storage.data);
+});
+
+test("stamps: default empty, added once, persisted, ordered like QV_SECTIONS (R24)", () => {
+  const storage = memoryStorage();
+  const s = createSave(storeOf(storage));
+  assert.deepEqual(getStamps(s), []);
+  assert.equal(addStamp(s, "projects"), true);
+  assert.equal(addStamp(s, "about"), true);
+  assert.equal(addStamp(s, "projects"), false);
+  assert.equal(addStamp(s, "nope"), false);
+  assert.deepEqual(getStamps(s), ["about", "projects"]);
+  assert.deepEqual(getStamps(createSave(storeOf(storage))), ["about", "projects"]);
+});
+
+test("stamps: an untrusted stored value never throws and never leaks across saves", () => {
+  const asString = memoryStorage({ [SAVE_KEY]: JSON.stringify({ v: 1, stamps: "about" }) });
+  assert.deepEqual(getStamps(createSave(storeOf(asString))), []);
+  const junk = memoryStorage({ [SAVE_KEY]: JSON.stringify({ v: 1, stamps: ["contact", 7, "x", "contact"] }) });
+  assert.deepEqual(getStamps(createSave(storeOf(junk))), ["contact"]);
+  const noKey = memoryStorage({ [SAVE_KEY]: JSON.stringify({ v: 1, visits: null, weatherOptIn: false }) });
+  const a = createSave(storeOf(noKey));
+  addStamp(a, "skills");
+  // DEFAULTS.stamps is shared by every load: a second fresh save must still start empty.
+  assert.deepEqual(getStamps(createSave(storeOf(memoryStorage()))), []);
 });

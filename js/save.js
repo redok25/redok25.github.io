@@ -9,7 +9,7 @@
 import { JOR } from "./helpers.js";
 
 export const SAVE_KEY = "jor.save.v1";
-const DEFAULTS = { v: 1, visits: null, weatherOptIn: false };
+const DEFAULTS = { v: 1, visits: null, weatherOptIn: false, stamps: [] };
 
 export function createSave(store) {
   let data = load();
@@ -44,3 +44,20 @@ export function createSave(store) {
 }
 
 export const save = createSave(JOR.store);
+
+// Chapter stamps (W4, R10, R24): the station ids opened by E or a tap. A stored value is
+// untrusted (any JSON), so it is normalised on every read; a write always stores a new
+// array, because DEFAULTS.stamps is shared by every load and must never be mutated.
+export function getStamps(s) {
+  const raw = s.get("stamps");
+  if (!Array.isArray(raw)) return [];
+  return JOR.QV_SECTIONS.filter((id) => raw.includes(id));
+}
+
+export function addStamp(s, id) {
+  if (!JOR.QV_SECTIONS.includes(id)) return false;
+  const stamps = getStamps(s);
+  if (stamps.includes(id)) return false;
+  s.set("stamps", [...stamps, id]);
+  return true;
+}

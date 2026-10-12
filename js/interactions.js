@@ -7,6 +7,30 @@ import { SpecialNPC } from "./special-npc.js";
 import { openModal } from "./content.js";
 import { app } from "./state.js";
 
+// E priority (W3): station > special NPC > billboard > regular NPC, then distance.
+export const KIND_RANK = { station: 0, special: 1, billboard: 2, npc: 3 };
+
+// True when a candidate (rank, dist) beats the current best; a tie keeps the first one.
+export function beats(rank, dist, bestRank, bestDist) {
+  return rank < bestRank || (rank === bestRank && dist < bestDist);
+}
+
+// "Tujuan:" (W4): the station nearest to the bike whose id is not stamped yet, or null once
+// all four are. Billboards are never stations, so they can never be the destination.
+export function nextDestination(stations, stamps, centerX) {
+  let best = null;
+  let bestDist = Infinity;
+  for (const s of stations) {
+    if (stamps.includes(s.id)) continue;
+    const dist = Math.abs(centerX - (s.x + (s.width || 64) / 2));
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = s;
+    }
+  }
+  return best;
+}
+
 export class InteractionManager {
   constructor(player, world) {
     this.player = player;

@@ -63,6 +63,53 @@ export function makeJOR(root) {
     );
   }
 
+  // Billboards (W1): projects per year from the Quick View list, oldest year first. Year
+  // headings carry no data-year on purpose: contentTokens counts every #qv [data-year].
+  function yearGroups(doc) {
+    const byYear = new Map();
+    for (const card of doc.querySelectorAll("#qv-projects .project-card[data-year]")) {
+      const year = Number(card.getAttribute("data-year"));
+      if (!Number.isFinite(year)) continue;
+      const group = byYear.get(year) || { year, count: 0, icons: [] };
+      group.count++;
+      const icon = card.querySelector(".pixel-icon");
+      const text = icon ? icon.textContent.trim() : "";
+      if (text) group.icons.push(text);
+      byYear.set(year, group);
+    }
+    return [...byYear.values()].sort((a, b) => a.year - b.year);
+  }
+
+  // Gauges (W2): the six skills as Quick View lists them. The name is the h4's first text
+  // node ("PHP "): the number sits inside the same h4 (<span class="skill-num">).
+  function skillLevels(doc) {
+    const out = [];
+    for (const card of doc.querySelectorAll("#qv-skills .skill-card[data-level]")) {
+      const level = Number(card.getAttribute("data-level"));
+      const h4 = card.querySelector("h4");
+      const name = h4 && h4.firstChild ? h4.firstChild.textContent.trim() : "";
+      if (name && Number.isFinite(level)) out.push({ name, level });
+    }
+    return out;
+  }
+
+  // Credits (R9): the four contact channels, read from Quick View links, never duplicated.
+  // WhatsApp lives only in the phone sticky bar; it is in the DOM on desktop too.
+  const CONTACT_SELECTORS = {
+    email: '#qv a[href^="mailto:"]',
+    whatsapp: '#qv a[href^="https://wa.me/"]',
+    linkedin: '#qv a[href*="linkedin.com/"]',
+    github: '#qv a[href*="github.com/"]',
+  };
+  function contactLinks(doc) {
+    const out = {};
+    for (const [key, sel] of Object.entries(CONTACT_SELECTORS)) {
+      const a = doc.querySelector(sel);
+      out[key] = a ? a.getAttribute("href") : null;
+    }
+    return out;
+  }
+
   // One count per calendar day, like the old counter; "returning" = any earlier load.
   function recordVisit(prev, nowIso) {
     if (!prev || !prev.first || !prev.last) {
@@ -185,6 +232,9 @@ export function makeJOR(root) {
     projectStats,
     contentTokens,
     fillTokens,
+    yearGroups,
+    skillLevels,
+    contactLinks,
     recordVisit,
     holdPause,
     releasePause,

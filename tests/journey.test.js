@@ -7,6 +7,8 @@ import {
   BIOME_FADE_MS,
   chapterAt,
   nextChapter,
+  arrivalX,
+  stripPos,
   Journey,
   createBiomeFade,
   stepBiomeFade,
@@ -142,4 +144,31 @@ test("stepBiomeFade: a third biome mid-fade starts from the biome that dominates
   stepBiomeFade(g, "autumn", ready, 0);
   stepBiomeFade(g, "winter", ready, 300); // 30% autumn: fade normal -> winter
   assert.deepEqual([g.from, g.to, g.t], ["normal", "winter", 0]);
+});
+
+test("Journey.jumpTo: a teleport takes the chapter under x at once, no hysteresis (R12)", () => {
+  const j = new Journey(300);
+  assert.equal(j.update(2871), -1); // ride end: still Prolog by hysteresis
+  assert.equal(j.jumpTo(3910), 2); // RLGL return (R15): 10 px into Bab 2
+  assert.equal(j.jumpTo(5060), 3); // Drag return: 10 px into Bab 3
+  assert.equal(j.jumpTo(5060), -1); // same chapter: nothing entered
+  assert.equal(j.jumpTo(3610), 1); // Wheelie return
+  assert.equal(j.firstEntry(2), true); // jumpTo never uses up a first entry
+});
+
+test("arrivalX: fast travel lands 100 px in; the centre clears every band (R14)", () => {
+  assert.deepEqual([1, 2, 3, 4].map(arrivalX), [2871, 4000, 5150, 6600]);
+  for (const id of [1, 2, 3, 4]) {
+    for (const from of [0, 1, 2, 3, 4]) assert.equal(nextChapter(from, arrivalX(id) + 100), id, `${from} -> ${id}`);
+  }
+});
+
+test("stripPos: one equal cell per chapter, node centre = chapter middle", () => {
+  const close = (a, b) => Math.abs(a - b) < 1e-9;
+  assert.equal(stripPos(-50), 0);
+  assert.equal(stripPos(0), 0);
+  assert.ok(close(stripPos(2771), 0.2));
+  assert.ok(close(stripPos((3900 + 5050) / 2), 0.5));
+  assert.equal(stripPos(7400), 1);
+  assert.equal(stripPos(9000), 1);
 });

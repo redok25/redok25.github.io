@@ -30,3 +30,30 @@ test("copy: numbers only through Quick View tokens (D498)", () => {
   const bab3 = JOR.fillTokens(COPY.chapters[3].subtitle, { projectCount: 15, firstYear: 2021, lastYear: 2025 });
   assert.equal(bab3, "15 proyek · 2021 → 2025");
 });
+
+test("copy 2b: digits only through tokens, and only the tokens each key may use (D498)", () => {
+  const allowed = {
+    stations: [],
+    billboard: ["count"],
+    strip: ["label", "title"],
+    credits: TOKENS,
+  };
+  const walk = (v, fn) => (typeof v === "string" ? fn(v) : Object.values(v).forEach((x) => walk(x, fn)));
+  for (const [key, ok] of Object.entries(allowed)) {
+    walk(COPY[key], (s) => {
+      for (const [, t] of s.matchAll(/\{(\w+)\}/g)) assert.ok(ok.includes(t), `${key}: {${t}}`);
+      assert.ok(!/\d/.test(s.replace(/\{\w+\}/g, "")), `${key}: ${s}`);
+    });
+  }
+});
+
+test("copy 2b: credits stats fill to the Quick View numbers; every station has a name", () => {
+  const filled = JOR.fillTokens(COPY.credits.stats, { projectCount: 15, firstYear: 2021, lastYear: 2025 });
+  assert.equal(filled, "15 proyek · 2021 → 2025");
+  assert.deepEqual(Object.keys(COPY.stations), JOR.QV_SECTIONS);
+  assert.deepEqual(Object.keys(COPY.credits.contacts), ["email", "whatsapp", "linkedin", "github"]);
+  for (const k of ["banner", "gotoBad", "gotoBusy", "gotoOk", "timeBad", "timeOk", "weatherOk"]) {
+    assert.equal(typeof COPY.console[k], "string", k);
+  }
+  assert.ok(Array.isArray(COPY.console.help) && COPY.console.help.length === 3);
+});

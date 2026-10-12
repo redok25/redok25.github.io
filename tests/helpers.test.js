@@ -196,3 +196,55 @@ test("createStore.remove/has: memory and storage, and a throwing storage", () =>
   s2.remove("b");
   assert.equal(s2.has("b"), false);
 });
+
+test("yearGroups: per-year count and icons from project cards, oldest year first", () => {
+  const card = (year, icon) => ({
+    getAttribute: () => year,
+    querySelector: () => (icon ? { textContent: icon } : null),
+  });
+  const doc = {
+    querySelectorAll: (sel) => {
+      assert.equal(sel, "#qv-projects .project-card[data-year]");
+      return [card("2025", "🌙"), card("2024", "🔐"), card("2025", " 📱 "), card("x", "?"), card("2021", null)];
+    },
+  };
+  assert.deepEqual(JOR.yearGroups(doc), [
+    { year: 2021, count: 1, icons: [] },
+    { year: 2024, count: 1, icons: ["🔐"] },
+    { year: 2025, count: 2, icons: ["🌙", "📱"] },
+  ]);
+  assert.deepEqual(JOR.yearGroups({ querySelectorAll: () => [] }), []);
+});
+
+test("skillLevels: name from the h4's first text node, level from data-level", () => {
+  const card = (name, level) => ({
+    getAttribute: () => level,
+    querySelector: () => ({ firstChild: { textContent: name + " " } }),
+  });
+  const doc = {
+    querySelectorAll: (sel) => {
+      assert.equal(sel, "#qv-skills .skill-card[data-level]");
+      return [card("PHP", "90"), card("REST API", "88"), card("Bad", "x")];
+    },
+  };
+  assert.deepEqual(JOR.skillLevels(doc), [
+    { name: "PHP", level: 90 },
+    { name: "REST API", level: 88 },
+  ]);
+});
+
+test("contactLinks: the first Quick View link per channel, null when missing", () => {
+  const hrefs = { 'a[href^="mailto:"]': "mailto:a@b.c", 'a[href*="github.com/"]': "https://github.com/x" };
+  const doc = {
+    querySelector: (sel) => {
+      const key = sel.replace("#qv ", "");
+      return key in hrefs ? { getAttribute: () => hrefs[key] } : null;
+    },
+  };
+  assert.deepEqual(JOR.contactLinks(doc), {
+    email: "mailto:a@b.c",
+    whatsapp: null,
+    linkedin: null,
+    github: "https://github.com/x",
+  });
+});

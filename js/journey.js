@@ -32,6 +32,21 @@ export function nextChapter(current, x) {
   return chapterAt(x);
 }
 
+// Fast travel lands the bike's left edge 100 px into the chapter (R6, R14): its centre is
+// startX + 200, past every hysteresis band, so the chapter switches on arrival.
+export function arrivalX(id) {
+  return CHAPTERS[id].startX + 100;
+}
+
+// Journey strip dot (W5): 0..1 over five equal cells, one per chapter, so the dot sits on
+// node i (its cell centre) while the bike is in the middle of chapter i.
+export function stripPos(centerX) {
+  const id = chapterAt(centerX);
+  const c = CHAPTERS[id];
+  const t = Math.min(1, Math.max(0, (centerX - c.startX) / (c.endX - c.startX)));
+  return (id + t) / CHAPTERS.length;
+}
+
 export class Journey {
   constructor(centerX) {
     this.current = chapterAt(centerX);
@@ -42,6 +57,16 @@ export class Journey {
   // Feed the bike's center x once per sim step. Returns the chapter just entered, or -1.
   update(centerX) {
     const next = nextChapter(this.current, centerX);
+    if (next === this.current) return -1;
+    this.current = next;
+    return next;
+  }
+
+  // A teleport (fast travel, minigame start or return, redok.goto) is not a ride over a
+  // boundary: the chapter under the new centre takes over at once, no hysteresis (R12).
+  // Like update(), it never uses up a first entry.
+  jumpTo(centerX) {
+    const next = chapterAt(centerX);
     if (next === this.current) return -1;
     this.current = next;
     return next;

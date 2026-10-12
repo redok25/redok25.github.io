@@ -13,8 +13,6 @@ import { app } from "./state.js";
     const startBtn = document.getElementById("start-explore");
     const uiOverlay = document.getElementById("ui-overlay");
 
-    // timer handle to auto-hide opening subtitle (can be cleared when movement completes)
-    let autoHideTimer = null;
     // Set by the ride's completion callback; late timers must not undo its cleanup.
     let introFinished = false;
 
@@ -37,6 +35,8 @@ import { app } from "./state.js";
         // Subtitle only while the ride still runs, and never for returning visitors.
         if (opening && opening.isConnected && !introFinished && !isReturningVisitor()) {
           opening.classList.remove("hidden");
+          // Cinematic prologue (V6): letterbox bars for as long as the ride subtitle shows.
+          if (app.game && app.game.cinema) app.game.cinema.setLetterbox(true);
         }
       }, 500);
 
@@ -104,37 +104,11 @@ import { app } from "./state.js";
         });
       };
 
-      // Start a scripted player move for splash (distance, speed)
-      // Use estimated time to auto-hide the subtitle so it fades when motor stops.
+      // Scripted opening ride (distance, speed in px/step). The subtitle beats follow its
+      // progress (V6) and the completion callback hides the panel: no timer, because a
+      // timer cannot see pauses (Quick View, blur) and would cut the last beat.
       const splashDistance = 2571;
-      const splashSpeed = 6; // px per frame (approx)
-
-      // estimate frames and ms (assume ~60fps). Add small buffer (200ms).
-      const estimatedFrames =
-        Math.abs(splashDistance) / Math.max(1, Math.abs(splashSpeed));
-      const estimatedMs = Math.round(estimatedFrames * (1000 / 60)) + 200;
-
-      // If opening subtitle exists, set an auto-hide timer based on estimate
-      try {
-        const openingEl = document.getElementById("opening-story");
-        if (openingEl) {
-          if (autoHideTimer) {
-            clearTimeout(autoHideTimer);
-            autoHideTimer = null;
-          }
-          autoHideTimer = setTimeout(() => {
-            try {
-              openingEl.classList.add("hidden");
-              setTimeout(() => {
-                try { openingEl.remove(); } catch (e) {}
-              }, 420);
-            } catch (e) {}
-            autoHideTimer = null;
-          }, estimatedMs);
-        }
-      } catch (e) {
-        /* ignore */
-      }
+      const splashSpeed = 6;
 
       // wait for assets (up to 3s) then start scripted move
       const assetsReady = await waitForPlayerAssets(3000);
@@ -178,6 +152,7 @@ import { app } from "./state.js";
         (traveled) => {
           introFinished = true;
           cleanupSkip();
+          if (app.game && app.game.cinema) app.game.cinema.setLetterbox(false);
           // scripted splash finished: restore normal camera follow
           try {
             if (app.game) app.game._splashCameraActive = false;
@@ -192,14 +167,10 @@ import { app } from "./state.js";
               showGestureInfo();
           }
 
-          // Fade out opening subtitle if still present and clear fallback timer
+          // Fade out the opening subtitle
           try {
             const openingEl = document.getElementById("opening-story");
             if (openingEl) {
-              if (autoHideTimer) {
-                clearTimeout(autoHideTimer);
-                autoHideTimer = null;
-              }
               openingEl.classList.add("hidden");
               setTimeout(() => {
                 try {

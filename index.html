@@ -101,11 +101,11 @@
     "./js/audio.js": "./js/audio.js?v=83418ea0",
     "./js/bengkel.js": "./js/bengkel.js?v=f7cd0b2d",
     "./js/camera.js": "./js/camera.js?v=c8591e22",
-    "./js/cinema.js": "./js/cinema.js?v=c9df859c",
+    "./js/cinema.js": "./js/cinema.js?v=7ce314fe",
     "./js/content.js": "./js/content.js?v=72707001",
     "./js/copy.js": "./js/copy.js?v=9956e60b",
     "./js/effects.js": "./js/effects.js?v=f1e38da0",
-    "./js/game.js": "./js/game.js?v=f7af72b5",
+    "./js/game.js": "./js/game.js?v=252db15a",
     "./js/helpers.js": "./js/helpers.js?v=de8c3020",
     "./js/interactions.js": "./js/interactions.js?v=a292473a",
     "./js/journey.js": "./js/journey.js?v=ed0546b4",
@@ -117,7 +117,7 @@
     "./js/qv.js": "./js/qv.js?v=9c93420c",
     "./js/save.js": "./js/save.js?v=d260b17b",
     "./js/special-npc.js": "./js/special-npc.js?v=6003748d",
-    "./js/splash.js": "./js/splash.js?v=2cb61c86",
+    "./js/splash.js": "./js/splash.js?v=218cd6ac",
     "./js/state.js": "./js/state.js?v=bfbf44ec",
     "./js/visitor-counter.js": "./js/visitor-counter.js?v=d1f994e8",
     "./js/world.js": "./js/world.js?v=002f10c0"
@@ -196,19 +196,10 @@
       </div>
     </div>
 
-    <!-- Opening Story (short) shown immediately after splash closes -->
+    <!-- Opening ride subtitle (V6): one beat at a time, from js/copy.js via js/cinema.js -->
     <div id="opening-story" class="opening hidden">
       <div class="opening-content pixel-panel">
-        <p class="story-line">
-          Selamat datang di <strong>Journey of Redok</strong> sebuah portofolio
-          interaktif bergaya pixel art 2D.
-        </p>
-        <p class="story-line">
-          Saya seorang PHP &amp; Laravel developer yang menggabungkan kecintaan
-          pada coding dan petualangan, silakan jelajahi proyek, kemampuan, dan
-          kisah perjalanan saya.
-        </p>
-        <p class="story-line">Terima kasih sudah mampir!</p>
+        <p id="story-beat" class="story-line"></p>
       </div>
     </div>
     <button id="skip-intro" class="skip-intro-btn hidden" type="button">Lewati ⏭</button>

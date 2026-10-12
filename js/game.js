@@ -610,6 +610,11 @@ class Game {
         if (tip.style.top !== top) tip.style.top = top;
       }
     }
+    // Opening ride subtitle (V6): the beat follows the drawn bike's progress, not a timer.
+    const p = this.player;
+    if (p._isOpeningSplash) {
+      this.cinema.syncBeat((p.x - p._splashStartX) / (p.splashTargetX - p._splashStartX));
+    }
     this.interactions.syncTooltip(this.cameraX);
   }
 

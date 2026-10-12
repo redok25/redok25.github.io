@@ -629,6 +629,9 @@ class Game {
       let steps = 0;
       if (this.paused) {
         this.simAcc = 0; // a pause never banks time
+        // Nothing to lerp across a pause (minigame start teleports while paused).
+        this.prevCameraX = this.cameraX;
+        this.prevPlayerX = this.player.x;
       } else {
         const r = JOR.fixedSteps(this.simAcc || 0, dt);
         this.simAcc = r.acc;
@@ -659,7 +662,7 @@ class Game {
     let alpha = this.paused ? 1 : (this.simAcc || 0) / JOR.STEP_MS;
     const prevCam = this.prevCameraX ?? camX;
     const prevX = this.prevPlayerX ?? playerX;
-    // Teleports (minigame start/exit, intro skip) must not sweep across the screen.
+    // Unpaused teleports (minigame exit, intro skip) must not sweep across the screen.
     const half = this.canvas.width / 2;
     if (Math.abs(camX - prevCam) > half || Math.abs(playerX - prevX) > half) alpha = 1;
     this.cameraX = prevCam + (camX - prevCam) * alpha;

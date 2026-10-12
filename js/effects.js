@@ -222,58 +222,41 @@ export class EffectsManager {
     }
   }
 
-  render(cameraX) {
-    // Backwards-compatible render: draw clouds then particles
-    this.renderClouds(cameraX);
-    this.renderTimeOverlay(); // Draw time overlay (behind rain)
-    this.renderRain(cameraX);
-    this.renderParticles(cameraX);
-  }
-
-  // Draw only clouds (keeps particles separate so caller can control ordering)
-  renderClouds(cameraX) {
+  // Draw only clouds (keeps particles separate so caller can control ordering).
+  // ctx/scale: the world's background buffer draws them at scale < 1 (F11); every coordinate and size scales.
+  renderClouds(cameraX, ctx = this.ctx, scale = 1) {
+    const viewW = this.canvas.width * scale;
     this.clouds.forEach((cloud) => {
       const sprite = this.cloudSprites[cloud.spriteIndex];
 
       if (sprite && sprite.complete) {
-        this.ctx.save();
-        this.ctx.globalAlpha = cloud.opacity;
+        ctx.save();
+        ctx.globalAlpha = cloud.opacity;
 
         // Compute width from sprite aspect ratio so image isn't squashed (use baseHeight)
         const aspect = sprite.naturalWidth / sprite.naturalHeight || 1;
-        const height = Math.round(cloud.baseHeight);
+        const height = Math.round(cloud.baseHeight * scale);
         const width = Math.round(height * aspect);
+        const y = cloud.y * scale;
 
         // Draw cloud at world position, parallax relative to camera
         const screenX = cloud.x - cameraX * cloud.parallax;
-        const sx = Math.floor(screenX);
-        this.ctx.imageSmoothingEnabled = false;
+        const sx = Math.floor(screenX * scale);
+        ctx.imageSmoothingEnabled = false;
 
         // Primary copy
-        this.ctx.drawImage(sprite, sx, cloud.y, width, height);
+        ctx.drawImage(sprite, sx, y, width, height);
 
         // Draw additional copies when the cloud crosses viewport boundaries.
-        // Use +/- canvas.width so wrapping aligns to the viewport (avoid extra +width offsets).
+        // Use +/- viewport width so wrapping aligns to the viewport (avoid extra +width offsets).
         if (sx + width < 0) {
-          this.ctx.drawImage(
-            sprite,
-            sx + this.canvas.width,
-            cloud.y,
-            width,
-            height
-          );
+          ctx.drawImage(sprite, sx + viewW, y, width, height);
         }
-        if (sx > this.canvas.width) {
-          this.ctx.drawImage(
-            sprite,
-            sx - this.canvas.width,
-            cloud.y,
-            width,
-            height
-          );
+        if (sx > viewW) {
+          ctx.drawImage(sprite, sx - viewW, y, width, height);
         }
 
-        this.ctx.restore();
+        ctx.restore();
       }
     });
   }

@@ -5,6 +5,7 @@ import { NPC } from "./npc.js";
 import { SpecialNPC } from "./special-npc.js";
 
 const NPC_HEIGHT = 87; // NPC draw height (npc.js / special-npc.js default)
+const BG_BUFFER_H = 692; // 2x the background art's native 346 px
 
 export class World {
   constructor(canvas, ctx) {
@@ -29,6 +30,7 @@ export class World {
     // Background Layers
     this.bgLayers = [];
     this.loadBackgroundLayers();
+    this.sizeBgBuffer();
 
     // Interactive objects (width/height will be auto-filled from sprite natural size)
     this.objects = [
@@ -169,6 +171,7 @@ export class World {
     this.npcs.forEach((npc) => (npc.y = npcY));
     this.specialNPCs.forEach((npc) => (npc.y = npcY));
     this._fog = null;
+    this.sizeBgBuffer();
   }
 
   // Bottom-align a loaded object sprite on the ground (unless alignToGround === false).
@@ -647,90 +650,7 @@ export class World {
   }
 
   render(cameraX, windSway, effects) {
-    // Render Background Layers (Parallax)
-    // Draw the farthest background layer first (index 0), then draw clouds
-    // so they appear after the far layer, then draw the remaining layers on top.
-    if (this.bgLayers && this.bgLayers.length > 0) {
-      // Draw the farthest (index 0) if available
-      const firstLayer = this.bgLayers[0];
-      if (
-        firstLayer &&
-        firstLayer.loaded &&
-        firstLayer.image &&
-        firstLayer.image.naturalWidth
-      ) {
-        const layer = firstLayer;
-        const speed = layer.speed;
-        const scale = Math.max(
-          this.canvas.width / layer.image.naturalWidth,
-          this.canvas.height / layer.image.naturalHeight
-        );
-        const floatW = layer.image.naturalWidth * scale;
-        const floatH = layer.image.naturalHeight * scale;
-        const drawW = Math.ceil(floatW) + 1;
-        const drawH = Math.ceil(floatH) + 1;
-        const y = 0;
-        const rawOffset = -(cameraX * speed);
-        this.ctx.save();
-        this.ctx.imageSmoothingEnabled = false;
-        let startX = Math.floor(rawOffset % drawW);
-        if (startX > 0) startX -= drawW;
-        const tilesNeeded = Math.ceil(this.canvas.width / drawW) + 2;
-        for (let t = 0; t < tilesNeeded; t++) {
-          const drawX = startX + t * drawW;
-          this.ctx.drawImage(
-            layer.image,
-            Math.floor(drawX),
-            Math.floor(y),
-            drawW,
-            drawH
-          );
-        }
-        this.ctx.restore();
-      }
-
-      // Draw clouds immediately after the farthest layer
-      if (effects && typeof effects.renderClouds === "function") {
-        effects.renderClouds(cameraX);
-      }
-
-      // Draw remaining layers (1..end-1)
-      for (let i = 1; i < this.bgLayers.length; i++) {
-        const layer = this.bgLayers[i];
-        if (layer && layer.loaded && layer.image && layer.image.naturalWidth) {
-          const speed = layer.speed;
-          const scale = Math.max(
-            this.canvas.width / layer.image.naturalWidth,
-            this.canvas.height / layer.image.naturalHeight
-          );
-          const floatW = layer.image.naturalWidth * scale;
-          const floatH = layer.image.naturalHeight * scale;
-          const drawW = Math.ceil(floatW) + 1;
-          const drawH = Math.ceil(floatH) + 1;
-          const y = 0;
-          const rawOffset = -(cameraX * speed);
-          this.ctx.save();
-          this.ctx.imageSmoothingEnabled = false;
-          let startX = Math.floor(rawOffset % drawW);
-          if (startX > 0) startX -= drawW;
-          const tilesNeeded = Math.ceil(this.canvas.width / drawW) + 2;
-          for (let t = 0; t < tilesNeeded; t++) {
-            const drawX = startX + t * drawW;
-            this.ctx.drawImage(
-              layer.image,
-              Math.floor(drawX),
-              Math.floor(y),
-              drawW,
-              drawH
-            );
-          }
-          this.ctx.restore();
-        }
-      }
-    } else {
-      // Fallback to original full background renderer if no layers
-      this.renderBackground(cameraX);
-    }
+    this.renderBackgroundLayers(cameraX, effects);
 
     // Render trees in background
     this.trees.forEach((tree) => {
@@ -788,77 +708,56 @@ export class World {
     this.renderFog();
   }
 
-  renderBackground(cameraX) {
-    this.bgLayers.forEach((layer, index) => {
-      // Only render when the layer reports loaded
-      if (layer.loaded && layer.image && layer.image.naturalWidth) {
-        const speed = layer.speed;
-
-        // Use 'cover' scaling so background fills the whole canvas (width or height)
-        const scale = Math.max(
-          this.canvas.width / layer.image.naturalWidth,
-          this.canvas.height / layer.image.naturalHeight
-        );
-
-        const floatW = layer.image.naturalWidth * scale;
-        const floatH = layer.image.naturalHeight * scale;
-
-        // Use integer tile sizes and add a 1px overlap to avoid thin seams
-        // that can appear when fractional scaling/positions are used.
-        const drawW = Math.ceil(floatW) + 1;
-        const drawH = Math.ceil(floatH) + 1;
-
-        // Cover entire canvas from top
-        const y = 0;
-
-        // Use a pixel-exact camera offset (integer) based on parallax speed.
-        const rawOffset = -(cameraX * speed);
-
-        this.ctx.save();
-        this.ctx.imageSmoothingEnabled = false; // keep pixel-art crisp
-
-        // Normalize starting x so it's in range [-drawW, 0)
-        let startX = Math.floor(rawOffset % drawW);
-        if (startX > 0) startX -= drawW;
-
-        const tilesNeeded = Math.ceil(this.canvas.width / drawW) + 2;
-        for (let t = 0; t < tilesNeeded; t++) {
-          const drawX = startX + t * drawW;
-          this.ctx.drawImage(
-            layer.image,
-            Math.floor(drawX),
-            Math.floor(y),
-            drawW,
-            drawH
-          );
-        }
-
-        this.ctx.restore();
-
-        // Debug: optionally tint and log draw area when window.DEBUG_BG === true
-        if (window.DEBUG_BG) {
-          this.ctx.save();
-          this.ctx.globalAlpha = 0.2;
-          // cycle tint colors per layer
-          const tints = ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff"];
-          this.ctx.fillStyle = tints[index % tints.length];
-          this.ctx.fillRect(x, y, width, height);
-          this.ctx.restore();
-
-          // draw outline
-          this.ctx.strokeStyle = "#ffffff";
-          this.ctx.lineWidth = 2;
-          this.ctx.strokeRect(x, y, width, height);
-
-          console.log(
-            `BG draw rect L${index + 1}: x=${Math.round(x)} y=${Math.round(
-              y
-            )} w=${Math.round(width)} h=${Math.round(height)} speed=${speed}`
-          );
-        }
-      }
-    });
+  // Background compose (F11): the 5 parallax layers + clouds go into a buffer at most
+  // 2x the art's native height, then one nearest-neighbour blit fills the screen. Short
+  // screens (H <= 692) draw directly: a buffer there would only add a full-screen pass.
+  // Redrawn every frame (clouds and parallax move); sized in layout().
+  sizeBgBuffer() {
+    this.bgScale = Math.min(1, BG_BUFFER_H / this.canvas.height);
+    if (this.bgScale >= 1) return;
+    this.bgBuffer ??= document.createElement("canvas");
+    this.bgBuffer.width = Math.ceil(this.canvas.width * this.bgScale);
+    this.bgBuffer.height = Math.ceil(this.canvas.height * this.bgScale);
+    this.bgCtx = this.bgBuffer.getContext("2d");
+    this.bgCtx.imageSmoothingEnabled = false; // reset by every resize of the buffer
   }
+
+  // Cover-scale one layer and tile it horizontally with its parallax offset.
+  drawTiledLayer(ctx, img, speed, cameraX, w, h) {
+    const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
+    const drawW = Math.ceil(img.naturalWidth * scale) + 1; // 1 px overlap hides seams
+    const drawH = Math.ceil(img.naturalHeight * scale) + 1;
+    let startX = Math.floor(-(cameraX * speed) % drawW);
+    if (startX > 0) startX -= drawW;
+    const tiles = Math.ceil(w / drawW) + 2;
+    for (let t = 0; t < tiles; t++) ctx.drawImage(img, startX + t * drawW, 0, drawW, drawH);
+  }
+
+  renderBackgroundLayers(cameraX, effects) {
+    const direct = this.bgScale >= 1;
+    const ctx = direct ? this.ctx : this.bgCtx;
+    const s = direct ? 1 : this.bgScale;
+    const w = direct ? this.canvas.width : this.bgBuffer.width;
+    const h = direct ? this.canvas.height : this.bgBuffer.height;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    if (!direct) ctx.clearRect(0, 0, w, h);
+    this.bgLayers.forEach((layer, i) => {
+      if (layer.loaded && layer.image.naturalWidth) {
+        this.drawTiledLayer(ctx, layer.image, layer.speed, cameraX * s, w, h);
+      }
+      // Clouds sit between the far layer and the rest.
+      if (i === 0 && effects) effects.renderClouds(cameraX, ctx, s);
+    });
+    ctx.restore();
+    if (!direct) {
+      this.ctx.save();
+      this.ctx.imageSmoothingEnabled = false;
+      this.ctx.drawImage(this.bgBuffer, 0, 0, this.canvas.width, this.canvas.height);
+      this.ctx.restore();
+    }
+  }
+
 
   renderTree(x, y, width, height, spriteIndex, windSway) {
     const sprite = this.treeSprites[spriteIndex];

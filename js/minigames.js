@@ -241,7 +241,7 @@ export class MinigameManager {
       player.direction = 1;
       player.facingRight = true; // Reset to face right (default direction)
 
-      this.game.cameraX = Math.max(0, startX - this.game.canvas.width / 3);
+      this.game.camera.jumpTo(startX - this.game.canvas.width / 3);
 
       // 3. Fade IN (Screen reveals game)
       if (fadeOverlay) fadeOverlay.style.opacity = 0;
@@ -334,7 +334,7 @@ export class MinigameManager {
       player.currentAnimation = "idle";
       player.direction = 1;
 
-      this.game.cameraX = Math.max(0, startX - this.game.canvas.width / 3);
+      this.game.camera.jumpTo(startX - this.game.canvas.width / 3);
 
       // 4. Fade back in
       if (fadeOverlay) fadeOverlay.style.opacity = 0;

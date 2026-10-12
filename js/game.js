@@ -7,6 +7,7 @@ import { World } from "./world.js";
 import { EffectsManager } from "./effects.js";
 import { InteractionManager } from "./interactions.js";
 import { MinigameManager } from "./minigames.js";
+import { Camera } from "./camera.js";
 import { showCustomAlert } from "./content.js";
 import { AudioManager } from "./audio.js";
 import { app } from "./state.js";
@@ -43,11 +44,10 @@ class Game {
     // Offscreen modal state: true when modal is visible and blocking player input
     this.offscreenModalActive = false;
 
-    // Camera
-    this.cameraX = 0;
+    // Camera (js/camera.js); cameraX stays as an accessor for existing readers.
+    this.camera = new Camera(this);
     this.cameraSmoothing = 0.1;
-    // When true, a scripted splash/scene controls cameraX and the
-    // normal follow logic should be suspended.
+    // While the opening ride runs, the camera tracks it more tightly and input is ignored.
     this._splashCameraActive = false;
 
     // Initialize game components
@@ -85,6 +85,14 @@ class Game {
   // Read-only: paused while any owner holds (splash, blur, quickview, visitor, minigame...).
   get paused() {
     return JOR.isPauseHeld(this);
+  }
+
+  get cameraX() {
+    return this.camera.x;
+  }
+
+  set cameraX(x) {
+    this.camera.x = x;
   }
 
   // Poll components until everything is loaded, then hide loading screen and start loop
@@ -418,64 +426,8 @@ class Game {
       this._splashCameraActive || this.offscreenModalActive ? {} : this.keys;
     this.player.update(deltaTime, keysForPlayer);
 
-    // Update camera to follow player when not overridden by scripted scenes
-    if (!this._splashCameraActive) {
-      const targetCameraX = this.player.x - this.canvas.width / 3;
-      this.cameraX += (targetCameraX - this.cameraX) * this.cameraSmoothing;
-
-      // Determine minimum camera X. When the player has completed the splash
-      // and `player.lockBacktrack` is set, don't allow the camera to move
-      // left of the splash end position. The player's world X is allowed to
-      // move left, but the camera will remain clamped so the screen doesn't
-      // reveal the world behind the splash.
-      let minCameraX = 0;
-      try {
-        if (
-          this.player &&
-          this.player.lockBacktrack &&
-          typeof this.player.minX === "number"
-        ) {
-          minCameraX = Math.max(0, this.player.minX - this.canvas.width / 3);
-        }
-      } catch (e) {
-        minCameraX = 0;
-      }
-
-      // Clamp camera between minCameraX and world max
-      const maxCameraX = Math.max(0, this.world.worldWidth - this.canvas.width);
-      this.cameraX = Math.max(minCameraX, Math.min(this.cameraX, maxCameraX));
-    } else {
-      // While a scripted splash/camera scene is active, smoothly track the player's scripted movement
-      // This keeps the player on-screen during the splash sequence.
-      const targetCameraX = this.player.x - this.canvas.width / 3;
-      // Use a slightly stronger smoothing for scripted camera motion so it feels snappy but still smooth
-      // Use a more responsive smoothing for scripted camera motion so the
-      // camera tracks the player's scripted splash more closely and feels
-      // less like it's lagging behind. Clamp to a sensible range so it
-      // remains smooth across different user-configured `cameraSmoothing`.
-      const splashSmoothing = Math.min(
-        0.8,
-        Math.max(0.25, this.cameraSmoothing * 4)
-      );
-      this.cameraX += (targetCameraX - this.cameraX) * splashSmoothing;
-
-      // While scripted camera is active, also respect the same minimum camera bound
-      let minCameraX = 0;
-      try {
-        if (
-          this.player &&
-          this.player.lockBacktrack &&
-          typeof this.player.minX === "number"
-        ) {
-          minCameraX = Math.max(0, this.player.minX - this.canvas.width / 3);
-        }
-      } catch (e) {
-        minCameraX = 0;
-      }
-
-      const maxCameraX = Math.max(0, this.world.worldWidth - this.canvas.width);
-      this.cameraX = Math.max(minCameraX, Math.min(this.cameraX, maxCameraX));
-    }
+    // Camera: normal follow, or a tighter follow (0.4) while the scripted opening ride runs.
+    this.camera.follow(this._splashCameraActive ? 0.4 : this.cameraSmoothing);
 
     // Detect if player is fully off-screen (left or right). If so, show
     // the offscreen modal which offers a single action to return the player

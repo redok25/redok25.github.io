@@ -192,6 +192,12 @@ export class World {
     }
   }
 
+  // Teleports (R12): show `biome` at once, no crossfade, if its images are in. If not, the
+  // normal 1 s crossfade runs once they arrive (stepBiomeFade waits for ready).
+  snapBiome(biome) {
+    if (this.biomeReady(biome)) this.biomeFade = createBiomeFade(biome);
+  }
+
   spawnNPCs() {
     this.npcs = []; // Clear existing list if any
     this.specialNPCs = []; // Clear special NPCs list
@@ -233,26 +239,24 @@ export class World {
   spawnSpecialNPCs() {
     const y = this.groundY() - NPC_HEIGHT - 12.5;
 
-    // Special NPCs for minigames at fixed locations
+    // R3 homes are the NPCs' centres (R16): Wheelie in Bab 1, RLGL just inside Bab 2, Drag
+    // just inside Bab 3. Keep this order: probes read specialNPCs[2] as the Drag NPC.
     const specialNPCConfigs = [
-      { x: 700 + (this.splashDistance || 0), minigameId: "wheelie_challenge" },
-      {
-        x: 2200 + (this.splashDistance || 0),
-        minigameId: "red_light_green_light",
-      },
-      { x: 3200 + (this.splashDistance || 0), minigameId: "drag_race" },
+      { centerX: 3650, minigameId: "wheelie_challenge" },
+      { centerX: 3950, minigameId: "red_light_green_light" },
+      { centerX: 5100, minigameId: "drag_race" },
     ];
 
     specialNPCConfigs.forEach((spec) => {
       this.specialNPCs.push(
         new SpecialNPC({
-          x: spec.x,
+          centerX: spec.centerX,
           y: y,
           patrolRadius: 100,
           minigameId: spec.minigameId,
         })
       );
-      console.log(`Spawned Special NPC (${spec.minigameId}) at ${spec.x}`);
+      console.log(`Spawned Special NPC (${spec.minigameId}) at ${spec.centerX}`);
     });
   }
 

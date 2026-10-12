@@ -3,6 +3,12 @@
 // ===================================
 import { AudioManager } from "./audio.js";
 import { JOR } from "./helpers.js";
+import { fadeTeleport } from "./travel.js";
+
+// Return to the NPC (W6, R15): the bike's centre lands this far left of the NPC's home
+// centre, facing it. 40 px keeps the NPC the strict best E target and keeps every NPC's
+// return inside its own R3 chapter (RLGL 3910 in Bab 2, Drag 5060 in Bab 3).
+const RETURN_GAP = 40;
 
 // Minigame metadata for modals
 const MINIGAME_INFO = {
@@ -65,6 +71,7 @@ export class MinigameManager {
     this.game = game;
     this.activeMinigame = null;
     this.pendingMinigame = null; // Store pending game type when showing modal
+    this.lastType = null; // the course that ran last: where its result and exit return to
 
     // HUD Elements
     this.hudElement = document.getElementById("minigame-hud");
@@ -104,31 +111,43 @@ export class MinigameManager {
   }
 
   setupModalListeners() {
+    // A hidden .modal keeps its buttons visible for its 0.3 s fade: every handler ignores a
+    // second activation (stray Enter, double click) once its modal is hidden (R29).
     if (this.btnStart) {
       this.btnStart.addEventListener("click", () => {
-        this.hideModal(true); // Pass true to keep game paused
-        if (this.pendingMinigame) {
-          this.actuallyStartMinigame(this.pendingMinigame);
-        }
+        if (this.modalElement.classList.contains("hidden")) return;
+        this.hideModal(true); // keep the "minigame" owner: the start fade and intro follow
+        if (this.pendingMinigame) this.actuallyStartMinigame(this.pendingMinigame);
       });
     }
 
     if (this.btnCancel) {
       this.btnCancel.addEventListener("click", () => {
+        if (this.modalElement.classList.contains("hidden")) return;
         this.hideModal();
         this.pendingMinigame = null;
       });
     }
 
+    // Esc = "Nanti Saja" while the start modal is open (keyboard-only players, R29).
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Escape" || !this.pendingMinigame) return;
+      if (!this.modalElement || this.modalElement.classList.contains("hidden")) return;
+      this.hideModal();
+      this.pendingMinigame = null;
+    });
+
     if (this.btnResultClose) {
       this.btnResultClose.addEventListener("click", () => {
-        if (this.resultModal) this.resultModal.classList.add("hidden");
-        if (this.game) JOR.releasePause(this.game, "mg-result");
-
-        // Stop engine sound when closing result modal
-        if (AudioManager && AudioManager.stopEngine) {
-          AudioManager.stopEngine();
-        }
+        if (!this.resultModal || this.resultModal.classList.contains("hidden")) return;
+        this.resultModal.classList.add("hidden");
+        this.btnResultClose.blur();
+        // Back to the NPC (W6, R7). The travel owner is taken BEFORE the result's owner goes,
+        // so no step runs at the finish line (it would show that chapter's title card).
+        const { x, npc } = this.returnSpot(this.lastType);
+        fadeTeleport(this.game, { x, onBlack: () => npc && npc.goHome() });
+        JOR.releasePause(this.game, "mg-result");
+        if (AudioManager && AudioManager.stopEngine) AudioManager.stopEngine();
       });
     }
 
@@ -158,6 +177,8 @@ export class MinigameManager {
     }
 
     this.modalElement.classList.remove("hidden");
+    // Keyboard-only players (acceptance 5): Enter or Space starts, Esc cancels (R29).
+    if (this.btnStart) this.btnStart.focus();
     this.pendingMinigame = type;
 
     // Pause game while modal is open
@@ -170,14 +191,19 @@ export class MinigameManager {
   }
 
   hideModal(keepPaused = false) {
-    if (this.modalElement) this.modalElement.classList.add("hidden");
+    if (this.modalElement) {
+      this.modalElement.classList.add("hidden");
+      // Drop focus so a later Enter cannot re-press a button of the fading modal (R29).
+      if (this.modalElement.contains(document.activeElement)) document.activeElement.blur();
+    }
     // Only unpause if not starting a minigame
     if (!keepPaused && this.game) JOR.releasePause(this.game, "minigame");
   }
 
   startMinigame(type) {
-    // No re-entry while a game runs or while its modal/fade/intro transition holds the pause.
-    if (this.activeMinigame || JOR.isPauseHeld(this.game, "minigame")) return;
+    // No re-entry while a game runs or ANY owner holds the pause (modal, fade, intro,
+    // travel, credits...): a tap under a black fade must not open a modal (R18).
+    if (this.activeMinigame || this.game.paused) return;
     this.showModal(type);
   }
 
@@ -222,34 +248,14 @@ export class MinigameManager {
   actuallyStartMinigame(type) {
     console.log(`Starting minigame: ${type}`);
     this.pendingMinigame = null;
-
-    const player = this.game.player;
-    const startX = player.minX || 200;
-    const fadeOverlay = document.getElementById("fade-overlay");
-
-    // 1. Fade OUT (Screen goes black)
-    if (fadeOverlay) fadeOverlay.style.opacity = 1;
-
-    // Wait for fade to complete (1s)
-    setTimeout(() => {
-      // 2. Reset Player Position & State (While hidden)
-      player.x = startX;
-      player.velocityX = 0;
-      player.wheelieActive = false;
-      player.wheelieRotation = 0;
-      player.currentAnimation = "idle";
-      player.direction = 1;
-      player.facingRight = true; // Reset to face right (default direction)
-
-      this.game.camera.jumpTo(startX - this.game.canvas.width / 3);
-
-      // 3. Fade IN (Screen reveals game)
-      if (fadeOverlay) fadeOverlay.style.opacity = 0;
-
-      // Wait for fade in (1s) then play intro
-      setTimeout(() => {
+    this.lastType = type;
+    const p = this.game.player;
+    // Courses keep their lengths from the ride end (R7). The chapter (Bab 1) syncs at the
+    // black frame; the "minigame" owner from the modal stays held through the intro.
+    const started = fadeTeleport(this.game, {
+      x: p.minX || 200,
+      onDone: () =>
         this.playIntro(type, () => {
-          // 4. Start Game Logic
           switch (type) {
             case "wheelie_challenge":
               this.activeMinigame = new WheelieChallenge(this.game, this);
@@ -261,14 +267,14 @@ export class MinigameManager {
               this.activeMinigame = new DragRace(this.game, this);
               break;
           }
-
           if (this.activeMinigame) {
             this.showHUD();
             this.activeMinigame.start();
           }
-        });
-      }, 1000);
-    }, 1000);
+        }),
+    });
+    // Refused (a scripted move owns the bike): nothing starts, give the game back.
+    if (!started) JOR.releasePause(this.game, "minigame");
   }
 
   stopMinigame(success = false, message = "") {
@@ -296,6 +302,7 @@ export class MinigameManager {
 
     this.resultModal.classList.remove("hidden");
     JOR.holdPause(this.game, "mg-result"); // Pause game while result shows
+    this.btnResultClose.focus(); // Enter or Space closes it without a mouse (R29)
 
     // Stop engine sound during result modal
     if (AudioManager && AudioManager.stopEngine) {
@@ -303,43 +310,32 @@ export class MinigameManager {
     }
   }
 
+  // Where a course hands the bike back (W6, R15): left of the NPC that offers it. Cheat or
+  // console starts have that NPC too; without one (a broken spawn) the ride end is used.
+  returnSpot(type) {
+    const p = this.game.player;
+    const npc = this.game.world.specialNPCs.find((n) => n.minigameId === type) || null;
+    const rideEnd = p.minX || 200;
+    if (!npc || npc.centerX === null) return { x: rideEnd, npc: null };
+    return { x: Math.max(rideEnd, npc.centerX - RETURN_GAP - p.width / 2), npc };
+  }
+
   exitMinigame() {
-    console.log("Exit minigame called", this.activeMinigame);
-
-    if (!this.activeMinigame) {
-      console.log("No active minigame");
-      return;
-    }
-
-    const fadeOverlay = document.getElementById("fade-overlay");
-
-    // 1. Fade to black
-    if (fadeOverlay) fadeOverlay.style.opacity = 1;
-
-    setTimeout(() => {
-      // 2. Clean up minigame
-      if (this.activeMinigame) {
-        this.activeMinigame.end();
-        this.activeMinigame = null;
-      }
-      this.hideHUD();
-
-      // 3. Reset player to start (release held keys first: no riding off after the fade)
-      this.game.releaseInput();
-      const player = this.game.player;
-      const startX = player.minX || 200;
-      player.x = startX;
-      player.velocityX = 0;
-      player.wheelieActive = false;
-      player.wheelieRotation = 0;
-      player.currentAnimation = "idle";
-      player.direction = 1;
-
-      this.game.camera.jumpTo(startX - this.game.canvas.width / 3);
-
-      // 4. Fade back in
-      if (fadeOverlay) fadeOverlay.style.opacity = 0;
-    }, 1000);
+    if (!this.activeMinigame) return;
+    const { x, npc } = this.returnSpot(this.lastType);
+    // fadeTeleport pauses at once (R13): the course cannot win or fail under the black, and
+    // a second click is refused while the first travel runs.
+    fadeTeleport(this.game, {
+      x,
+      onBlack: () => {
+        if (this.activeMinigame) {
+          this.activeMinigame.end();
+          this.activeMinigame = null;
+        }
+        this.hideHUD();
+        if (npc) npc.goHome();
+      },
+    });
   }
 
   update(deltaTime) {
@@ -355,6 +351,8 @@ export class MinigameManager {
   }
 
   showHUD() {
+    // RLGL colours the timer every step; a later Wheelie or Drag starts neutral (W6).
+    if (this.timerElement) this.timerElement.style.color = "";
     if (this.hudElement) this.hudElement.classList.remove("hidden");
     // Show exit button separately
     if (this.btnExitMinigame) {

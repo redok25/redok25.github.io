@@ -191,8 +191,9 @@ class Game {
     window.addEventListener("keydown", (e) => {
       if (JOR.shouldIgnoreGameKey(e, document)) return;
       const word = nextWord(e.key);
-      // Cheats sleep while paused (splash, modals, minigame transitions) and during the opening ride.
-      if (word && !this.paused && !this._splashCameraActive) cheats[word]();
+      // Cheats sleep while paused (splash, modals, transitions), during the opening ride and
+      // during a minigame course (R28).
+      if (word && !this.paused && !this._splashCameraActive && !this.minigames.activeMinigame) cheats[word]();
     });
 
     // A press during the opening ride also skips it, so the ride is over by the time the
@@ -455,6 +456,16 @@ class Game {
     const chapter = CHAPTERS[id];
     this.world.biomeWanted = chapter.biome;
     this.effects.ambientSnow = chapter.snow;
+  }
+
+  // A teleport's chapter (R12, R13): no hysteresis, the biome snaps under the black frame
+  // and the snow is at full strength when the fade lifts. No title card here: fast travel
+  // shows it itself, and a minigame course must not use up a first entry (R4).
+  syncChapterAt(centerX) {
+    this.journey.jumpTo(centerX);
+    this.enterChapter(this.journey.current);
+    this.world.snapBiome(this.world.biomeWanted);
+    this.effects.snowIntensity = this.effects.rainActive ? 0 : this.effects.ambientSnow;
   }
 
   update(deltaTime) {

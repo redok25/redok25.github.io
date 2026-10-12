@@ -5,11 +5,14 @@ import { app } from "./state.js";
 
 export class SpecialNPC {
   constructor(config) {
-    this.x = config.x || 0;
-    this.y = config.y || 0;
-    this.minigameId = config.minigameId || null;
     this.width = config.width || 87;
     this.height = config.height || 87;
+    // A home given as a centre (R16) keeps that centre when the idle sprite sets the real
+    // width (87 -> 52.5..61.5); update() is a no-op until then, so x is still home.
+    this.centerX = typeof config.centerX === "number" ? config.centerX : null;
+    this.x = this.centerX !== null ? this.centerX - this.width / 2 : config.x || 0;
+    this.y = config.y || 0;
+    this.minigameId = config.minigameId || null;
 
     // Animation state
     this.state = "idle";
@@ -54,6 +57,7 @@ export class SpecialNPC {
         if (type === "idle") {
           const ratio = img.naturalWidth / img.naturalHeight;
           this.width = this.height * ratio;
+          if (this.centerX !== null) this.x = this.homeX = this.centerX - this.width / 2;
         }
         if (loadedCount === targetCount) {
           console.log(`Special NPC ${this.minigameId} loaded all sprites.`);
@@ -119,6 +123,13 @@ export class SpecialNPC {
       this.currentFrame = 1;
       this.state = "idle";
     }
+  }
+
+  // Back home and standing (W6 return): the NPC is the bike's E target when the fade lifts.
+  goHome() {
+    this.x = this.homeX;
+    this.isMoving = false;
+    this.waitTime = 1000 + Math.random() * 2000;
   }
 
   render(ctx, cameraX) {

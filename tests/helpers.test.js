@@ -29,6 +29,11 @@ test("shouldIgnoreGameKey: typing or an open dialog/modal blocks game keys", () 
   assert.equal(JOR.shouldIgnoreGameKey({ target: body }, docWith(true)), true);
 });
 
+test("isUiBlocking: the credits card owns the keyboard while it is on (R23)", () => {
+  const doc = { querySelector: (sel) => (sel.split(",").map((s) => s.trim()).includes(".credits.is-on") ? {} : null) };
+  assert.equal(JOR.isUiBlocking(doc), true);
+});
+
 test("parseQuickHash: deep links map to sections, junk never throws", () => {
   assert.equal(JOR.parseQuickHash("#quick"), "about");
   assert.equal(JOR.parseQuickHash("#quick/"), "about");

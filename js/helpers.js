@@ -13,9 +13,9 @@ export function makeJOR(root) {
     );
   }
 
-  // Any open <dialog> or visible legacy .modal owns the keyboard.
+  // Any open <dialog>, visible legacy .modal or the credits card owns the keyboard.
   function isUiBlocking(doc) {
-    return !!doc.querySelector("dialog[open], .modal:not(.hidden)");
+    return !!doc.querySelector("dialog[open], .modal:not(.hidden), .credits.is-on");
   }
 
   function shouldIgnoreGameKey(e, doc) {

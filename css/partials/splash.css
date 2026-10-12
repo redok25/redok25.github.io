@@ -165,7 +165,7 @@
 
 .title-card-name {
   font-family: "VT323", monospace;
-  font-size: clamp(28px, 7.5vw, 56px);
+  font-size: clamp(28px, 7.5vmin, 56px);
   line-height: 1;
   color: var(--text-light);
   text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.6);
@@ -174,9 +174,17 @@
 .title-card-sub {
   margin-top: 6px;
   font-family: "VT323", monospace;
-  font-size: clamp(18px, 4.6vw, 26px);
+  font-size: clamp(18px, 4.6vmin, 26px);
   color: var(--primary);
   text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* Landscape phones: the card sits just under the Quick View button and clears the
+   interaction prompt (top 40%) and the bike. */
+@media (max-height: 500px) {
+  .title-card {
+    top: 64px;
+  }
 }
 
 /* Reduced motion: no bars; the title text only fades (V5). */

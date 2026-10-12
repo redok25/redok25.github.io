@@ -197,6 +197,8 @@ class Game {
 
     // Click handler for NPC interaction (touch taps arrive as clicks too)
     this.canvas.addEventListener("click", (e) => {
+      // The opening ride owns the screen: a click on an NPC there must not start anything.
+      if (this._splashCameraActive) return;
       // Mouse position in bitmap pixels (the CSS box can differ from the bitmap)
       const rect = this.canvas.getBoundingClientRect();
       const mouseX = ((e.clientX - rect.left) * this.canvas.width) / rect.width;
@@ -591,7 +593,7 @@ class Game {
   }
 
   // DOM overlays follow the drawn (interpolated) bike once per frame; writes only on change.
-  syncUi() {
+  syncUi(simPlayerX = this.player.x) {
     const tip = this._wheelieTip ??= document.getElementById("wheelie-tooltip");
     if (tip) {
       const show = !!this.player.canWheelie;
@@ -610,9 +612,10 @@ class Game {
         if (tip.style.top !== top) tip.style.top = top;
       }
     }
-    // Opening ride subtitle (V6): the beat follows the drawn bike's progress, not a timer.
+    // Opening ride subtitle (V6): the beat follows the drawn bike's progress, not a timer;
+    // the guard uses the simulation x so a skip never flashes the last beat on an interpolated frame.
     const p = this.player;
-    if (p._isOpeningSplash && p.x < p.splashTargetX) {
+    if (p._isOpeningSplash && simPlayerX < p.splashTargetX) {
       this.cinema.syncBeat((p.x - p._splashStartX) / (p.splashTargetX - p._splashStartX));
     }
     this.interactions.syncTooltip(this.cameraX);
@@ -706,7 +709,7 @@ class Game {
     this.renderAlpha = alpha;
     try {
       this.render();
-      this.syncUi();
+      this.syncUi(playerX);
     } finally {
       this.cameraX = camX;
       this.player.x = playerX;

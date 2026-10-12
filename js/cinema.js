@@ -10,9 +10,10 @@ import { AudioManager } from "./audio.js";
 import { COPY } from "./copy.js";
 
 const TITLE_MS = 3000; // the card is on for this long, then fades out over 0.5 s (~3.5 s visible)
-// Beat i starts at this share of the opening ride (85 / 150 / 26 characters to read in
-// ~7.3 s): about 2.2 s, 3.6 s and 1.5 s on screen.
-const BEAT_AT = [0, 0.3, 0.8];
+// Beat i starts at this share of the opening ride (~7.25 s). The panel shows up ~0.85 s in
+// (500 ms delay + 0.35 s fade), so the 85 / 157 / 26 characters get about 1.8 s, 3.4 s and
+// 1.2 s (plus the 0.42 s fade-out).
+const BEAT_AT = [0, 0.37, 0.84];
 
 // "a **b** c" -> text, <strong>b</strong>, text.
 function setRich(el, text) {

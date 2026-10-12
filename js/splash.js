@@ -59,7 +59,15 @@ import { app } from "./state.js";
           }
         }
       } catch (e) {}
-      
+      // iOS/WebKit only unlocks Web Audio inside a user gesture: wake the shared context here
+      // so the engine sound and the chapter chime (started later from game steps) can play.
+      try {
+        const ctx = AudioManager._initWebAudio();
+        if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
+      } catch (e) {
+        // no Web Audio: the game stays silent, nothing else changes
+      }
+
       startBtn.disabled = true;
 
       launchGameSequence();

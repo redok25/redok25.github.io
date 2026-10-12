@@ -3,8 +3,27 @@
 // ===================================
 import { NPC } from "./npc.js";
 import { SpecialNPC } from "./special-npc.js";
+import { createBiomeFade, stepBiomeFade, biomeWeight } from "./journey.js";
 
 const NPC_HEIGHT = 87; // NPC draw height (npc.js / special-npc.js default)
+const BIOMES = ["normal", "autumn", "winter"];
+// winter/5.png is byte-identical to normal/5.png: the winter sky is a cold gradient (sky slot).
+const WINTER_SKY = ["#a7b8c8", "#eef3f7"];
+// Autumn trees (V2): an orange wash over each tree sprite's opaque pixels.
+const AUTUMN_TREE_TINT = "rgba(214, 110, 30, 0.55)";
+
+// Pre-tinted copy of a loaded sprite: the color lands on its opaque pixels only (source-atop).
+function tintCopy(img, color) {
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const g = canvas.getContext("2d");
+  g.drawImage(img, 0, 0);
+  g.globalCompositeOperation = "source-atop";
+  g.fillStyle = color;
+  g.fillRect(0, 0, canvas.width, canvas.height);
+  return canvas;
+}
 
 export class World {
   constructor(canvas, ctx) {
@@ -26,9 +45,12 @@ export class World {
       grassHeight: 20,
     };
 
-    // Background Layers
-    this.bgLayers = [];
+    // Background layers: one set per biome (V2); bgLayers is the normal set (the loader waits for it).
     this.loadBackgroundLayers();
+    // Biome crossfade (V2, R5): game.enterChapter sets biomeWanted, render() steps the fade.
+    this.biomeFade = createBiomeFade("normal");
+    this.biomeWanted = "normal";
+    this._biomeReady = (biome) => this.biomeReady(biome); // bound once: render() must not allocate a closure per frame
 
     // Interactive objects (width/height will be auto-filled from sprite natural size)
     this.objects = [
@@ -81,6 +103,7 @@ export class World {
     // Trees for decoration
     this.trees = [];
     this.treeSprites = []; // Store loaded tree sprites
+    this.autumnTrees = []; // pre-tinted copies (V2), filled as the tree sprites load
     this.loadTreeSprites();
     this.generateTrees();
 
@@ -169,6 +192,7 @@ export class World {
     this.npcs.forEach((npc) => (npc.y = npcY));
     this.specialNPCs.forEach((npc) => (npc.y = npcY));
     this._fog = null;
+    this._sky = null; // the winter sky gradient spans the canvas height
   }
 
   // Bottom-align a loaded object sprite on the ground (unless alignToGround === false).
@@ -290,41 +314,31 @@ export class World {
   }
 
   loadBackgroundLayers() {
-    const layerFiles = [
-      "5.png", // Sky/Far
-      "4.png",
-      "3.png",
-      "2.png",
-      "1.png", // Near
-    ];
+    const layerFiles = ["5.png", "4.png", "3.png", "2.png", "1.png"]; // far (sky) -> near
+    this.biomes = {};
+    for (const biome of BIOMES) {
+      this.biomes[biome] = layerFiles.map((file, index) => {
+        const speed = (index + 1) * 0.1; // parallax factor
+        if (biome === "winter" && index === 0) {
+          return { sky: WINTER_SKY, speed, loaded: true, name: "winter/sky" };
+        }
+        const img = new Image();
+        const layer = { image: img, speed, loaded: false, name: `${biome}/${file}` };
+        img.onload = () => {
+          layer.loaded = true;
+        };
+        img.onerror = () => console.error(`Failed to load BG layer ${biome}/${file}`);
+        img.src = `assets/sprites/platformer/background/${biome}/${file}`;
+        return layer;
+      });
+    }
+    // world.isLoaded() waits for this set only; autumn and winter stream in (R5).
+    this.bgLayers = this.biomes.normal;
+  }
 
-    console.log("Loading background layers...");
-    layerFiles.forEach((file, index) => {
-      const img = new Image();
-      img.src = `assets/sprites/platformer/background/normal/${file}`;
-
-      // create layer record with loaded flag so render knows when ready
-      const layer = {
-        image: img,
-        speed: (index + 1) * 0.1, // Parallax speed factor
-        loaded: false,
-        name: file,
-      };
-
-      img.onload = () => {
-        layer.loaded = true;
-        console.log(
-          `BG Layer ${index + 1} loaded: ${file} (${img.naturalWidth}x${
-            img.naturalHeight
-          })`
-        );
-      };
-      img.onerror = () => {
-        console.error(`Failed to load BG Layer ${index + 1}: ${file}`);
-      };
-
-      this.bgLayers.push(layer);
-    });
+  // True once every layer of a biome can be drawn; until then the old biome stays (R5).
+  biomeReady(biome) {
+    return this.biomes[biome].every((layer) => layer.loaded);
   }
 
   loadTreeSprites() {
@@ -333,7 +347,11 @@ export class World {
     for (let i = 1; i <= treeCount; i++) {
       const img = new Image();
       img.src = `assets/sprites/platformer/tree/${i}.png`;
-      img.onload = () => console.log(`Tree sprite ${i} loaded`);
+      img.onload = () => {
+        console.log(`Tree sprite ${i} loaded`);
+        // Autumn copy (V2): same pixels with an orange wash on the opaque ones.
+        this.autumnTrees[i - 1] = tintCopy(img, AUTUMN_TREE_TINT);
+      };
       img.onerror = () => console.error(`Failed to load tree sprite ${i}`);
       this.treeSprites.push(img);
     }
@@ -647,22 +665,23 @@ export class World {
   }
 
   render(cameraX, windSway, effects) {
+    // Biome crossfade (V2, R5): stepped by real time here, so it takes 1 s at any refresh
+    // rate; a biome still loading is not faded in (the old one stays).
+    stepBiomeFade(this.biomeFade, this.biomeWanted, this._biomeReady, performance.now());
     this.renderBackgroundLayers(cameraX, effects);
 
-    // Render trees in background
+    // Trees sit in world space (parallax 1.0, F14). During a crossfade the incoming biome's
+    // tree is drawn over the outgoing one at the fade alpha (autumn = pre-tinted copies).
+    const fade = this.biomeFade;
+    const treesFrom = this.treeSet(fade.from);
+    const treesTo = fade.to !== null ? this.treeSet(fade.to) : treesFrom;
     this.trees.forEach((tree) => {
-      // Trees sit in world space (parallax 1.0): leaves spawn at tree.x and every tree is reachable (F14).
       const screenX = Math.floor(tree.x - cameraX);
-
       if (screenX > -200 && screenX < this.canvas.width + 200) {
-        this.renderTree(
-          screenX,
-          tree.y,
-          tree.width,
-          tree.height,
-          tree.spriteIndex,
-          windSway
-        );
+        const i = tree.spriteIndex;
+        const sprite = treesFrom[i] || this.treeSprites[i];
+        const overlay = treesTo !== treesFrom ? treesTo[i] || this.treeSprites[i] : null;
+        this.renderTree(screenX, tree.y, tree.width, tree.height, sprite, windSway, overlay, fade.t);
       }
     });
 
@@ -717,35 +736,72 @@ export class World {
     for (let t = 0; t < tiles; t++) this.ctx.drawImage(img, startX + t * drawW, 0, drawW, drawH);
   }
 
-  // Parallax layers far to near, clouds between the far layer and the rest.
+  // Parallax layers far to near, clouds between the sky and the rest. During a biome
+  // crossfade each layer is drawn twice: outgoing at 1, incoming over it at alpha t. The
+  // biome sets share identical binary alpha masks, so this per-layer blend is exact and
+  // nothing pops when the fade ends (R5, no compose buffer).
   // ponytail: a low-res compose buffer (F11) measured slower on desktop (A/B +2 ms avg at
   // 1440-2560 px); revisit only if a real phone shows fill-bound frames.
   renderBackgroundLayers(cameraX, effects) {
-    this.ctx.save();
-    this.ctx.imageSmoothingEnabled = false;
-    this.bgLayers.forEach((layer, i) => {
-      if (layer.loaded && layer.image.naturalWidth) this.drawTiledLayer(layer.image, layer.speed, cameraX);
+    const fade = this.biomeFade;
+    const from = this.biomes[fade.from];
+    const to = fade.to !== null ? this.biomes[fade.to] : null;
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (let i = 0; i < from.length; i++) {
+      this.drawLayer(from[i], cameraX);
+      if (to) {
+        ctx.globalAlpha = fade.t;
+        this.drawLayer(to[i], cameraX);
+        ctx.globalAlpha = 1;
+      }
       if (i === 0 && effects) effects.renderClouds(cameraX);
-    });
-    this.ctx.restore();
+    }
+    ctx.restore();
   }
 
-  renderTree(x, y, width, height, spriteIndex, windSway) {
-    const sprite = this.treeSprites[spriteIndex];
-
-    if (sprite && sprite.complete) {
-      this.ctx.save();
-
-      // Apply wind sway (pivot at bottom center)
-      this.ctx.translate(x + width / 2, y + height);
-      this.ctx.rotate(windSway * 0.005); // Subtle sway
-      this.ctx.translate(-(x + width / 2), -(y + height));
-
-      this.ctx.imageSmoothingEnabled = false;
-      this.ctx.drawImage(sprite, x, y, width, height);
-
-      this.ctx.restore();
+  // One layer: a tiled parallax image, or the winter sky gradient (the sky slot).
+  // ponytail: one cached gradient (winter is the only gradient sky); key it by biome when a second appears.
+  drawLayer(layer, cameraX) {
+    if (layer.sky) {
+      if (!this._sky) {
+        const g = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+        g.addColorStop(0, layer.sky[0]);
+        g.addColorStop(1, layer.sky[1]);
+        this._sky = g;
+      }
+      this.ctx.fillStyle = this._sky;
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    } else if (layer.loaded && layer.image.naturalWidth) {
+      this.drawTiledLayer(layer.image, layer.speed, cameraX);
     }
+  }
+
+  // Tree sprites per biome: autumn draws the pre-tinted copies (V2), the others the originals.
+  treeSet(biome) {
+    return biome === "autumn" ? this.autumnTrees : this.treeSprites;
+  }
+
+  renderTree(x, y, width, height, sprite, windSway, overlay = null, overlayAlpha = 0) {
+    // Images report `complete`; the pre-tinted canvases have no such flag and are always ready.
+    if (!sprite || sprite.complete === false) return;
+    this.ctx.save();
+
+    // Apply wind sway (pivot at bottom center)
+    this.ctx.translate(x + width / 2, y + height);
+    this.ctx.rotate(windSway * 0.005); // Subtle sway
+    this.ctx.translate(-(x + width / 2), -(y + height));
+
+    this.ctx.imageSmoothingEnabled = false;
+    this.ctx.drawImage(sprite, x, y, width, height);
+    // Biome crossfade (V2): the incoming biome's tree over it, same transform.
+    if (overlay && overlay.complete !== false) {
+      this.ctx.globalAlpha = overlayAlpha;
+      this.ctx.drawImage(overlay, x, y, width, height);
+    }
+
+    this.ctx.restore();
   }
 
   renderGround(cameraX) {
@@ -778,6 +834,15 @@ export class World {
     this.renderTerra(cameraX, bottomY, bottomHeight);
     this.renderRoad(cameraX, roadY);
     this.renderGrass(cameraX, grassY);
+
+    // Winter ground (V8): a snow-white wash over the grass strip and the soil, weighted by
+    // the crossfade so it arrives with the winter backdrop. The road stays dark (ridden clear).
+    const snow = biomeWeight(this.biomeFade, "winter");
+    if (snow > 0) {
+      this.ctx.fillStyle = `rgba(236, 242, 248, ${(0.85 * snow).toFixed(3)})`;
+      this.ctx.fillRect(0, grassY, this.canvas.width, this.terrainConfig.grassHeight);
+      this.ctx.fillRect(0, bottomY, this.canvas.width, bottomHeight);
+    }
   }
 
   renderTerra(cameraX, bottomY, bottomHeight) {

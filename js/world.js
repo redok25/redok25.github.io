@@ -164,6 +164,14 @@ export class World {
     this.spawnNPCs();
   }
 
+  // Autumn and winter start loading only once everything the loader waits for is in
+  // (game.waitForAssetsThenStart), so they never delay it on a slow phone link (R5).
+  streamBiomes() {
+    for (const biome of ["autumn", "winter"]) {
+      for (const layer of this.biomes[biome]) if (layer.image) layer.image.src = layer.src;
+    }
+  }
+
   spawnNPCs() {
     this.npcs = []; // Clear existing list if any
     this.specialNPCs = []; // Clear special NPCs list
@@ -323,12 +331,13 @@ export class World {
           return { sky: WINTER_SKY, speed, loaded: true, name: "winter/sky" };
         }
         const img = new Image();
-        const layer = { image: img, speed, loaded: false, name: `${biome}/${file}` };
+        const src = `assets/sprites/platformer/background/${biome}/${file}`;
+        const layer = { image: img, speed, loaded: false, name: `${biome}/${file}`, src };
         img.onload = () => {
           layer.loaded = true;
         };
         img.onerror = () => console.error(`Failed to load BG layer ${biome}/${file}`);
-        img.src = `assets/sprites/platformer/background/${biome}/${file}`;
+        if (biome === "normal") img.src = src; // the others wait for streamBiomes()
         return layer;
       });
     }

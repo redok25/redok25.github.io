@@ -107,6 +107,7 @@ class Game {
           : true;
 
       if (playerReady && worldReady && effectsReady) {
+        this.world.streamBiomes();
         // All assets loaded — but keep loading screen visible for at least
         // `this.minimumLoadingMs` to avoid a quick flash for very fast loads.
         const ensureStart = () => {

@@ -105,7 +105,8 @@ import { app } from "./state.js";
             break;
         }
      }
-     if (!hasActive) return;
+     // Last finger up always releases (a second finger on a button nulls activePointerId).
+     if (!hasActive && e.touches.length > 0) return;
 
     setKey("ArrowLeft", false);
     setKey("ArrowRight", false);

@@ -2,8 +2,9 @@
 // STAMP.MJS - Cache-busting without a build step.
 // Content-hashes every js/*.js and css/**/*.css file and writes the URLs into index.html:
 // an import map for module imports, and ?v=<hash> on entry scripts and stylesheets.
-// A cached old index.html keeps pointing at old URLs, a new one at new URLs, so a
-// visitor never mixes versions. Run after editing js/ or css/:  node tools/stamp.mjs
+// A cached old index.html keeps pointing at old URLs, a new one at new URLs, so a visitor
+// does not mix versions while the browser cache holds them (GitHub Pages ignores ?v= and
+// serves max-age=600). Run after editing js/ or css/:  node tools/stamp.mjs
 // Check only (CI/tests):  node tools/stamp.mjs --check
 // ===================================
 import { createHash } from "node:crypto";

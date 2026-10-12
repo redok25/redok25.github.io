@@ -126,7 +126,8 @@ onAction("contact-submit", handleContactSubmit);
 
   // Q opens Quick View from anywhere except while typing or another dialog/modal is up.
   document.addEventListener("keydown", (e) => {
-    if (e.key !== "q" && e.key !== "Q") return;
+    // KeyA is "move left" by physical key (AZERTY types q there).
+    if ((e.key !== "q" && e.key !== "Q") || e.code === "KeyA") return;
     if (e.ctrlKey || e.metaKey || e.altKey || dialog.open) return;
     if (JOR.shouldIgnoreGameKey(e, document)) return;
     open("about");

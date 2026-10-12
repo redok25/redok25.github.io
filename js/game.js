@@ -254,6 +254,8 @@ class Game {
       JOR.holdPause(this, "quickview");
     });
     document.addEventListener("qv:close", () => JOR.releasePause(this, "quickview"));
+    // A #quick deep link opens Quick View before the game exists; its qv:open already fired.
+    if (document.getElementById("qv")?.open) JOR.holdPause(this, "quickview");
   }
 
   // Real weather is opt-in (D499): off by default, remembered, revocable.

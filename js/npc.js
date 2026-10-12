@@ -253,22 +253,6 @@ export class NPC {
     ctx.fillText(text, x, startY + boxHeight / 2);
   }
 
-  handleClick(mouseX, mouseY, cameraX) {
-    const screenX = this.x - cameraX;
-    const screenY = this.y;
-
-    if (
-      mouseX >= screenX &&
-      mouseX <= screenX + this.width &&
-      mouseY >= screenY &&
-      mouseY <= screenY + this.height
-    ) {
-      this.triggerChat();
-      return true;
-    }
-    return false;
-  }
-
   triggerChat() {
     if (this.chats.length === 0) return;
     const randomMsg = this.chats[Math.floor(Math.random() * this.chats.length)];

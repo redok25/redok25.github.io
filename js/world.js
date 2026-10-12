@@ -4,6 +4,7 @@
 import { NPC } from "./npc.js";
 import { SpecialNPC } from "./special-npc.js";
 import { CHAPTERS, createBiomeFade, stepBiomeFade, biomeWeight } from "./journey.js";
+import { COPY } from "./copy.js";
 
 const NPC_HEIGHT = 87; // NPC draw height (npc.js / special-npc.js default)
 const BIOMES = ["normal", "autumn", "winter"];
@@ -71,48 +72,54 @@ export class World {
     this._biomeReady = (biome) => this.biomeReady(biome); // bound once: render() must not allocate a closure per frame
 
     // Interactive objects (width/height will be auto-filled from sprite natural size)
+    // The four stations (D496): id = the Quick View section they open and the stamp they give
+    // (W4); label = the "Tujuan:" name (COPY.stations, D511).
     this.objects = [
       {
+        id: "about",
         type: "post",
         baseX: 700,
         x: 700,
         y: canvas.height, // initial Y; will be adjusted to ground after sprite loads
         sprite: null,
         modalId: "about-modal",
-        label: "About Me",
+        label: COPY.stations.about,
         groundOffset: -20,
         heightPercent: 60,
       },
       {
+        id: "skills",
         type: "sign",
         baseX: 2200,
         x: 2200,
         y: canvas.height, // initial Y; will be adjusted to ground after sprite loads
         sprite: null,
         modalId: "skills-modal",
-        label: "Skills",
+        label: COPY.stations.skills,
         groundOffset: -20,
         heightPercent: 45,
       },
       {
+        id: "projects",
         type: "warung",
         baseX: 3200,
         x: 3200,
         y: canvas.height, // initial Y; will be adjusted to ground after sprite loads
         sprite: null,
         modalId: "projects-modal",
-        label: "Projects",
+        label: COPY.stations.projects,
         groundOffset: -20,
         heightPercent: 70,
       },
       {
+        id: "contact",
         type: "mailbox",
         baseX: 4200,
         x: 4200,
         y: canvas.height, // initial Y; will be adjusted to ground after sprite loads
         sprite: null,
         modalId: "contact-modal",
-        label: "Contact",
+        label: COPY.stations.contact,
         groundOffset: -20,
         heightPercent: 30,
       },

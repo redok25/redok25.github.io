@@ -203,28 +203,16 @@ class Game {
       this._pressInRide = this._splashCameraActive;
     });
 
-    // Click handler for NPC interaction (touch taps arrive as clicks too)
+    // Canvas tap or click (touch taps arrive as clicks too): one target, the one drawn on
+    // top under the point (R19). Paused and minigame guards live in interactions.tapAt.
     this.canvas.addEventListener("click", (e) => {
-      // The opening ride owns the screen: a click on an NPC there must not start anything.
+      // The opening ride owns the screen: a click there must not start anything.
       if (this._splashCameraActive || this._pressInRide) return;
       // Mouse position in bitmap pixels (the CSS box can differ from the bitmap)
       const rect = this.canvas.getBoundingClientRect();
       const mouseX = ((e.clientX - rect.left) * this.canvas.width) / rect.width;
       const mouseY = ((e.clientY - rect.top) * this.canvas.height) / rect.height;
-
-      // Check NPC clicks
-      if (this.world.npcs) {
-        this.world.npcs.forEach((npc) => {
-          npc.handleClick(mouseX, mouseY, this.cameraX);
-        });
-      }
-
-      // Check Special NPC clicks
-      if (this.world.specialNPCs) {
-        this.world.specialNPCs.forEach((specialNpc) => {
-          specialNpc.handleClick(mouseX, mouseY, this.cameraX);
-        });
-      }
+      this.interactions.tapAt(mouseX + this.cameraX, mouseY);
     });
   }
 

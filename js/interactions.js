@@ -1,11 +1,13 @@
 // ===================================
-// INTERACTIONS.JS - Interaction System
+// INTERACTIONS.JS - What E and a tap reach (W3), stamps and "Tujuan:" (W4).
+// E picks one target in range by rank: station > special NPC > billboard > regular NPC,
+// then distance (R19 for taps: the one drawn on top under the point). Both are inert
+// during the opening ride and a minigame course (R20).
 // ===================================
 import { JOR } from "./helpers.js";
-import { NPC } from "./npc.js";
-import { SpecialNPC } from "./special-npc.js";
-import { openModal } from "./content.js";
+import { openModal, openProjectsYear } from "./content.js";
 import { app } from "./state.js";
+import { save, getStamps, addStamp } from "./save.js";
 
 // E priority (W3): station > special NPC > billboard > regular NPC, then distance.
 export const KIND_RANK = { station: 0, special: 1, billboard: 2, npc: 3 };
@@ -31,21 +33,38 @@ export function nextDestination(stations, stamps, centerX) {
   return best;
 }
 
+const RANGE = 150; // px between the bike's centre and a target's centre
+
+// Tap order (R19): front to back as world.render draws them (special NPCs over regular
+// NPCs over billboards over stations).
+const TAP_ORDER = [
+  ["specialNPCs", "special"],
+  ["npcs", "npc"],
+  ["billboards", "billboard"],
+  ["objects", "station"],
+];
+
+// A point inside an entity's box (world x, screen y). NaN-safe: a station whose sprite has
+// not loaded yet has no width and never hits.
+function inBox(o, x, y) {
+  return x >= o.x && x <= o.x + o.width && y >= o.y && y <= o.y + o.height;
+}
+
 export class InteractionManager {
   constructor(player, world) {
     this.player = player;
     this.world = world;
-    this.interactionRange = 150;
     this.currentNearbyObject = null;
+    this.currentKind = null;
     this.nextOffscreenObject = null;
+    this.stamps = getStamps(save); // cached: changes only through stamp()
     this.promptElement = document.getElementById("interaction-prompt");
     this.tooltipElement = document.getElementById("interaction-tooltip");
     this.tooltipLabel = document.getElementById("tooltip-label-text");
 
-    // Setup interaction key listener
     this.setupKeyListener();
 
-    // Setup click listener for prompt (Touch support)
+    // Tap on the prompt (touch): the same as E.
     if (this.promptElement) {
       this.promptElement.addEventListener("click", (e) => {
         e.preventDefault();
@@ -57,100 +76,69 @@ export class InteractionManager {
   setupKeyListener() {
     document.addEventListener("keydown", (e) => {
       if (JOR.shouldIgnoreGameKey(e, document)) return;
-      if (e.code === "KeyE" && !e.repeat) {
-        this.tryInteract("key");
-      }
+      if (e.code === "KeyE" && !e.repeat) this.tryInteract();
     });
   }
 
+  // No targets before the opening ride ends, during it, or during a minigame course (R20).
+  isInert() {
+    const game = app.game;
+    return !game || !this.player.lockBacktrack || !!game.minigames.activeMinigame;
+  }
+
+  // One list, one kind: keeps the best candidate in fields (no array or closure per step).
+  scan(list, kind, centerX) {
+    if (!list) return;
+    const rank = KIND_RANK[kind];
+    for (let i = 0; i < list.length; i++) {
+      const obj = list[i];
+      if (typeof obj.x !== "number") continue;
+      const dist = Math.abs(centerX - (obj.x + (obj.width || 64) / 2));
+      if (dist < RANGE && beats(rank, dist, this._bestRank, this._bestDist)) {
+        this._best = obj;
+        this._bestKind = kind;
+        this._bestRank = rank;
+        this._bestDist = dist;
+      }
+    }
+  }
+
+  // Once per sim step (game.update), with the sim camera.
   update(cameraX) {
-    const playerBounds = this.player.getBounds();
-    const playerCenterX = playerBounds.x + playerBounds.width / 2;
-
-    // Check for nearby objects (Static Objects + Regular NPCs only)
-    let nearestObject = null;
-    let nearestDistance = Infinity;
-
-    // Static objects and regular NPCs (NOT SpecialNPC), scanned separately: no merged array per step.
-    const consider = (obj) => {
-      // Skip if obj doesn't have essential props (safety)
-      if (typeof obj.x !== "number") return;
-
-      // Skip SpecialNPC instances
-      if (obj instanceof SpecialNPC) return;
-
-      const width = obj.width || 64;
-      const objCenterX = obj.x + width / 2;
-      const distance = Math.abs(playerCenterX - objCenterX);
-
-      if (distance < this.interactionRange && distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestObject = obj;
-      }
-    };
-
-    // Find nearest object within interaction range (for on-screen prompt)
-    (this.world.getObjects() || []).forEach(consider);
-    (this.world.npcs || []).forEach(consider);
-
-    // Find nearest interactable object overall (used to show offscreen tooltip)
-    let closestObj = null;
-    let closestDist = Infinity;
-
-    // Only track static objects for offscreen tooltip
-    this.world.getObjects().forEach((obj) => {
-      const objCenterX = obj.x + (obj.width || 64) / 2;
-      const distance = Math.abs(playerCenterX - objCenterX);
-      if (distance < closestDist) {
-        closestDist = distance;
-        closestObj = obj;
-      }
-    });
-
-    // Determine if the closest object is offscreen (not visible in viewport)
-    if (
-      closestObj &&
-      typeof cameraX === "number" &&
-      this.world &&
-      this.world.canvas
-    ) {
-      const canvasW = this.world.canvas.width;
-      const objLeft = closestObj.x - cameraX;
-      const objRight = objLeft + (closestObj.width || 64);
-      if (objRight < 0 || objLeft > canvasW) {
-        this.nextOffscreenObject = closestObj;
-      } else {
-        this.nextOffscreenObject = null;
-      }
-    } else {
-      this.nextOffscreenObject = null;
+    const centerX = this.player.x + this.player.width / 2;
+    const inert = this.isInert();
+    this._best = null;
+    this._bestKind = null;
+    this._bestRank = Infinity;
+    this._bestDist = Infinity;
+    if (!inert) {
+      this.scan(this.world.objects, "station", centerX);
+      this.scan(this.world.specialNPCs, "special", centerX);
+      this.scan(this.world.billboards, "billboard", centerX);
+      this.scan(this.world.npcs, "npc", centerX);
     }
 
-    // Update prompt
-    if (nearestObject !== this.currentNearbyObject) {
-      this.currentNearbyObject = nearestObject;
+    // "Tujuan:" (W4): the nearest unstamped station, shown only while it is fully off-screen.
+    const dest = inert ? null : nextDestination(this.world.objects, this.stamps, centerX);
+    let off = null;
+    if (dest && typeof cameraX === "number") {
+      const left = dest.x - cameraX;
+      if (left + (dest.width || 64) < 0 || left > this.world.canvas.width) off = dest;
+    }
+    this.nextOffscreenObject = off;
+
+    if (this._best !== this.currentNearbyObject) {
+      this.currentNearbyObject = this._best;
+      this.currentKind = this._bestKind;
       this.updatePrompt();
     }
-    // The tooltip DOM is written once per frame by syncTooltip (Game.syncUi).
   }
 
+  // The prompt is for E targets; a regular NPC chats on a tap of the NPC itself.
   updatePrompt() {
-    if (this.currentNearbyObject) {
-      // Check if it's a regular NPC (not SpecialNPC)
-      const isRegularNPC =
-        this.currentNearbyObject instanceof NPC &&
-        !(this.currentNearbyObject instanceof SpecialNPC);
-
-      // Show prompt for static objects and regular NPCs
-      if (!isRegularNPC) {
-        this.promptElement.classList.remove("hidden");
-      } else {
-        // Regular NPCs only trigger on click, not E key
-        this.promptElement.classList.add("hidden");
-      }
-    } else {
-      this.promptElement.classList.add("hidden");
-    }
+    if (!this.promptElement) return;
+    const show = !!this.currentNearbyObject && this.currentKind !== "npc";
+    this.promptElement.classList.toggle("hidden", !show);
   }
 
   // Called once per frame with the drawn camera; writes to the DOM only when something changed.
@@ -188,53 +176,66 @@ export class InteractionManager {
     }
   }
 
-  tryInteract(source = "unknown") {
+  // E or a tap on the prompt.
+  tryInteract() {
     const game = app.game;
-    if (this.currentNearbyObject && game && !game.paused) {
-      const obj = this.currentNearbyObject;
+    if (!game || game.paused || this.isInert() || !this.currentNearbyObject) return;
+    if (this.currentKind === "npc") return; // regular NPCs chat on a tap of the NPC itself
+    this.activate(this.currentNearbyObject, this.currentKind);
+  }
 
-      // Check if it's a regular NPC
-      const isRegularNPC = obj instanceof NPC && !(obj instanceof SpecialNPC);
-
-      // If Interaction triggered by 'E' Key (source === 'key'), ignore regular NPCs
-      if (isRegularNPC && source === "key") {
-        return;
-      }
-
-      // Handle interactions
-      if (isRegularNPC) {
-        // Regular NPCs only trigger on click
-        if (typeof obj.triggerChat === "function") {
-          obj.triggerChat();
+  // A canvas tap (game.js click handler), in world x and screen y: the target drawn on top
+  // under the point wins, at any distance from the bike (R19). Returns true on a hit.
+  tapAt(worldX, y) {
+    const game = app.game;
+    if (!game || game.paused || this.isInert()) return false;
+    for (const [key, kind] of TAP_ORDER) {
+      const list = this.world[key];
+      if (!list) continue;
+      for (let i = list.length - 1; i >= 0; i--) {
+        const o = list[i];
+        if (o.loaded === false) continue; // an NPC not drawn yet cannot be tapped
+        if (inBox(o, worldX, y)) {
+          this.activate(o, kind);
+          return true;
         }
-      } else if (obj.modalId) {
-        // Static objects with modals
-        openModal(obj.modalId);
       }
+    }
+    return false;
+  }
+
+  // One action per kind; E, the prompt and a canvas tap all end here.
+  activate(obj, kind) {
+    if (kind === "station") {
+      this.stamp(obj.id);
+      openModal(obj.modalId);
+    } else if (kind === "billboard") {
+      this.stamp("projects"); // a billboard is the project list too (R10)
+      openProjectsYear(obj.year);
+    } else if (kind === "special") {
+      app.game.minigames.startMinigame(obj.minigameId);
+    } else if (kind === "npc") {
+      obj.triggerChat();
     }
   }
 
+  stamp(id) {
+    if (addStamp(save, id)) this.stamps = getStamps(save);
+  }
+
+  // The ▼ marker over a station or billboard in E range (NPCs have their own badges/bubbles).
   render(ctx, cameraX) {
-    // Render interaction indicators above objects
-    if (this.currentNearbyObject) {
-      const obj = this.currentNearbyObject;
-
-      // Only show indicator for static objects (not NPCs)
-      const isNPC = obj instanceof NPC || obj instanceof SpecialNPC;
-      if (isNPC) return;
-
-      const screenX = obj.x - cameraX + obj.width / 2;
-      const screenY = obj.y - 20;
-
-      // Draw floating indicator
-      ctx.save();
-      ctx.fillStyle = "#38b764";
-      ctx.font = "bold 16px monospace";
-      ctx.textAlign = "center";
-      ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-      ctx.shadowBlur = 4;
-      ctx.fillText("▼", screenX, screenY + Math.sin(Date.now() * 0.005) * 5);
-      ctx.restore();
-    }
+    const obj = this.currentNearbyObject;
+    if (!obj || (this.currentKind !== "station" && this.currentKind !== "billboard")) return;
+    const screenX = obj.x - cameraX + (obj.width || 64) / 2;
+    const screenY = obj.y - 20;
+    ctx.save();
+    ctx.fillStyle = "#38b764";
+    ctx.font = "bold 16px monospace";
+    ctx.textAlign = "center";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+    ctx.shadowBlur = 4;
+    ctx.fillText("▼", screenX, screenY + Math.sin(Date.now() * 0.005) * 5);
+    ctx.restore();
   }
 }

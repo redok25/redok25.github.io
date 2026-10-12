@@ -16,6 +16,11 @@ export function openModal(modalId) {
   if (section && window.QV) window.QV.open(section);
 }
 
+// A year billboard (W1) opens the project list at that year; Quick View highlights it.
+export function openProjectsYear(year) {
+  if (window.QV) window.QV.open("projects", { year });
+}
+
 // Custom styled alert (replaces native alert)
 export function showCustomAlert(message, options = {}) {
   const { type = "info", duration = 4000 } = options;

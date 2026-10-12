@@ -144,6 +144,23 @@ export function makeJOR(root) {
           // Storage blocked or full: the memory copy keeps this page load working.
         }
       },
+      // True when the key exists at all (even if its JSON is corrupt).
+      has(key) {
+        if (key in memory) return true;
+        try {
+          return storage.getItem(key) != null;
+        } catch (e) {
+          return false;
+        }
+      },
+      remove(key) {
+        delete memory[key];
+        try {
+          storage.removeItem(key);
+        } catch (e) {
+          // Storage blocked: nothing persisted to remove.
+        }
+      },
     };
   }
 

@@ -175,3 +175,24 @@ test("fixedSteps: negative dt is 0, huge dt is clamped to 3 steps", () => {
   assert.equal(r.steps, 3);
   assert.ok(r.acc < JOR.STEP_MS);
 });
+
+test("createStore.remove/has: memory and storage, and a throwing storage", () => {
+  const data = { a: "1" };
+  const storage = {
+    getItem: (k) => (k in data ? data[k] : null),
+    setItem: (k, v) => { data[k] = String(v); },
+    removeItem: (k) => { delete data[k]; },
+  };
+  const store = makeJOR({}).createStore(storage);
+  assert.equal(store.has("a"), true);
+  store.remove("a");
+  assert.equal(store.has("a"), false);
+  assert.equal(store.get("a", "fb"), "fb");
+  assert.ok(!("a" in data));
+  const boom = { getItem() { throw new Error("x"); }, setItem() { throw new Error("x"); }, removeItem() { throw new Error("x"); } };
+  const s2 = makeJOR({}).createStore(boom);
+  s2.set("b", 2);
+  assert.equal(s2.has("b"), true);
+  s2.remove("b");
+  assert.equal(s2.has("b"), false);
+});

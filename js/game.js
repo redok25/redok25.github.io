@@ -11,6 +11,7 @@ import { Camera } from "./camera.js";
 import { showCustomAlert } from "./content.js";
 import { AudioManager } from "./audio.js";
 import { app } from "./state.js";
+import { save } from "./save.js";
 
 class Game {
   constructor() {
@@ -263,12 +264,12 @@ class Game {
     this.weatherReq = 0;
     this.weatherToggle = document.getElementById("weather-optin");
     if (!this.weatherToggle) return;
-    this.weatherToggle.checked = JOR.store.get("jor.weatherOptIn", false) === true;
+    this.weatherToggle.checked = save.get("weatherOptIn") === true;
     if (this.weatherToggle.checked) this.checkRealWeather();
     this.weatherToggle.addEventListener("change", () => {
       // Hand focus back to the page so Space/arrows drive the bike, not the checkbox.
       this.weatherToggle.blur();
-      JOR.store.set("jor.weatherOptIn", this.weatherToggle.checked);
+      save.set("weatherOptIn", this.weatherToggle.checked);
       if (this.weatherToggle.checked) this.checkRealWeather();
       else {
         this.weatherReq++;
@@ -279,7 +280,7 @@ class Game {
 
   disableRealWeather(message) {
     if (this.weatherToggle) this.weatherToggle.checked = false;
-    JOR.store.set("jor.weatherOptIn", false);
+    save.set("weatherOptIn", false);
     if (typeof showCustomAlert === "function") showCustomAlert(message, { type: "info" });
   }
 

@@ -5,6 +5,7 @@
 import { JOR } from "./helpers.js";
 import { app } from "./state.js";
 import { onAction } from "./actions.js";
+import { save } from "./save.js";
 
 class VisitorCounter {
   constructor() {
@@ -18,8 +19,8 @@ class VisitorCounter {
       } catch (e) {}
     });
 
-    const visit = JOR.recordVisit(JOR.store.get("jor.visits", null), new Date().toISOString());
-    JOR.store.set("jor.visits", visit.record);
+    const visit = JOR.recordVisit(save.get("visits"), new Date().toISOString());
+    save.set("visits", visit.record);
     JOR.visit = visit; // splash.js reads this to auto-skip the intro for returning visitors
     this.visitorData = visit.record;
 

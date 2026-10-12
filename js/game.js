@@ -195,10 +195,16 @@ class Game {
       if (word && !this.paused && !this._splashCameraActive) cheats[word]();
     });
 
+    // A press during the opening ride also skips it, so the ride is over by the time the
+    // click fires on release: remember the ride state at press time.
+    this.canvas.addEventListener("pointerdown", () => {
+      this._pressInRide = this._splashCameraActive;
+    });
+
     // Click handler for NPC interaction (touch taps arrive as clicks too)
     this.canvas.addEventListener("click", (e) => {
       // The opening ride owns the screen: a click on an NPC there must not start anything.
-      if (this._splashCameraActive) return;
+      if (this._splashCameraActive || this._pressInRide) return;
       // Mouse position in bitmap pixels (the CSS box can differ from the bitmap)
       const rect = this.canvas.getBoundingClientRect();
       const mouseX = ((e.clientX - rect.left) * this.canvas.width) / rect.width;

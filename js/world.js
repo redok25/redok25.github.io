@@ -582,10 +582,12 @@ export class World {
         const posX = center + offset + (Math.random() - 0.5) * jitterX * 2;
         const sink = -(sinkMin + Math.random() * (sinkMax - sinkMin));
 
-        // pick a random sprite from the selected group
+        // pick a random sprite from the selected group; a flower cluster straddling a Bab 1
+        // edge gets grass for its tufts outside Bab 1 (flowers never leave the chapter)
+        const pool = group === flowers && (posX < bab1.startX || posX >= bab1.endX) ? grass[0] : group;
         let sprite = null;
-        if (group && group.length > 0) {
-          sprite = group[Math.floor(Math.random() * group.length)];
+        if (pool && pool.length > 0) {
+          sprite = pool[Math.floor(Math.random() * pool.length)];
         }
 
         this.grassTufts.push({ x: posX, yOffset: sink, sprite });

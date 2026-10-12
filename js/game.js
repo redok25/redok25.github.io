@@ -19,21 +19,16 @@ class Game {
     this.ctx = this.canvas.getContext("2d");
 
     // Set canvas size
-    // Set canvas size
-    this.lastWidth = window.innerWidth;
     this.resizeCanvas();
 
-    // Listen for resize but trigger disaster if width changes significantly
-    // (Handles the mobile-to-desktop glitch issue)
+    // Resize/rotation re-lays the world out in place (F10, D510): no reload, no modal.
     window.addEventListener("resize", () => {
-      const newWidth = window.innerWidth;
-      // Ignore small changes (address bar on mobile)
-      if (Math.abs(newWidth - this.lastWidth) > 50) {
-        this.handleDisaster();
-      } else {
-        this.resizeCanvas();
-      }
-      this.lastWidth = newWidth;
+      if (this._layoutQueued) return;
+      this._layoutQueued = true;
+      requestAnimationFrame(() => {
+        this._layoutQueued = false;
+        this.layout();
+      });
     });
 
     // Game state. `paused` is derived from pause owners (see the getter); the splash
@@ -180,7 +175,9 @@ class Game {
       wheeliegame: () => this.minigames.startMinigame("wheelie_challenge"),
       lightgame: () => this.minigames.startMinigame("red_light_green_light"),
       racegame: () => this.minigames.startMinigame("drag_race"),
+      glitch: () => this.showGlitch(),
     };
+    this.cheats = cheats;
     const nextWord = JOR.createWordBuffer(Object.keys(cheats));
     window.addEventListener("keydown", (e) => {
       if (JOR.shouldIgnoreGameKey(e, document)) return;
@@ -191,10 +188,10 @@ class Game {
 
     // Click handler for NPC interaction (touch taps arrive as clicks too)
     this.canvas.addEventListener("click", (e) => {
-      // Calculate mouse position relative to canvas
+      // Mouse position in bitmap pixels (the CSS box can differ from the bitmap)
       const rect = this.canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
+      const mouseX = ((e.clientX - rect.left) * this.canvas.width) / rect.width;
+      const mouseY = ((e.clientY - rect.top) * this.canvas.height) / rect.height;
 
       // Check NPC clicks
       if (this.world.npcs) {
@@ -404,20 +401,33 @@ class Game {
     }
   }
 
-  // Handle "Disaster" on resize
-  handleDisaster() {
-    JOR.holdPause(this, "disaster");
+  // Fit the bitmap to the window and re-bake every height-derived y (F10).
+  layout() {
+    if (this.canvas.width === window.innerWidth && this.canvas.height === window.innerHeight) return;
+    this.resizeCanvas();
+    this.world.layout();
+    this.effects.layout();
+    this.player.y = this.world.groundY() - 150; // 200 px bike, wheels on the road
+    // Snap the view to the bike so a rotation never strands it off-screen ("Kembali" modal).
+    this.camera.jumpTo(this.player.x - this.canvas.width / 3);
+    this.prevCameraX = this.cameraX;
+    this.prevPlayerX = this.player.x;
+    // Resizing cleared the bitmap and the loop may be skipping frames (Quick View): draw now.
+    if (this.lastTime) this.render();
+  }
+
+  // "glitch" cheat (D510): the old resize 404 screen, now a harmless easter egg.
+  showGlitch() {
     const modal = document.getElementById("disaster-modal");
-    const reloadBtn = document.getElementById("reload-btn");
-
-    if (modal) {
-      modal.classList.remove("hidden");
-      // Ensure it stays top
-      modal.style.display = "flex";
-    }
-
-    if (reloadBtn) {
-      reloadBtn.onclick = () => window.location.reload();
+    if (!modal) return;
+    JOR.holdPause(this, "glitch");
+    modal.classList.remove("hidden");
+    const close = document.getElementById("glitch-close-btn");
+    if (close) {
+      close.onclick = () => {
+        modal.classList.add("hidden");
+        JOR.releasePause(this, "glitch");
+      };
     }
   }
 

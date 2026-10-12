@@ -4,12 +4,27 @@
 import { NPC } from "./npc.js";
 import { SpecialNPC } from "./special-npc.js";
 
+const NPC_HEIGHT = 87; // NPC draw height (npc.js / special-npc.js default)
+
 export class World {
   constructor(canvas, ctx) {
     this.canvas = canvas;
     this.ctx = ctx;
     this.worldWidth = 7400; // Total world width
     this.splashDistance = 2571; // Match value from splash.js
+
+    // Terrain layout config - use offsets from canvas bottom so layout
+    // automatically adapts to canvas resize. Offsets are pixels measured
+    // from the bottom of the canvas (so bottomOffset=100 -> Y = canvas.height - 100).
+    // You can change these at runtime via `game.world.terrainConfig`.
+    this.terrainConfig = {
+      bottomOffset: 20, // offset from bottom to top edge of bottom terrain
+      roadOffset: 80, // offset from bottom to top edge of the road
+      grassOffset: 100, // offset from bottom to top edge of the grass strip
+      bottomHeight: 20,
+      roadHeight: 60,
+      grassHeight: 20,
+    };
 
     // Background Layers
     this.bgLayers = [];
@@ -98,19 +113,6 @@ export class World {
       maxPerTick: 3, // cap leaves spawned per tree per frame
     };
 
-    // Terrain layout config - use offsets from canvas bottom so layout
-    // automatically adapts to canvas resize. Offsets are pixels measured
-    // from the bottom of the canvas (so bottomOffset=100 -> Y = canvas.height - 100).
-    // You can change these at runtime via `game.world.terrainConfig`.
-    this.terrainConfig = {
-      bottomOffset: 20, // offset from bottom to top edge of bottom terrain
-      roadOffset: 80, // offset from bottom to top edge of the road
-      grassOffset: 100, // offset from bottom to top edge of the grass strip
-      bottomHeight: 20,
-      roadHeight: 60,
-      grassHeight: 20,
-    };
-
     // Load object sprites
     this.loadObjectSprites();
     // grass texture (used for the top grass strip)
@@ -150,20 +152,34 @@ export class World {
     this.spawnRegularNPCs();
   }
 
+  // Top of the road: everything that stands on the ground is placed from this (F10).
+  groundY() {
+    const { grassOffset, grassHeight } = this.terrainConfig;
+    return this.canvas.height - grassOffset + grassHeight;
+  }
+
+  // Re-bake every y derived from the canvas height (resize/rotation, no reload).
+  layout() {
+    const ground = this.groundY();
+    this.objects.forEach((obj) => this.placeObject(obj, ground));
+    this.trees.forEach((tree) => {
+      tree.y = Math.floor(ground - tree.height + tree.jitterY) - 5;
+    });
+    const npcY = ground - NPC_HEIGHT - 12.5;
+    this.npcs.forEach((npc) => (npc.y = npcY));
+    this.specialNPCs.forEach((npc) => (npc.y = npcY));
+    this._fog = null;
+  }
+
+  // Bottom-align a loaded object sprite on the ground (unless alignToGround === false).
+  placeObject(obj, ground) {
+    if (!obj.spriteLoaded || obj.alignToGround === false) return;
+    const offset = typeof obj.groundOffset === "number" ? obj.groundOffset : 0;
+    obj.y = Math.floor(ground - obj.height + offset);
+  }
+
   spawnSpecialNPCs() {
-    // Ground Y calculation
-    const grassOffset =
-      this.terrainConfig && typeof this.terrainConfig.grassOffset === "number"
-        ? this.terrainConfig.grassOffset
-        : 100;
-    const grassHeight =
-      this.terrainConfig && typeof this.terrainConfig.grassHeight === "number"
-        ? this.terrainConfig.grassHeight
-        : 20;
-    const grassTop = this.canvas.height - grassOffset;
-    const groundBaseY = grassTop + grassHeight;
-    const npcHeight = 87;
-    const y = groundBaseY - npcHeight - 12.5;
+    const y = this.groundY() - NPC_HEIGHT - 12.5;
 
     // Special NPCs for minigames at fixed locations
     const specialNPCConfigs = [
@@ -201,19 +217,7 @@ export class World {
       `World Width: ${this.worldWidth}, Spawning approx ${npcCount} NPCs`
     );
 
-    // Ground Y calculation
-    const grassOffset =
-      this.terrainConfig && typeof this.terrainConfig.grassOffset === "number"
-        ? this.terrainConfig.grassOffset
-        : 100;
-    const grassHeight =
-      this.terrainConfig && typeof this.terrainConfig.grassHeight === "number"
-        ? this.terrainConfig.grassHeight
-        : 20;
-    const grassTop = this.canvas.height - grassOffset;
-    const groundBaseY = grassTop + grassHeight;
-    const npcHeight = 87;
-    const y = groundBaseY - npcHeight - 12.5;
+    const y = this.groundY() - NPC_HEIGHT - 12.5;
 
     // Available NPC types
     const npcTypes = ["npc1", "npc2", "npc3", "npc4", "npc5"];
@@ -572,28 +576,7 @@ export class World {
 
         // Auto bottom-align to ground unless caller opts out via `alignToGround:false`.
         // Per-object `groundOffset` supported (number). Positive -> moves object down (increase y).
-        if (
-          !obj.hasOwnProperty("alignToGround") ||
-          obj.alignToGround !== false
-        ) {
-          const grassOffset =
-            this.terrainConfig &&
-            typeof this.terrainConfig.grassOffset === "number"
-              ? this.terrainConfig.grassOffset
-              : 100;
-          const grassHeight =
-            this.terrainConfig &&
-            typeof this.terrainConfig.grassHeight === "number"
-              ? this.terrainConfig.grassHeight
-              : 20;
-          const grassTop = this.canvas.height - grassOffset;
-          const groundBaseY = grassTop + grassHeight; // bottom line objects should sit on
-
-          // place object's top so its bottom equals groundBaseY, plus optional groundOffset
-          const offset =
-            typeof obj.groundOffset === "number" ? obj.groundOffset : 0;
-          obj.y = Math.floor(groundBaseY - obj.height + offset);
-        }
+        this.placeObject(obj, this.groundY());
 
         console.log(
           `Loaded ${obj.type} sprite (${img._naturalWidth}x${img._naturalHeight}) -> obj ${obj.width}x${obj.height} @ y=${obj.y}`
@@ -633,18 +616,7 @@ export class World {
     const count = 30;
     const spacing = this.worldWidth / Math.max(1, count);
 
-    // compute ground baseline using terrainConfig so trees sit on the ground
-    const grassOffset =
-      this.terrainConfig && typeof this.terrainConfig.grassOffset === "number"
-        ? this.terrainConfig.grassOffset
-        : 100;
-    const grassHeight =
-      this.terrainConfig && typeof this.terrainConfig.grassHeight === "number"
-        ? this.terrainConfig.grassHeight
-        : 20;
-
-    const grassTop = this.canvas.height - grassOffset;
-    const groundBaseY = grassTop + grassHeight; // y coordinate where tree bases should align
+    const ground = this.groundY(); // trees stand on the road top
 
     for (let i = 0; i < count; i++) {
       // even distribution with jitter so trees don't clump
@@ -658,8 +630,8 @@ export class World {
       // small vertical jitter so trees don't look perfectly aligned
       const jitterY = Math.floor((Math.random() - 0.5) * 20);
 
-      // compute top-left y so the bottom of the sprite aligns with the groundBaseY
-      const y = Math.floor(groundBaseY - height + jitterY) - 5;
+      // top-left y so the bottom of the sprite aligns with the ground
+      const y = Math.floor(ground - height + jitterY) - 5;
 
       // pick spriteIndex safely (if none loaded, pick 0 which will be ignored in render)
       const spriteIndex =
@@ -667,7 +639,7 @@ export class World {
           ? Math.floor(Math.random() * this.treeSprites.length)
           : 0;
 
-      this.trees.push({ x, y, width, height, spriteIndex });
+      this.trees.push({ x, y, width, height, spriteIndex, jitterY });
     }
 
     // Sort by x position for proper rendering order
@@ -1120,13 +1092,17 @@ export class World {
   }
 
   renderFog() {
-    // Fog gradient overlay - lighter for better visibility of new bg
-    const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
-    gradient.addColorStop(0, "rgba(255, 255, 255, 0)");
-    gradient.addColorStop(0.5, "rgba(200, 200, 220, 0.05)");
-    gradient.addColorStop(1, "rgba(150, 150, 170, 0.1)");
+    // Fog gradient overlay - lighter for better visibility of new bg.
+    // Cached; layout() drops it because it depends on the canvas height.
+    if (!this._fog) {
+      const gradient = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
+      gradient.addColorStop(0, "rgba(255, 255, 255, 0)");
+      gradient.addColorStop(0.5, "rgba(200, 200, 220, 0.05)");
+      gradient.addColorStop(1, "rgba(150, 150, 170, 0.1)");
+      this._fog = gradient;
+    }
 
-    this.ctx.fillStyle = gradient;
+    this.ctx.fillStyle = this._fog;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   }
 

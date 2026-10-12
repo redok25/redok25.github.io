@@ -55,15 +55,17 @@ export class EffectsManager {
           : this.cloudFollowMode === "world"
           ? 1
           : 0.08 + Math.random() * 0.12;
+      // vertical placement and draw height are fractions of the canvas height,
+      // so layout() can re-derive them when the canvas is resized
+      const yFrac = 0.05 + Math.random() * 0.35;
+      const hFrac = 0.03 + Math.random() * 0.06;
       this.clouds.push({
         // place clouds in world coordinates so they parallax with camera
         x: Math.random() * worldWidth,
-        // vertical placement and base height are proportional to canvas size
-        y: Math.round((0.05 + Math.random() * 0.35) * this.canvas.height),
-        // store desired draw height as percentage of canvas height to keep consistent across resolutions
-        baseHeight: Math.round(
-          (0.03 + Math.random() * 0.06) * this.canvas.height
-        ),
+        yFrac,
+        hFrac,
+        y: Math.round(yFrac * this.canvas.height),
+        baseHeight: Math.round(hFrac * this.canvas.height),
         // movement speed in pixels per second (time-based)
         speed: 10 + Math.random() * 30,
         opacity: 1,
@@ -91,6 +93,15 @@ export class EffectsManager {
       if (m === "screen") cloud.parallax = 0;
       else if (m === "world") cloud.parallax = 1;
       else cloud.parallax = 0.08 + Math.random() * 0.12;
+    });
+  }
+
+  // Clouds keep their place as a fraction of the canvas height (F10 layout).
+  layout() {
+    const h = this.canvas.height;
+    this.clouds.forEach((cloud) => {
+      cloud.y = Math.round(cloud.yFrac * h);
+      cloud.baseHeight = Math.round(cloud.hFrac * h);
     });
   }
 
@@ -165,13 +176,13 @@ export class EffectsManager {
               cloud.x += shift;
             }
           }
-          cloud.y = Math.max(
+          const H = this.canvas.height;
+          const y = Math.max(
             10,
-            Math.min(
-              this.canvas.height - 20,
-              cloud.y + Math.floor((Math.random() - 0.5) * 20)
-            )
+            Math.min(H - 20, cloud.y + Math.floor((Math.random() - 0.5) * 20))
           );
+          cloud.yFrac = y / H;
+          cloud.y = y;
           if (Math.random() < 0.2 && this.cloudSprites.length > 0) {
             cloud.spriteIndex = Math.floor(
               Math.random() * this.cloudSprites.length

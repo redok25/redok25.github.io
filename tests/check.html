@@ -20,6 +20,7 @@
       import { JOR } from "./js/helpers.js";
       import { Player } from "./js/player.js";
       import { DragRace } from "./js/minigames.js";
+      import { World } from "./js/world.js";
 
       const out = document.getElementById("out");
       const results = [];
@@ -75,6 +76,21 @@
       }
       check("Drag: 250 ms reaction wins", race(250) === true, String(race(250)));
       check("Drag: 400 ms reaction loses", race(400) === false, String(race(400)));
+
+      // (c) layout(): a world laid out at one height and re-laid at another puts everything on the ground.
+      {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1440;
+        canvas.height = 900;
+        const w = new World(canvas, canvas.getContext("2d"));
+        canvas.width = 667;
+        canvas.height = 375;
+        w.layout();
+        const g = w.groundY();
+        const npcOk = [...w.npcs, ...w.specialNPCs].every((n) => n.y === g - 87 - 12.5);
+        const treeOk = w.trees.every((t) => t.y === Math.floor(g - t.height + t.jitterY) - 5);
+        check("layout() re-bakes NPC and tree y", g === 375 - 80 && npcOk && treeOk, `groundY ${g}`);
+      }
 
       document.title = results.every(Boolean) ? "ALL PASS" : "FAIL";
       console.log(document.title);

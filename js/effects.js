@@ -222,10 +222,10 @@ export class EffectsManager {
     }
   }
 
-  // Draw only clouds (keeps particles separate so caller can control ordering).
-  // ctx/scale: the world's background buffer draws them at scale < 1 (F11); every coordinate and size scales.
-  renderClouds(cameraX, ctx = this.ctx, scale = 1) {
-    const viewW = this.canvas.width * scale;
+  // Draw only clouds (keeps particles separate so caller can control ordering)
+  renderClouds(cameraX) {
+    const ctx = this.ctx;
+    const viewW = this.canvas.width;
     this.clouds.forEach((cloud) => {
       const sprite = this.cloudSprites[cloud.spriteIndex];
 
@@ -235,26 +235,20 @@ export class EffectsManager {
 
         // Compute width from sprite aspect ratio so image isn't squashed (use baseHeight)
         const aspect = sprite.naturalWidth / sprite.naturalHeight || 1;
-        const height = Math.round(cloud.baseHeight * scale);
+        const height = Math.round(cloud.baseHeight);
         const width = Math.round(height * aspect);
-        const y = cloud.y * scale;
 
         // Draw cloud at world position, parallax relative to camera
-        const screenX = cloud.x - cameraX * cloud.parallax;
-        const sx = Math.floor(screenX * scale);
+        const sx = Math.floor(cloud.x - cameraX * cloud.parallax);
         ctx.imageSmoothingEnabled = false;
 
         // Primary copy
-        ctx.drawImage(sprite, sx, y, width, height);
+        ctx.drawImage(sprite, sx, cloud.y, width, height);
 
         // Draw additional copies when the cloud crosses viewport boundaries.
         // Use +/- viewport width so wrapping aligns to the viewport (avoid extra +width offsets).
-        if (sx + width < 0) {
-          ctx.drawImage(sprite, sx + viewW, y, width, height);
-        }
-        if (sx > viewW) {
-          ctx.drawImage(sprite, sx - viewW, y, width, height);
-        }
+        if (sx + width < 0) ctx.drawImage(sprite, sx + viewW, cloud.y, width, height);
+        if (sx > viewW) ctx.drawImage(sprite, sx - viewW, cloud.y, width, height);
 
         ctx.restore();
       }

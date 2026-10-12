@@ -5,7 +5,6 @@ import { NPC } from "./npc.js";
 import { SpecialNPC } from "./special-npc.js";
 
 const NPC_HEIGHT = 87; // NPC draw height (npc.js / special-npc.js default)
-const BG_BUFFER_H = 692; // 2x the background art's native 346 px
 
 export class World {
   constructor(canvas, ctx) {
@@ -30,7 +29,6 @@ export class World {
     // Background Layers
     this.bgLayers = [];
     this.loadBackgroundLayers();
-    this.sizeBgBuffer();
 
     // Interactive objects (width/height will be auto-filled from sprite natural size)
     this.objects = [
@@ -171,7 +169,6 @@ export class World {
     this.npcs.forEach((npc) => (npc.y = npcY));
     this.specialNPCs.forEach((npc) => (npc.y = npcY));
     this._fog = null;
-    this.sizeBgBuffer();
   }
 
   // Bottom-align a loaded object sprite on the ground (unless alignToGround === false).
@@ -708,54 +705,29 @@ export class World {
     this.renderFog();
   }
 
-  // Background compose (F11): the 5 parallax layers + clouds go into a buffer at most
-  // 2x the art's native height, then one nearest-neighbour blit fills the screen. Short
-  // screens (H <= 692) draw directly: a buffer there would only add a full-screen pass.
-  // Redrawn every frame (clouds and parallax move); sized in layout().
-  sizeBgBuffer() {
-    this.bgScale = Math.min(1, BG_BUFFER_H / this.canvas.height);
-    if (this.bgScale >= 1) return;
-    this.bgBuffer ??= document.createElement("canvas");
-    this.bgBuffer.width = Math.ceil(this.canvas.width * this.bgScale);
-    this.bgBuffer.height = Math.ceil(this.canvas.height * this.bgScale);
-    this.bgCtx = this.bgBuffer.getContext("2d");
-    this.bgCtx.imageSmoothingEnabled = false; // reset by every resize of the buffer
-  }
-
   // Cover-scale one layer and tile it horizontally with its parallax offset.
-  drawTiledLayer(ctx, img, speed, cameraX, w, h) {
+  drawTiledLayer(img, speed, cameraX) {
+    const { width: w, height: h } = this.canvas;
     const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
     const drawW = Math.ceil(img.naturalWidth * scale) + 1; // 1 px overlap hides seams
     const drawH = Math.ceil(img.naturalHeight * scale) + 1;
     let startX = Math.floor(-(cameraX * speed) % drawW);
     if (startX > 0) startX -= drawW;
     const tiles = Math.ceil(w / drawW) + 2;
-    for (let t = 0; t < tiles; t++) ctx.drawImage(img, startX + t * drawW, 0, drawW, drawH);
+    for (let t = 0; t < tiles; t++) this.ctx.drawImage(img, startX + t * drawW, 0, drawW, drawH);
   }
 
+  // Parallax layers far to near, clouds between the far layer and the rest.
+  // ponytail: a low-res compose buffer (F11) measured slower on desktop (A/B +2 ms avg at
+  // 1440-2560 px); revisit only if a real phone shows fill-bound frames.
   renderBackgroundLayers(cameraX, effects) {
-    const direct = this.bgScale >= 1;
-    const ctx = direct ? this.ctx : this.bgCtx;
-    const s = direct ? 1 : this.bgScale;
-    const w = direct ? this.canvas.width : this.bgBuffer.width;
-    const h = direct ? this.canvas.height : this.bgBuffer.height;
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    if (!direct) ctx.clearRect(0, 0, w, h);
+    this.ctx.save();
+    this.ctx.imageSmoothingEnabled = false;
     this.bgLayers.forEach((layer, i) => {
-      if (layer.loaded && layer.image.naturalWidth) {
-        this.drawTiledLayer(ctx, layer.image, layer.speed, cameraX * s, w, h);
-      }
-      // Clouds sit between the far layer and the rest.
-      if (i === 0 && effects) effects.renderClouds(cameraX, ctx, s);
+      if (layer.loaded && layer.image.naturalWidth) this.drawTiledLayer(layer.image, layer.speed, cameraX);
+      if (i === 0 && effects) effects.renderClouds(cameraX);
     });
-    ctx.restore();
-    if (!direct) {
-      this.ctx.save();
-      this.ctx.imageSmoothingEnabled = false;
-      this.ctx.drawImage(this.bgBuffer, 0, 0, this.canvas.width, this.canvas.height);
-      this.ctx.restore();
-    }
+    this.ctx.restore();
   }
 
 

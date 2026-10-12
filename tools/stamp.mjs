@@ -18,6 +18,7 @@ export const hashText = (text) =>
 const hash = (rel) => hashText(readFileSync(path.join(root, rel), "utf8"));
 
 export function stamp(html) {
+  if (!html.includes('<script type="importmap">')) throw new Error("index.html has no importmap block");
   const modules = readdirSync(path.join(root, "js")).filter((f) => f.endsWith(".js")).sort();
   const imports = Object.fromEntries(
     modules.map((f) => [`./js/${f}`, `./js/${f}?v=${hash(`js/${f}`)}`])

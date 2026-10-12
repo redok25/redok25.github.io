@@ -145,7 +145,11 @@
   top: 22%;
   width: max-content;
   max-width: 92vw;
+  padding: 10px 24px 12px;
   text-align: center;
+  /* A dark pane keeps the text readable over the busy forest layers. */
+  background: rgba(20, 22, 30, 0.7);
+  border: 2px solid rgba(255, 255, 255, 0.15);
   pointer-events: none;
   z-index: 3200;
   opacity: 0;

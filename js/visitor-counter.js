@@ -9,7 +9,6 @@ import { onAction } from "./actions.js";
 class VisitorCounter {
   constructor() {
     this.secretWord = "visitor";
-    this.typedKeys = [];
     this.modalId = "visitor-counter-modal";
 
     // Drop data left by the old cloud counter.
@@ -28,14 +27,10 @@ class VisitorCounter {
   }
 
   setupKeyListener() {
+    const nextWord = JOR.createWordBuffer([this.secretWord]);
     document.addEventListener("keydown", (e) => {
       if (JOR.shouldIgnoreGameKey(e, document)) return;
-      this.typedKeys.push(e.key.toLowerCase());
-      if (this.typedKeys.length > this.secretWord.length) this.typedKeys.shift();
-      if (this.typedKeys.join("").endsWith(this.secretWord)) {
-        this.typedKeys = [];
-        this.showVisitorCounter();
-      }
+      if (nextWord(e.key)) this.showVisitorCounter();
     });
   }
 

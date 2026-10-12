@@ -143,3 +143,13 @@ test("JOR.store works when window.localStorage access throws", () => {
   J.store.set("jor.visits", { count: 1 });
   assert.deepEqual(J.store.get("jor.visits", null), { count: 1 });
 });
+
+test("createWordBuffer: printable keys only, longest word fits, order wins", () => {
+  const next = JOR.createWordBuffer(["afternoon", "noon", "wheeliegame"]);
+  const type = (s) => [...s].map((k) => next(k)).filter(Boolean);
+  assert.deepEqual(type("wheeliegame"), ["wheeliegame"], "11 letters fit");
+  assert.deepEqual(type("afternoon"), ["afternoon"], "afternoon beats its noon suffix");
+  assert.deepEqual(type("noon"), ["noon"]);
+  assert.equal(next("Shift"), null, "multi-char key names are ignored");
+  assert.deepEqual(type("NOON"), ["noon"], "case-insensitive");
+});

@@ -68,9 +68,9 @@ import { app } from "./state.js";
       // Vertical Swipe (Wheelie) - Check this first or independently
       // If swiping UP significantly
       if (deltaY < -WHEELIE_THRESHOLD) {
-         setKey(" ", true);
+         setKey("Space", true);
       } else {
-         setKey(" ", false);
+         setKey("Space", false);
       }
 
       // Horizontal Swipe (Movement)
@@ -109,7 +109,7 @@ import { app } from "./state.js";
 
     setKey("ArrowLeft", false);
     setKey("ArrowRight", false);
-    setKey(" ", false);
+    setKey("Space", false);
     isMoving = false;
     activePointerId = null;
   };

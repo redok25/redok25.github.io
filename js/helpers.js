@@ -94,6 +94,20 @@ export function makeJOR(root) {
     return owner ? owners.has(owner) : owners.size > 0;
   }
 
+  // Typed-word cheats (F8): only printable single characters count (so Shift/arrows never
+  // break a word), and the buffer is as long as the longest word. Earlier words win.
+  function createWordBuffer(words) {
+    const max = Math.max(...words.map((w) => w.length));
+    let buffer = "";
+    return (key) => {
+      if (typeof key !== "string" || key.length !== 1) return null;
+      buffer = (buffer + key.toLowerCase()).slice(-max);
+      const hit = words.find((w) => buffer.endsWith(w)) || null;
+      if (hit) buffer = "";
+      return hit;
+    };
+  }
+
   function createStore(storage) {
     const memory = {};
     return {
@@ -139,6 +153,7 @@ export function makeJOR(root) {
     holdPause,
     releasePause,
     isPauseHeld,
+    createWordBuffer,
     createStore,
     store: createStore(storage),
   };

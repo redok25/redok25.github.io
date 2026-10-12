@@ -122,8 +122,8 @@ export class Player {
   }
 
   update(deltaTime, keys) {
-    const isMovingRight = keys["ArrowRight"] || keys["d"] || keys["D"];
-    const isMovingLeft = keys["ArrowLeft"] || keys["a"] || keys["A"];
+    const isMovingRight = keys["ArrowRight"] || keys["KeyD"];
+    const isMovingLeft = keys["ArrowLeft"] || keys["KeyA"];
     const oldAnim = this.currentAnimation;
 
     // If we're in a scripted 'splash' move, ignore player keys
@@ -274,7 +274,7 @@ export class Player {
     this.wheelAngle += this.velocityX * this.wheelSpinMultiplier * dtFactor;
 
     // Handle wheelie activation (spacebar)
-    const spacePressed = keys[" "] || keys["Space"];
+    const spacePressed = keys["Space"];
     const movingFastEnough = Math.abs(this.velocityX) >= this.wheelieMinSpeed;
     
     // Update canWheelie state for UI tooltip

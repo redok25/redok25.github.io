@@ -33,7 +33,7 @@ export class InteractionManager {
   setupKeyListener() {
     document.addEventListener("keydown", (e) => {
       if (JOR.shouldIgnoreGameKey(e, document)) return;
-      if (e.key === "e" || e.key === "E") {
+      if (e.code === "KeyE" && !e.repeat) {
         this.tryInteract("key");
       }
     });

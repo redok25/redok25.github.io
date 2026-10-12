@@ -134,132 +134,52 @@ class Game {
   }
 
   setupInput() {
-    // Keyboard input
+    // Keyboard input by physical key (e.code): no Shift/layout desync, no stuck throttle.
+    const SCROLL_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"];
     window.addEventListener("keydown", (e) => {
       // Typing in a form or reading a dialog must not drive the bike.
       if (JOR.shouldIgnoreGameKey(e, document)) return;
-      this.keys[e.key] = true;
-
-      // Prevent arrow key scrolling
-      if (
-        ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)
-      ) {
-        e.preventDefault();
-      }
+      // preventDefault on Space also stops a focused button (e.g. #qv-open after a
+      // dialog closes) from re-activating while the visitor wheelies. Keep it.
+      this.keys[e.code] = true;
+      if (SCROLL_KEYS.includes(e.code)) e.preventDefault();
     });
 
     window.addEventListener("keyup", (e) => {
-      this.keys[e.key] = false;
+      this.keys[e.code] = false;
     });
 
-    // Cheat Codes
-    this.keyHistory = [];
+    // Cheat words (typed text, so e.key). Order matters: "afternoon" before "noon".
+    const timeCheat = (mode, text, type = "success") => () => {
+      this.effects.setTimeOfDay(mode);
+      showCustomAlert(text, { type });
+    };
+    const cheats = {
+      rain: () => {
+        this.effects.toggleRain();
+        showCustomAlert(this.effects.rainActive ? "Hujan telah datang!" : "Hujan telah hilang!", {
+          type: "success",
+          duration: 3000,
+        });
+      },
+      morning: timeCheat("morning", "Selamat pagi!"),
+      afternoon: timeCheat("afternoon", "Selamat sore!"),
+      noon: timeCheat("noon", "Selamat siang!"),
+      night: timeCheat("night", "Selamat malam!"),
+      reset: timeCheat(null, "Kembali ke realita!", "info"),
+      wheeliegame: () => this.minigames.startMinigame("wheelie_challenge"),
+      lightgame: () => this.minigames.startMinigame("red_light_green_light"),
+      racegame: () => this.minigames.startMinigame("drag_race"),
+    };
+    const nextWord = JOR.createWordBuffer(Object.keys(cheats));
     window.addEventListener("keydown", (e) => {
       if (JOR.shouldIgnoreGameKey(e, document)) return;
-      // Store last 10 keys (enough for short words)
-      this.keyHistory.push(e.key.toLowerCase());
-      if (this.keyHistory.length > 10) {
-        this.keyHistory.shift();
-      }
-
-      const sequence = this.keyHistory.join("");
-
-      // Check for "rain"
-      if (sequence.endsWith("rain")) {
-        console.log("Cheat activated: RAIN");
-        if (this.effects && typeof this.effects.toggleRain === "function") {
-          this.effects.toggleRain();
-          const isActive = this.effects.rainActive;
-          if (typeof showCustomAlert === "function") {
-            showCustomAlert(
-              isActive ? "Hujan telah datang!" : "Hujan telah hilang!",
-              { type: "success", duration: 3000 }
-            );
-          }
-        }
-        // Reset history to avoid double triggers if typing "rainstorm" etc.
-        this.keyHistory = [];
-      } else if (sequence.endsWith("morning")) {
-        console.log("Cheat activated: MORNING");
-        if (this.effects && typeof this.effects.setTimeOfDay === "function") {
-          this.effects.setTimeOfDay("morning");
-          if (typeof showCustomAlert === "function")
-            showCustomAlert("Selamat pagi!", { type: "success" });
-        }
-        this.keyHistory = [];
-      } else if (sequence.endsWith("afternoon")) {
-        console.log("Cheat activated: AFTERNOON");
-        if (this.effects && typeof this.effects.setTimeOfDay === "function") {
-          this.effects.setTimeOfDay("afternoon");
-          if (typeof showCustomAlert === "function")
-            showCustomAlert("Selamat sore!", { type: "success" });
-        }
-        this.keyHistory = [];
-      } else if (sequence.endsWith("noon")) {
-        console.log("Cheat activated: NOON");
-        if (this.effects && typeof this.effects.setTimeOfDay === "function") {
-          this.effects.setTimeOfDay("noon");
-          if (typeof showCustomAlert === "function")
-            showCustomAlert("Selamat siang!", { type: "success" });
-        }
-        this.keyHistory = [];
-      } else if (sequence.endsWith("night")) {
-        console.log("Cheat activated: NIGHT");
-        if (this.effects && typeof this.effects.setTimeOfDay === "function") {
-          this.effects.setTimeOfDay("night");
-          if (typeof showCustomAlert === "function")
-            showCustomAlert("Selamat malam!", { type: "success" });
-        }
-        this.keyHistory = [];
-      } else if (sequence.endsWith("reset")) {
-        console.log("Cheat activated: RESET TIME");
-        if (this.effects && typeof this.effects.setTimeOfDay === "function") {
-          this.effects.setTimeOfDay(null);
-          if (typeof showCustomAlert === "function")
-            showCustomAlert("Kembali ke realita!", { type: "info" });
-        }
-        this.keyHistory = [];
-      } else if (sequence.endsWith("wheeliegame")) {
-        console.log("Cheat: Start Wheelie Game");
-        this.minigames.startMinigame("wheelie_challenge");
-        this.keyHistory = [];
-      } else if (sequence.endsWith("lightgame")) {
-        console.log("Cheat: Start Traffic Light Game");
-        this.minigames.startMinigame("red_light_green_light");
-        this.keyHistory = [];
-      } else if (sequence.endsWith("racegame")) {
-        console.log("Cheat: Start Drag Race");
-        this.minigames.startMinigame("drag_race");
-        this.keyHistory = [];
-      }
+      const word = nextWord(e.key);
+      // Cheats sleep while paused (splash, modals, minigame transitions) and during the opening ride.
+      if (word && !this.paused && !this._splashCameraActive) cheats[word]();
     });
 
-    // Touch controls for mobile (optional)
-    let touchStartX = 0;
-
-    this.canvas.addEventListener("touchstart", (e) => {
-      touchStartX = e.touches[0].clientX;
-    });
-
-    this.canvas.addEventListener("touchmove", (e) => {
-      const touchX = e.touches[0].clientX;
-      const diff = touchX - touchStartX;
-
-      if (diff > 10) {
-        this.keys["ArrowRight"] = true;
-        this.keys["ArrowLeft"] = false;
-      } else if (diff < -10) {
-        this.keys["ArrowLeft"] = true;
-        this.keys["ArrowRight"] = false;
-      }
-    });
-
-    this.canvas.addEventListener("touchend", () => {
-      this.keys["ArrowRight"] = false;
-      this.keys["ArrowLeft"] = false;
-    });
-
-    // Click handler for NPC interaction
+    // Click handler for NPC interaction (touch taps arrive as clicks too)
     this.canvas.addEventListener("click", (e) => {
       // Calculate mouse position relative to canvas
       const rect = this.canvas.getBoundingClientRect();
@@ -280,9 +200,6 @@ class Game {
         });
       }
     });
-
-    // Double tap support or similar for touch if needed,
-    // but click usually fires on tap on mobile.
   }
 
   // Clear held keys and stop the bike + engine sound.
@@ -734,7 +651,7 @@ class Game {
     if (this.minigames) this.minigames.render(this.ctx);
 
     // Render debug info (optional)
-    if (this.keys["`"]) {
+    if (this.keys["Backquote"]) {
       this.renderDebug();
     }
   }

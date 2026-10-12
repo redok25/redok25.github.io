@@ -56,7 +56,11 @@ export class Strip {
     }
     const current = g.journey.current;
     if (current !== this._current) {
-      this.nodes.forEach((node, i) => node.classList.toggle("is-current", i === current));
+      this.nodes.forEach((node, i) => {
+        node.classList.toggle("is-current", i === current);
+        if (i === current) node.setAttribute("aria-current", "step");
+        else node.removeAttribute("aria-current");
+      });
       this._current = current;
     }
     const stamps = g.interactions.stamps; // only ever grows

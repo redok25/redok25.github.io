@@ -5,7 +5,7 @@ import { COPY } from "../js/copy.js";
 import { makeJOR } from "../js/helpers.js";
 
 const JOR = makeJOR({});
-const TOKENS = ["projectCount", "firstYear", "lastYear"]; // what JOR.contentTokens provides
+const TOKENS = Object.keys(JOR.projectStats([])); // the keys JOR.contentTokens provides
 
 test("copy: chapter cards use the spec's titles and fit a 375 px phone", () => {
   assert.deepEqual(COPY.chapters.map((c) => `${c.label} · ${c.title}`), [

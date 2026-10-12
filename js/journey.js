@@ -65,7 +65,8 @@ export function createBiomeFade(biome) {
 // not loaded yet (ready(biome) false) is not faded in: the old one stays on screen.
 export function stepBiomeFade(fade, wanted, ready, now) {
   if (fade.to !== null) {
-    fade.t = Math.min(1, (now - fade.start) / BIOME_FADE_MS);
+    // Clamped both ways: a frame timestamp can be a hair older than the fade start.
+    fade.t = Math.max(0, Math.min(1, (now - fade.start) / BIOME_FADE_MS));
     if (fade.t >= 1) {
       fade.from = fade.to;
       fade.to = null;

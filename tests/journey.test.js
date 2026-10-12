@@ -111,6 +111,14 @@ test("stepBiomeFade: 1000 ms of real time; waits for a biome that is still loadi
   assert.equal(biomeWeight(f, "winter"), 1);
 });
 
+test("stepBiomeFade: a clock reading older than the fade start never gives t < 0", () => {
+  const f = createBiomeFade("normal");
+  stepBiomeFade(f, "autumn", () => true, 500);
+  stepBiomeFade(f, "autumn", () => true, 499.5);
+  assert.equal(f.t, 0);
+  assert.equal(biomeWeight(f, "normal"), 1);
+});
+
 test("stepBiomeFade: turning back mid-fade mirrors it, so the picture never jumps", () => {
   const ready = () => true;
   const f = createBiomeFade("normal");

@@ -419,16 +419,16 @@ class Game {
   // "glitch" cheat (D510): the old resize 404 screen, now a harmless easter egg.
   showGlitch() {
     const modal = document.getElementById("disaster-modal");
-    if (!modal) return;
+    const close = document.getElementById("glitch-close-btn");
+    if (!modal || !close) return; // never hold a pause nothing can release
+    this.releaseInput(); // stop the bike and the looping engine sound under the modal
     JOR.holdPause(this, "glitch");
     modal.classList.remove("hidden");
-    const close = document.getElementById("glitch-close-btn");
-    if (close) {
-      close.onclick = () => {
-        modal.classList.add("hidden");
-        JOR.releasePause(this, "glitch");
-      };
-    }
+    close.onclick = () => {
+      modal.classList.add("hidden");
+      JOR.releasePause(this, "glitch");
+    };
+    close.focus();
   }
 
   update(deltaTime) {

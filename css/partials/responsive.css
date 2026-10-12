@@ -56,14 +56,12 @@
 
   #opening-story {
     width: 100%;
-    bottom: 100px; /* angkat agar tidak menimpa tombol mobile */
     padding: 10px 14px;
   }
 }
 
 @media (max-width: 480px) {
   #opening-story {
-    bottom: 110px; /* lebih tinggi pada layar sangat kecil */
     padding: 8px 12px;
   }
 }

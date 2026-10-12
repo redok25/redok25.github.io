@@ -28,13 +28,30 @@ onAction("contact-submit", handleContactSubmit);
     }
   }
 
-  function open(section) {
+  // Billboard target (W1): that year's cards get .is-highlight until the next open or close.
+  function clearHighlight() {
+    dialog.querySelectorAll(".project-card.is-highlight").forEach((el) => el.classList.remove("is-highlight"));
+  }
+
+  // opts.year (projects only) scrolls to that year's heading and highlights its cards. The
+  // hash stays #quick/projects (parseQuickHash has no year).
+  function open(section, opts = {}) {
     const target = JOR.QV_SECTIONS.includes(section) ? section : "about";
+    clearHighlight();
     if (!dialog.open) {
       dialog.showModal();
       document.dispatchEvent(new CustomEvent("qv:open", { detail: { section: target } }));
     }
-    const el = document.getElementById("qv-" + target);
+    let el = document.getElementById("qv-" + target);
+    const year = target === "projects" ? Number(opts && opts.year) : NaN;
+    if (Number.isInteger(year)) {
+      const cards = dialog.querySelectorAll(`#qv-projects .project-card[data-year="${year}"]`);
+      if (cards.length) {
+        cards.forEach((card) => card.classList.add("is-highlight"));
+        const heading = cards[0].previousElementSibling;
+        el = heading && heading.classList.contains("qv-year") ? heading : cards[0];
+      }
+    }
     if (el) el.scrollIntoView({ block: "start" });
     setHash(target);
   }
@@ -46,6 +63,7 @@ onAction("contact-submit", handleContactSubmit);
   // Fires for the close button, Esc and backdrop clicks alike. The event goes out first
   // so the game can resume no matter what the History API does.
   dialog.addEventListener("close", () => {
+    clearHighlight();
     document.dispatchEvent(new CustomEvent("qv:close"));
     setHash(null);
   });

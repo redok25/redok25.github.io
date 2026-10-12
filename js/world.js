@@ -5,6 +5,7 @@ import { NPC } from "./npc.js";
 import { SpecialNPC } from "./special-npc.js";
 import { CHAPTERS, createBiomeFade, stepBiomeFade, biomeWeight } from "./journey.js";
 import { COPY } from "./copy.js";
+import { JOR } from "./helpers.js";
 
 const NPC_HEIGHT = 87; // NPC draw height (npc.js / special-npc.js default)
 const BIOMES = ["normal", "autumn", "winter"];
@@ -30,6 +31,17 @@ const PROPS = [
 ];
 // A prop's foot ends 12 px above the road: the grass strip (drawn after it) covers 8 px of it.
 const PROP_SINK = 12;
+
+// Year billboards (W1, R3, R17): centre x per project year in Bab 3. Count and icons come
+// from the Quick View list (D498); a year without a slot or without projects gets none.
+const BILLBOARD_X = { 2021: 5300, 2022: 5500, 2023: 5700, 2024: 6142, 2025: 6342 };
+const BOARD_W = 120; // panel width (billboards stand 200 px apart)
+const BOARD_H = 78; // panel height
+const POST_H = 56; // legs under the panel
+const BILLBOARD_SINK = 20; // stands on the grass like the stations (groundOffset -20)
+const SIGN_INK = "#3b2414";
+const SIGN_FACE = "#f4e4c1";
+const SIGN_WOOD = "#5a3a22";
 
 // Pre-tinted copy of a loaded sprite: the color lands on its opaque pixels only (source-atop).
 function tintCopy(img, color) {
@@ -189,6 +201,15 @@ export class World {
     this.npcs = [];
     this.specialNPCs = []; // Separate array for minigame NPCs
     this.spawnNPCs();
+
+    // Year billboards (W1): data from Quick View markup (none on a page without #qv, e.g.
+    // tests/check.html), panels baked to canvases. Canvas text needs VT323 or it bakes in
+    // the fallback font: bake now, then once more when the font is in (or failed).
+    this.billboards = this.buildBillboards();
+    this.bakeSigns();
+    if (document.fonts && document.fonts.load) {
+      document.fonts.load('16px "VT323"').then(() => this.bakeSigns(), () => {});
+    }
   }
 
   // Autumn and winter start loading only once everything the loader waits for is in
@@ -232,6 +253,7 @@ export class World {
     const npcY = ground - NPC_HEIGHT - 12.5;
     this.npcs.forEach((npc) => (npc.y = npcY));
     this.specialNPCs.forEach((npc) => (npc.y = npcY));
+    this.billboards.forEach((b) => (b.y = ground - BILLBOARD_SINK - b.height));
     this._fog = null;
     this._sky = null; // the winter sky gradient spans the canvas height
   }
@@ -800,6 +822,9 @@ export class World {
       }
     });
 
+    // Year billboards (W1): after the stations, so they stand in front of the warung torch.
+    this.renderBillboards(cameraX);
+
     // Render NPCs
     this.npcs.forEach((npc) => npc.render(this.ctx, cameraX));
 
@@ -1068,6 +1093,64 @@ export class World {
           this.ctx.fillRect(x + 2, grassY + 4, 4, 6);
         }
       }
+    }
+  }
+
+  buildBillboards() {
+    const ground = this.groundY();
+    const height = BOARD_H + POST_H;
+    const out = [];
+    for (const group of JOR.yearGroups(document)) {
+      const centerX = BILLBOARD_X[group.year];
+      if (centerX === undefined || !group.count) continue;
+      out.push({
+        year: group.year,
+        count: group.count,
+        icons: group.icons,
+        x: centerX - BOARD_W / 2,
+        y: ground - BILLBOARD_SINK - height,
+        width: BOARD_W,
+        height,
+        canvas: null,
+      });
+    }
+    return out;
+  }
+
+  // (Re)bake every sign panel; cheap (a handful of small canvases), runs twice per load.
+  bakeSigns() {
+    this.billboards.forEach((b) => this.bakeBillboard(b));
+  }
+
+  // A wooden panel on two posts: the year, "N proyek", and that year's project icons.
+  bakeBillboard(b) {
+    const c = b.canvas || (b.canvas = document.createElement("canvas"));
+    c.width = b.width;
+    c.height = b.height;
+    const g = c.getContext("2d");
+    g.clearRect(0, 0, c.width, c.height);
+    g.fillStyle = SIGN_WOOD;
+    g.fillRect(18, BOARD_H - 4, 8, POST_H + 4);
+    g.fillRect(b.width - 26, BOARD_H - 4, 8, POST_H + 4);
+    g.fillStyle = SIGN_INK;
+    g.fillRect(0, 0, b.width, BOARD_H);
+    g.fillStyle = SIGN_FACE;
+    g.fillRect(4, 4, b.width - 8, BOARD_H - 8);
+    g.fillStyle = SIGN_INK;
+    g.textAlign = "center";
+    g.font = '32px "VT323", monospace';
+    g.fillText(String(b.year), b.width / 2, 32);
+    g.font = '18px "VT323", monospace';
+    g.fillText(JOR.fillTokens(COPY.billboard.count, { count: b.count }), b.width / 2, 50);
+    g.font = "14px sans-serif"; // emoji: the system emoji font
+    g.fillText(b.icons.join(" "), b.width / 2, 69);
+  }
+
+  renderBillboards(cameraX) {
+    for (const b of this.billboards) {
+      const screenX = Math.floor(b.x - cameraX);
+      if (screenX + b.width < -200 || screenX > this.canvas.width + 200) continue;
+      this.ctx.drawImage(b.canvas, screenX, b.y);
     }
   }
 

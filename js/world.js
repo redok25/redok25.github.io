@@ -190,7 +190,9 @@ export class World {
 
   spawnRegularNPCs() {
     // Configuration
-    const safeStart = 400; // Don't spawn too close to start
+    // Start where the opening ride ends (player 200 + ride 2571): the camera never
+    // returns left of it, so NPCs placed earlier were never seen (F14).
+    const safeStart = 200 + this.splashDistance;
     const safeEnd = this.worldWidth - 500;
     const density = 750; // 1 NPC every ~750 pixels
     const npcCount = Math.floor((safeEnd - safeStart) / density);
@@ -760,10 +762,8 @@ export class World {
 
     // Render trees in background
     this.trees.forEach((tree) => {
-      // Use same parallax factor for both culling and drawing so
-      // trees aren't prematurely culled when parallax shifts them.
-      const parallax = 0.6;
-      const screenX = Math.floor(tree.x - cameraX * parallax);
+      // Trees sit in world space (parallax 1.0): leaves spawn at tree.x and every tree is reachable (F14).
+      const screenX = Math.floor(tree.x - cameraX);
 
       if (screenX > -200 && screenX < this.canvas.width + 200) {
         this.renderTree(

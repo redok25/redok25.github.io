@@ -3,6 +3,17 @@
 // ===================================
 import { JOR } from "./helpers.js";
 
+// One fetch for every NPC (was one per NPC).
+let chatsPromise = null;
+const loadChatLines = () =>
+  (chatsPromise ??= fetch("assets/data/npc_chats.json")
+    .then((res) => res.json())
+    .then((data) => (Array.isArray(data) ? data : []))
+    .catch((err) => {
+      console.error("Failed to load NPC chats", err);
+      return [];
+    }));
+
 export class NPC {
   constructor(config) {
     this.x = config.x || 0;
@@ -82,15 +93,9 @@ export class NPC {
   }
 
   loadChats() {
-    // Fetch global chat data
-    fetch("assets/data/npc_chats.json")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          this.chats = data;
-        }
-      })
-      .catch((err) => console.error("Failed to load NPC chats", err));
+    loadChatLines().then((lines) => {
+      this.chats = lines;
+    });
   }
 
   update(deltaTime) {

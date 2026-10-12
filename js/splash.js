@@ -192,26 +192,6 @@ import { app } from "./state.js";
               showGestureInfo();
           }
 
-          // Add traveled distance to world.splashDistance if available
-          try {
-            if (
-              app.game &&
-              app.game.world &&
-              typeof traveled === "number"
-            ) {
-              app.game.world.splashDistance =
-                (app.game.world.splashDistance || 0) + traveled;
-              console.log(
-                "Splash traveled:",
-                traveled,
-                "-> world.splashDistance =",
-                app.game.world.splashDistance
-              );
-            }
-          } catch (e) {
-            /* ignore */
-          }
-
           // Fade out opening subtitle if still present and clear fallback timer
           try {
             const openingEl = document.getElementById("opening-story");

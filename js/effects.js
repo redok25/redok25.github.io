@@ -272,6 +272,19 @@ export class EffectsManager {
     });
   }
 
+  // Clouds currently drawn inside the viewport (Mode Bengkel; acceptance wants >= 13/16).
+  visibleCloudCount(cameraX) {
+    let n = 0;
+    for (const cloud of this.clouds) {
+      const sprite = this.cloudSprites[cloud.spriteIndex];
+      const aspect = sprite && sprite.naturalHeight ? sprite.naturalWidth / sprite.naturalHeight : 1;
+      const left = cloud.x - cameraX * cloud.parallax;
+      const right = left + cloud.baseHeight * aspect;
+      if (cloud.opacity > 0 && right > 0 && left < this.canvas.width) n++;
+    }
+    return n;
+  }
+
   // Draw only particle effects (so caller can render them after world)
   renderParticles(cameraX) {
     this.particles.forEach((particle) => {

@@ -12,6 +12,7 @@ import { showCustomAlert } from "./content.js";
 import { AudioManager } from "./audio.js";
 import { app } from "./state.js";
 import { save } from "./save.js";
+import { Bengkel } from "./bengkel.js";
 
 class Game {
   constructor() {
@@ -56,6 +57,7 @@ class Game {
     this.effects.setCloudFollowMode("parallax");
     this.interactions = new InteractionManager(this.player, this.world);
     this.minigames = new MinigameManager(this);
+    this.bengkel = new Bengkel(this);
 
     // Setup input
     this.setupInput();
@@ -144,6 +146,7 @@ class Game {
     window.addEventListener("keydown", (e) => {
       // Typing in a form or reading a dialog must not drive the bike.
       if (JOR.shouldIgnoreGameKey(e, document)) return;
+      if (e.code === "Backquote" && !e.repeat) this.bengkel.toggle();
       // preventDefault on Space also stops a focused button (e.g. #qv-open after a
       // dialog closes) from re-activating while the visitor wheelies. Keep it.
       this.keys[e.code] = true;
@@ -616,26 +619,12 @@ class Game {
     // Render minigames (overlays)
     if (this.minigames) this.minigames.render(this.ctx);
 
-    // Render debug info (optional)
-    if (this.keys["Backquote"]) {
-      this.renderDebug();
-    }
-  }
-
-  renderDebug() {
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    this.ctx.fillRect(10, 10, 250, 120);
-
-    this.ctx.fillStyle = "#00ff00";
-    this.ctx.font = "14px monospace";
-    this.ctx.fillText(`Player X: ${Math.round(this.player.x)}`, 20, 30);
-    this.ctx.fillText(`Player Y: ${Math.round(this.player.y)}`, 20, 50);
-    this.ctx.fillText(`Velocity: ${this.player.velocityX.toFixed(2)}`, 20, 70);
-    this.ctx.fillText(`Camera X: ${Math.round(this.cameraX)}`, 20, 90);
-    this.ctx.fillText(`Animation: ${this.player.currentAnimation}`, 20, 110);
+    // Mode Bengkel perf panel (toggled with backtick or ?bengkel)
+    if (this.bengkel.on) this.bengkel.render(this.ctx);
   }
 
   gameLoop(currentTime) {
+    const t0 = performance.now();
     const dt = currentTime - this.lastTime;
     this.lastTime = currentTime;
     try {
@@ -664,6 +653,7 @@ class Game {
       if (!this._loopErrorLogged) console.error("Game loop error:", e);
       this._loopErrorLogged = true;
     }
+    this.bengkel.record(dt, performance.now() - t0, this.stepsLastFrame || 0);
     requestAnimationFrame((time) => this.gameLoop(time));
   }
 

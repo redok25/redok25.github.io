@@ -43,6 +43,7 @@ class Game {
 
     // Offscreen modal state: true when modal is visible and blocking player input
     this.offscreenModalActive = false;
+    this._traveling = false; // a fade-teleport is running (js/travel.js)
 
     // Camera (js/camera.js); cameraX stays as an accessor for existing readers.
     this.camera = new Camera(this);

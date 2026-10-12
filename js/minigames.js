@@ -111,6 +111,14 @@ export class MinigameManager {
   }
 
   setupModalListeners() {
+    // A key still held from the ride (Space for a wheelie, a held Enter) must not press the
+    // button that just took focus: auto-repeat keydowns are ignored on both (R29).
+    const ignoreRepeat = (e) => {
+      if (e.repeat) e.preventDefault();
+    };
+    if (this.btnStart) this.btnStart.addEventListener("keydown", ignoreRepeat);
+    if (this.btnResultClose) this.btnResultClose.addEventListener("keydown", ignoreRepeat);
+
     // A hidden .modal keeps its buttons visible for its 0.3 s fade: every handler ignores a
     // second activation (stray Enter, double click) once its modal is hidden (R29).
     if (this.btnStart) {

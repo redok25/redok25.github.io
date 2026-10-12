@@ -540,8 +540,8 @@
       "keydown",
       (ev) => {
         try {
-          if (!ev || !ev.key) return;
-          if (ev.key !== "e" && ev.key !== "E") return;
+          // Same physical key as interactions.js, no auto-repeat.
+          if (!ev || ev.code !== "KeyE" || ev.repeat) return;
 
           // Don't play when typing in input-like elements
           const active = document.activeElement;

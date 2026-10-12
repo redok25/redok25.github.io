@@ -124,6 +124,10 @@ export class SpecialNPC {
   render(ctx, cameraX) {
     if (!this.loaded) return;
 
+    // Off-screen (badge included, ~100 px either side): skip the sprite and the badge text work.
+    const screenLeft = this.x - cameraX;
+    if (screenLeft + this.width < -100 || screenLeft > ctx.canvas.width + 100) return;
+
     const screenX = this.x - cameraX;
     const screenY = this.y;
 

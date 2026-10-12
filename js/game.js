@@ -548,32 +548,6 @@ class Game {
     // Update interactions (pass cameraX so interaction system can compute screen positions)
     this.interactions.update(this.cameraX);
 
-    // Update wheelie tooltip
-    const wheelieTooltip = document.getElementById("wheelie-tooltip");
-    if (wheelieTooltip) {
-      if (this.player.canWheelie) {
-        wheelieTooltip.classList.remove("hidden");
-
-        // Detect mobile/touch to show appropriate hint
-        const isMobile =
-          matchMedia("(pointer: coarse)").matches || window.innerWidth <= 900;
-        const tooltipText = wheelieTooltip.querySelector("span");
-        if (tooltipText) {
-          tooltipText.textContent = isMobile
-            ? "SWIPE UP untuk Wheelie!"
-            : "SPACE untuk Wheelie!";
-        }
-
-        // Position tooltip above player
-        const screenX = this.player.x - this.cameraX + this.player.width / 2;
-        const screenY = this.player.y - 40 + 80; // slightly higher than interaction prompt
-        wheelieTooltip.style.left = `${screenX}px`;
-        wheelieTooltip.style.top = `${screenY}px`;
-      } else {
-        wheelieTooltip.classList.add("hidden");
-      }
-    }
-
     // Update NPCs
     if (this.world.npcs) {
       this.world.npcs.forEach((npc) => npc.update(deltaTime));
@@ -588,6 +562,29 @@ class Game {
 
     // Update minigames
     if (this.minigames) this.minigames.update(deltaTime);
+  }
+
+  // DOM overlays follow the drawn (interpolated) bike once per frame; writes only on change.
+  syncUi() {
+    const tip = this._wheelieTip ??= document.getElementById("wheelie-tooltip");
+    if (tip) {
+      const show = !!this.player.canWheelie;
+      if (show !== this._wheelieShown) {
+        tip.classList.toggle("hidden", !show);
+        this._wheelieShown = show;
+      }
+      if (show) {
+        this._coarse ??= matchMedia("(pointer: coarse)");
+        const text = this._coarse.matches || window.innerWidth <= 900 ? "SWIPE UP untuk Wheelie!" : "SPACE untuk Wheelie!";
+        const span = tip.querySelector("span");
+        if (span && span.textContent !== text) span.textContent = text;
+        const left = `${Math.round(this.player.x - this.cameraX + this.player.width / 2)}px`;
+        const top = `${Math.round(this.player.y + 40)}px`;
+        if (tip.style.left !== left) tip.style.left = left;
+        if (tip.style.top !== top) tip.style.top = top;
+      }
+    }
+    this.interactions.syncTooltip(this.cameraX);
   }
 
   render() {
@@ -658,7 +655,7 @@ class Game {
   }
 
   // Draw between the last two sim steps (only camera and player move fast enough to judder).
-  // ponytail: two values; add the Drag rival or rain here if they visibly judder at 144 Hz.
+  // ponytail: camera and player here; the Drag rival lerps itself via game.renderAlpha.
   renderInterpolated() {
     const camX = this.cameraX;
     const playerX = this.player.x;
@@ -670,11 +667,14 @@ class Game {
     if (Math.abs(camX - prevCam) > half || Math.abs(playerX - prevX) > half) alpha = 1;
     this.cameraX = prevCam + (camX - prevCam) * alpha;
     this.player.x = prevX + (playerX - prevX) * alpha;
+    this.renderAlpha = alpha;
     try {
       this.render();
+      this.syncUi();
     } finally {
       this.cameraX = camX;
       this.player.x = playerX;
+      this.renderAlpha = 1;
     }
   }
 }

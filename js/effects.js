@@ -2,6 +2,10 @@
 // EFFECTS.JS - Visual Effects System
 // ===================================
 
+const MAX_PARTICLES = 300;
+const MAX_RAIN = 400;
+const PARTICLE_COLORS = ["#8b7355", "#4b692f"]; // dust, leaf
+
 export class EffectsManager {
   // accept world reference so clouds can be placed in world space and parallax relative to camera
   constructor(canvas, ctx, world) {
@@ -42,10 +46,6 @@ export class EffectsManager {
 
   initClouds() {
     // Create floating clouds
-    const worldWidth =
-      this.world && this.world.worldWidth
-        ? this.world.worldWidth
-        : this.canvas.width * 2;
     for (let i = 16; i < 32; i++) {
       // Increased count slightly
       // determine parallax per-cloud based on the global follow mode
@@ -60,8 +60,8 @@ export class EffectsManager {
       const yFrac = 0.05 + Math.random() * 0.35;
       const hFrac = 0.03 + Math.random() * 0.06;
       this.clouds.push({
-        // place clouds in world coordinates so they parallax with camera
-        x: Math.random() * worldWidth,
+        // start on screen (camera starts at 0)
+        x: Math.random() * this.canvas.width,
         yFrac,
         hFrac,
         y: Math.round(yFrac * this.canvas.height),
@@ -159,8 +159,8 @@ export class EffectsManager {
               cloud.x =
                 cameraX - Math.random() * (this.canvas.width + extraGap);
             } else {
-              const shift =
-                (this.canvas.width + bufferRight + extraGap) / cloud.parallax;
+              // Shifting x by d moves screenX by exactly d (screenX = x - cameraX * parallax).
+              const shift = this.canvas.width + bufferRight + extraGap;
               cloud.x -= shift;
             }
           } else {
@@ -171,8 +171,8 @@ export class EffectsManager {
                 this.canvas.width +
                 Math.random() * (this.canvas.width + extraGap);
             } else {
-              const shift =
-                (this.canvas.width + bufferLeft + extraGap) / cloud.parallax;
+              // Shifting x by d moves screenX by exactly d (screenX = x - cameraX * parallax).
+              const shift = this.canvas.width + bufferLeft + extraGap;
               cloud.x += shift;
             }
           }
@@ -206,14 +206,20 @@ export class EffectsManager {
       }
     });
 
-    // Update particles
-    this.particles = this.particles.filter((particle) => {
-      particle.life -= deltaTime;
-      particle.x += particle.vx * deltaTime * 0.06;
-      particle.y += particle.vy * deltaTime * 0.06;
-      particle.opacity = particle.life / particle.maxLife;
-      return particle.life > 0;
-    });
+    // Swap-remove: no new array per step.
+    const parts = this.particles;
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i];
+      p.life -= deltaTime;
+      if (p.life <= 0) {
+        parts[i] = parts[parts.length - 1];
+        parts.pop();
+        continue;
+      }
+      p.x += p.vx * deltaTime * 0.06;
+      p.y += p.vy * deltaTime * 0.06;
+      p.opacity = p.life / p.maxLife;
+    }
   }
 
   render(cameraX) {
@@ -287,18 +293,17 @@ export class EffectsManager {
 
   // Draw only particle effects (so caller can render them after world)
   renderParticles(cameraX) {
-    this.particles.forEach((particle) => {
-      this.ctx.save();
-      this.ctx.globalAlpha = particle.opacity;
-      this.ctx.fillStyle = particle.color;
-      this.ctx.fillRect(
-        particle.x - cameraX,
-        particle.y,
-        particle.size,
-        particle.size
-      );
-      this.ctx.restore();
-    });
+    const ctx = this.ctx;
+    const alpha = ctx.globalAlpha;
+    for (const color of PARTICLE_COLORS) {
+      ctx.fillStyle = color;
+      for (const p of this.particles) {
+        if (p.color !== color) continue;
+        ctx.globalAlpha = p.opacity;
+        ctx.fillRect(p.x - cameraX, p.y, p.size, p.size);
+      }
+    }
+    ctx.globalAlpha = alpha;
   }
 
   // createDustParticles(x, y, opts)
@@ -318,6 +323,7 @@ export class EffectsManager {
     const baseY = y;
 
     for (let i = 0; i < count; i++) {
+      if (this.particles.length >= MAX_PARTICLES) break;
       this.particles.push({
         x: baseX + Math.random() * spreadX - spreadX / 2,
         y: baseY + Math.random() * spreadY,
@@ -354,6 +360,7 @@ export class EffectsManager {
     const baseY = y;
 
     for (let i = 0; i < count; i++) {
+      if (this.particles.length >= MAX_PARTICLES) break;
       this.particles.push({
         x: baseX + Math.random() * spreadX - spreadX / 2,
         y: baseY + Math.random() * spreadY,
@@ -471,16 +478,22 @@ export class EffectsManager {
     }
 
     // Update existing rain drops
-    this.rainParticles = this.rainParticles.filter(drop => {
-        drop.y += drop.vy * (deltaTime * 0.001);
-        drop.x -= 200 * (deltaTime * 0.001); // Slight wind to left
-        
-        // Remove if far below screen
-        return drop.y < this.canvas.height + 100;
-    });
+    // Swap-remove, same as particles.
+    const drops = this.rainParticles;
+    for (let i = drops.length - 1; i >= 0; i--) {
+      const drop = drops[i];
+      drop.y += drop.vy * (deltaTime * 0.001);
+      drop.x -= 200 * (deltaTime * 0.001); // Slight wind to left
+      // Remove if far below screen
+      if (drop.y >= this.canvas.height + 100) {
+        drops[i] = drops[drops.length - 1];
+        drops.pop();
+      }
+    }
   }
 
   spawnRainDrop(cameraX) {
+      if (this.rainParticles.length >= MAX_RAIN) return;
       this.rainParticles.push({
         x: cameraX + Math.random() * (this.canvas.width + 200), // Spawn wider to cover wind drift
         y: -50 - Math.random() * 50, // Start above screen

@@ -47,13 +47,8 @@ export class InteractionManager {
     let nearestObject = null;
     let nearestDistance = Infinity;
 
-    // Combine static objects and regular NPCs (NOT SpecialNPC)
-    const staticObjects = this.world.getObjects() || [];
-    const npcs = this.world.npcs || [];
-    const allObjects = [...staticObjects, ...npcs];
-
-    // Find nearest object within interaction range (for on-screen prompt)
-    allObjects.forEach((obj) => {
+    // Static objects and regular NPCs (NOT SpecialNPC), scanned separately: no merged array per step.
+    const consider = (obj) => {
       // Skip if obj doesn't have essential props (safety)
       if (typeof obj.x !== "number") return;
 
@@ -68,7 +63,11 @@ export class InteractionManager {
         nearestDistance = distance;
         nearestObject = obj;
       }
-    });
+    };
+
+    // Find nearest object within interaction range (for on-screen prompt)
+    (this.world.getObjects() || []).forEach(consider);
+    (this.world.npcs || []).forEach(consider);
 
     // Find nearest interactable object overall (used to show offscreen tooltip)
     let closestObj = null;
@@ -108,9 +107,7 @@ export class InteractionManager {
       this.currentNearbyObject = nearestObject;
       this.updatePrompt();
     }
-
-    // Update tooltip DOM for offscreen object
-    this.updateTooltip(cameraX);
+    // The tooltip DOM is written once per frame by syncTooltip (Game.syncUi).
   }
 
   updatePrompt() {
@@ -132,32 +129,35 @@ export class InteractionManager {
     }
   }
 
-  updateTooltip(cameraX) {
+  // Called once per frame with the drawn camera; writes to the DOM only when something changed.
+  syncTooltip(cameraX) {
     try {
       if (!this.tooltipElement) return;
 
-      if (this.nextOffscreenObject) {
-        // show tooltip and set label
-        const obj = this.nextOffscreenObject;
+      const obj = this.nextOffscreenObject;
+      if (obj) {
         const label = obj.label || obj.type || "Objek";
-        if (this.tooltipLabel) this.tooltipLabel.textContent = label;
+        if (this.tooltipLabel && label !== this._tipLabel) {
+          this.tooltipLabel.textContent = label;
+          this._tipLabel = label;
+        }
 
         // determine side (left/right) based on object screen position
         const canvasW = this.world.canvas.width;
         const objCenterScreen = obj.x - cameraX + (obj.width || 64) / 2;
-        if (objCenterScreen < 0) {
-          this.tooltipElement.setAttribute("data-side", "left");
-          this.tooltipElement.querySelector(".tooltip-arrow").textContent = "◀";
-        } else if (objCenterScreen > canvasW) {
-          this.tooltipElement.setAttribute("data-side", "right");
-          this.tooltipElement.querySelector(".tooltip-arrow").textContent = "▶";
+        const side = objCenterScreen < 0 ? "left" : objCenterScreen > canvasW ? "right" : this._tipSide;
+        if (side && side !== this._tipSide) {
+          this.tooltipElement.setAttribute("data-side", side);
+          this.tooltipElement.querySelector(".tooltip-arrow").textContent = side === "left" ? "◀" : "▶";
+          this._tipSide = side;
         }
+      }
 
-        this.tooltipElement.classList.remove("hidden");
-        this.tooltipElement.setAttribute("aria-hidden", "false");
-      } else {
-        this.tooltipElement.classList.add("hidden");
-        this.tooltipElement.setAttribute("aria-hidden", "true");
+      const visible = !!obj;
+      if (visible !== this._tipVisible) {
+        this.tooltipElement.classList.toggle("hidden", !visible);
+        this.tooltipElement.setAttribute("aria-hidden", visible ? "false" : "true");
+        this._tipVisible = visible;
       }
     } catch (e) {
       // fail silently if DOM not present

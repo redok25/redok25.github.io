@@ -324,7 +324,8 @@ export class MinigameManager {
       }
       this.hideHUD();
 
-      // 3. Reset player to start
+      // 3. Reset player to start (release held keys first: no riding off after the fade)
+      this.game.releaseInput();
       const player = this.game.player;
       const startX = player.minX || 200;
       player.x = startX;
@@ -571,6 +572,7 @@ export class DragRace extends Minigame {
   }
 
   update(dt) {
+    this.prevNpcX = this.npcX; // for render interpolation
     if (this.state === "COUNTDOWN") {
       this.countTimer += dt;
       if (this.countTimer >= 1000) {
@@ -616,9 +618,10 @@ export class DragRace extends Minigame {
   render(ctx) {
     const camX = this.game.cameraX;
 
-    // Draw NPC (Ghost Rider)
+    // Draw NPC (Ghost Rider), lerped between the last two sim steps
     if (this.state === "RACING" || this.state === "COUNTDOWN") {
-      const sx = this.npcX - camX;
+      const npcX = this.prevNpcX === undefined ? this.npcX : this.prevNpcX + (this.npcX - this.prevNpcX) * (this.game.renderAlpha ?? 1);
+      const sx = npcX - camX;
       if (sx > -200 && sx < this.game.canvas.width + 200) {
         ctx.save();
 

@@ -1,8 +1,10 @@
 // ===================================
 // SAVE.JS - One versioned save record ("jor.save.v1") on top of JOR.store (F15).
 // Later phases add fields to DEFAULTS; additive fields need no version bump.
-// A record this code does not understand (corrupt, or a newer v) is never overwritten
-// on load: the page runs on defaults in memory until something is explicitly saved.
+// load() never overwrites a record it does not understand (corrupt, or a newer v): the page
+// runs on defaults in memory. The first set() does overwrite it, and the visitor counter
+// sets on every load, so there is no real downgrade protection (accepted: old builds only
+// live in a stale cache for minutes). A later schema bump must not rely on it.
 // ===================================
 import { JOR } from "./helpers.js";
 

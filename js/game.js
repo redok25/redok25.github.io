@@ -407,9 +407,10 @@ class Game {
   // Fit the bitmap to the window and re-bake every height-derived y (F10).
   layout() {
     if (this.canvas.width === window.innerWidth && this.canvas.height === window.innerHeight) return;
+    const oldWidth = this.canvas.width;
     this.resizeCanvas();
     this.world.layout();
-    this.effects.layout();
+    this.effects.layout(oldWidth, this.cameraX);
     this.player.y = this.world.groundY() - 150; // 200 px bike, wheels on the road
     // Snap the view to the bike so a rotation never strands it off-screen ("Kembali" modal).
     this.camera.jumpTo(this.player.x - this.canvas.width / 3);

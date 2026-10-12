@@ -96,10 +96,13 @@ export class EffectsManager {
     });
   }
 
-  // Clouds keep their place as a fraction of the canvas height (F10 layout).
-  layout() {
-    const h = this.canvas.height;
+  // Clouds keep their place as a fraction of the canvas size (F10 layout), so a wider
+  // screen after rotation is not left with an empty right half of the sky.
+  layout(oldWidth, cameraX) {
+    const { width: w, height: h } = this.canvas;
+    const stretch = oldWidth ? w / oldWidth - 1 : 0;
     this.clouds.forEach((cloud) => {
+      cloud.x += (cloud.x - cameraX * cloud.parallax) * stretch;
       cloud.y = Math.round(cloud.yFrac * h);
       cloud.baseHeight = Math.round(cloud.hFrac * h);
     });

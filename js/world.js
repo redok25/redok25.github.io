@@ -730,7 +730,6 @@ export class World {
     this.ctx.restore();
   }
 
-
   renderTree(x, y, width, height, spriteIndex, windSway) {
     const sprite = this.treeSprites[spriteIndex];
 

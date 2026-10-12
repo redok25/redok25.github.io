@@ -49,3 +49,11 @@ test("save: throwing storage still works in memory", () => {
   s.set("weatherOptIn", true);
   assert.equal(s.get("weatherOptIn"), true);
 });
+
+test("save: a failed write keeps the legacy keys (no history loss on a full quota)", () => {
+  const storage = memoryStorage({ "jor.visits": JSON.stringify({ count: 2, first: "x", last: "y" }) });
+  storage.setItem = () => { throw new Error("QuotaExceededError"); };
+  const s = createSave(storeOf(storage));
+  assert.equal(s.get("visits").count, 2);
+  assert.ok("jor.visits" in storage.data);
+});

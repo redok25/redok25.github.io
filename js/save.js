@@ -24,9 +24,11 @@ export function createSave(store) {
       visits: store.get("jor.visits", null),
       weatherOptIn: store.get("jor.weatherOptIn", false) === true,
     };
-    store.set(SAVE_KEY, migrated);
-    store.remove("jor.visits");
-    store.remove("jor.weatherOptIn");
+    // Drop the legacy keys only once the new record is really stored (full quota keeps them).
+    if (store.set(SAVE_KEY, migrated)) {
+      store.remove("jor.visits");
+      store.remove("jor.weatherOptIn");
+    }
     return migrated;
   }
 

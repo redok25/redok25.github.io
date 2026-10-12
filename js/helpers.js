@@ -136,12 +136,15 @@ export function makeJOR(root) {
           return fallback;
         }
       },
+      // Returns true when the value reached storage (false: memory only).
       set(key, value) {
         memory[key] = value;
         try {
           storage.setItem(key, JSON.stringify(value));
+          return true;
         } catch (e) {
           // Storage blocked or full: the memory copy keeps this page load working.
+          return false;
         }
       },
       // True when the key exists at all (even if its JSON is corrupt).

@@ -70,12 +70,12 @@ import { app } from "./state.js";
       if (!app.game || !app.game.player) {
         // fallback: just ensure UI shown and unpause
         if (uiOverlay) uiOverlay.style.display = "";
-        if (app.game) app.game.paused = false;
+        if (app.game) JOR.releasePause(app.game, "splash");
         return;
       }
 
-      // Unpause the game so update/render run
-      app.game.paused = false;
+      // Release the splash pause so update/render run
+      JOR.releasePause(app.game, "splash");
       // Wait for player assets (sprites + exhaust) to load so visuals are ready
       const waitForPlayerAssets = (timeoutMs = 3000) => {
         return new Promise((resolve) => {

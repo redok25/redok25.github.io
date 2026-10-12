@@ -2,6 +2,7 @@
 // MINIGAMES.JS - Minigame System
 // ===================================
 import { AudioManager } from "./audio.js";
+import { JOR } from "./helpers.js";
 
 // Minigame metadata for modals
 const MINIGAME_INFO = {
@@ -122,8 +123,7 @@ export class MinigameManager {
     if (this.btnResultClose) {
       this.btnResultClose.addEventListener("click", () => {
         if (this.resultModal) this.resultModal.classList.add("hidden");
-        // Resume game fully?
-        if (this.game) this.game.paused = false;
+        if (this.game) JOR.releasePause(this.game, "mg-result");
 
         // Stop engine sound when closing result modal
         if (AudioManager && AudioManager.stopEngine) {
@@ -161,7 +161,7 @@ export class MinigameManager {
     this.pendingMinigame = type;
 
     // Pause game while modal is open
-    if (this.game) this.game.paused = true;
+    if (this.game) JOR.holdPause(this.game, "minigame");
 
     // Stop engine sound during modal
     if (AudioManager && AudioManager.stopEngine) {
@@ -172,11 +172,12 @@ export class MinigameManager {
   hideModal(keepPaused = false) {
     if (this.modalElement) this.modalElement.classList.add("hidden");
     // Only unpause if not starting a minigame
-    if (!keepPaused && this.game) this.game.paused = false;
+    if (!keepPaused && this.game) JOR.releasePause(this.game, "minigame");
   }
 
   startMinigame(type) {
-    if (this.activeMinigame) return;
+    // No re-entry while a game runs or while its modal/fade/intro transition holds the pause.
+    if (this.activeMinigame || JOR.isPauseHeld(this.game, "minigame")) return;
     this.showModal(type);
   }
 
@@ -186,12 +187,13 @@ export class MinigameManager {
     if (!info || !this.introElement || !info.introLines) {
       // this.showMessage("🚀 Bersiap di garis start...", 1500);
       // Don't show toast if we are doing animation separately
+      if (this.game) JOR.releasePause(this.game, "minigame");
       if (onComplete) onComplete();
       return;
     }
 
     // Pause game during intro so player can't move
-    if (this.game) this.game.paused = true;
+    if (this.game) JOR.holdPause(this.game, "minigame");
 
     // Stop engine sound during intro
     if (AudioManager && AudioManager.stopEngine) {
@@ -212,7 +214,7 @@ export class MinigameManager {
     setTimeout(() => {
       this.introElement.classList.add("hidden");
       // Unpause game after intro
-      if (this.game) this.game.paused = false;
+      if (this.game) JOR.releasePause(this.game, "minigame");
       if (onComplete) onComplete();
     }, 4000);
   }
@@ -293,7 +295,7 @@ export class MinigameManager {
     this.btnResultClose.textContent = "OK";
 
     this.resultModal.classList.remove("hidden");
-    this.game.paused = true; // Pause game while result shows
+    JOR.holdPause(this.game, "mg-result"); // Pause game while result shows
 
     // Stop engine sound during result modal
     if (AudioManager && AudioManager.stopEngine) {
@@ -333,7 +335,6 @@ export class MinigameManager {
       player.direction = 1;
 
       this.game.cameraX = Math.max(0, startX - this.game.canvas.width / 3);
-      this.game.paused = false;
 
       // 4. Fade back in
       if (fadeOverlay) fadeOverlay.style.opacity = 0;

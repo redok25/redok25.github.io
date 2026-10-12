@@ -95,30 +95,20 @@ test("recordVisit: one count per day, returning after any earlier load", () => {
   assert.equal(nextDay.record.last, "2026-10-13T09:00:00");
 });
 
-test("pause ownership: resume only if running before the first hold", () => {
-  const running = { paused: false };
-  JOR.holdPause(running, "quickview");
-  assert.equal(running.paused, true);
-  assert.equal(JOR.isPauseHeld(running), true);
-  JOR.holdPause(running, "blur");
-  JOR.releasePause(running, "blur");
-  assert.equal(running.paused, true, "quickview still holds");
-  JOR.releasePause(running, "quickview");
-  assert.equal(running.paused, false);
-  assert.equal(JOR.isPauseHeld(running), false);
-
-  const splash = { paused: true };
-  JOR.holdPause(splash, "blur");
-  JOR.releasePause(splash, "blur");
-  assert.equal(splash.paused, true, "never unpause a game that was already paused");
-
-  const g = { paused: false };
-  JOR.releasePause(g, "nobody");
-  assert.equal(g.paused, false, "releasing an unknown owner is a no-op");
-  JOR.holdPause(g, "blur");
+test("pause ownership: paused while any owner holds; owners never release each other", () => {
+  const g = {};
+  assert.equal(JOR.isPauseHeld(g), false);
+  JOR.holdPause(g, "splash");
   JOR.holdPause(g, "blur");
   JOR.releasePause(g, "blur");
-  assert.equal(g.paused, false, "double hold by one owner needs one release");
+  assert.equal(JOR.isPauseHeld(g), true, "splash still holds");
+  assert.equal(JOR.isPauseHeld(g, "splash"), true);
+  assert.equal(JOR.isPauseHeld(g, "blur"), false);
+  JOR.releasePause(g, "nobody");
+  assert.equal(JOR.isPauseHeld(g), true, "releasing an unknown owner is a no-op");
+  JOR.holdPause(g, "splash");
+  JOR.releasePause(g, "splash");
+  assert.equal(JOR.isPauseHeld(g), false, "double hold by one owner needs one release");
 });
 
 test("createStore: JSON round trip, memory fallback when storage throws", () => {

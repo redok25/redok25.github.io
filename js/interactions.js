@@ -166,7 +166,7 @@ export class InteractionManager {
 
   tryInteract(source = "unknown") {
     const game = app.game;
-    if (this.currentNearbyObject && game && !game.paused && !JOR.isPauseHeld(game)) {
+    if (this.currentNearbyObject && game && !game.paused) {
       const obj = this.currentNearbyObject;
 
       // Check if it's a regular NPC

@@ -77,24 +77,21 @@ export function makeJOR(root) {
     };
   }
 
-  // Pause ownership: the game resumes only when the last owner lets go AND it was
-  // running when the first owner took hold. Owners never unpause each other.
-  // ponytail: owner Set on the game object; Phase 1b moves every game.paused writer onto it.
+  // Pause ownership (F3): the game is paused while ANY owner holds it. Owners never
+  // release each other (blur cannot unpause a modal, a timer cannot unpause blur).
   function holdPause(game, owner) {
     if (!game._pauseOwners) game._pauseOwners = new Set();
-    if (game._pauseOwners.size === 0) game._resumeAfterHold = !game.paused;
     game._pauseOwners.add(owner);
-    game.paused = true;
   }
 
   function releasePause(game, owner) {
-    const owners = game._pauseOwners;
-    if (!owners || !owners.delete(owner)) return;
-    if (owners.size === 0 && game._resumeAfterHold) game.paused = false;
+    if (game._pauseOwners) game._pauseOwners.delete(owner);
   }
 
-  function isPauseHeld(game) {
-    return !!game._pauseOwners && game._pauseOwners.size > 0;
+  function isPauseHeld(game, owner) {
+    const owners = game._pauseOwners;
+    if (!owners) return false;
+    return owner ? owners.has(owner) : owners.size > 0;
   }
 
   function createStore(storage) {

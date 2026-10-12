@@ -34,10 +34,9 @@ class Game {
       this.lastWidth = newWidth;
     });
 
-    // Game state
-    // Paused until the visitor presses Start (splash.js unpauses). Starting paused
-    // also means a Quick View opened during loading never "resumes" the game early.
-    this.paused = true;
+    // Game state. `paused` is derived from pause owners (see the getter); the splash
+    // owner holds until the visitor presses Start (splash.js releases it).
+    JOR.holdPause(this, "splash");
     this.lastTime = 0;
     this.keys = {};
 
@@ -83,6 +82,11 @@ class Game {
     window.game = this; // Debug handle for the console/devtools only; modules read app.game.
   }
 
+  // Read-only: paused while any owner holds (splash, blur, quickview, visitor, minigame...).
+  get paused() {
+    return JOR.isPauseHeld(this);
+  }
+
   // Poll components until everything is loaded, then hide loading screen and start loop
   waitForAssetsThenStart() {
     const check = () => {
@@ -104,8 +108,6 @@ class Game {
           // Show splash screen and start loop in paused state so canvas renders
           const splash = document.getElementById("splash-screen");
           if (splash) splash.classList.remove("hidden");
-          // keep game paused until user starts exploration
-          this.paused = true;
           this.lastTime = performance.now();
           this.gameLoop(this.lastTime);
         };
@@ -475,7 +477,7 @@ class Game {
 
   // Handle "Disaster" on resize
   handleDisaster() {
-    this.paused = true;
+    JOR.holdPause(this, "disaster");
     const modal = document.getElementById("disaster-modal");
     const reloadBtn = document.getElementById("reload-btn");
 
@@ -491,7 +493,7 @@ class Game {
   }
 
   update(deltaTime) {
-    if (this.paused || JOR.isPauseHeld(this)) return;
+    if (this.paused) return;
     // Update player. When a scripted splash/camera scene is active or the
     // offscreen modal is visible, pass an empty keys object so player input
     // is ignored while scripted movement or modal interaction runs.

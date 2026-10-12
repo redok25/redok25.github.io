@@ -17,6 +17,9 @@ import { CHAPTERS, Journey, arrivalX } from "./journey.js";
 import { Cinema } from "./cinema.js";
 import { fadeTeleport } from "./travel.js";
 import { Strip } from "./strip.js";
+import { Credits } from "./credits.js";
+import { createRedok } from "./redok.js";
+import { COPY } from "./copy.js";
 
 class Game {
   constructor() {
@@ -67,6 +70,7 @@ class Game {
     this.journey = new Journey(this.player.x + this.player.width / 2);
     this.cinema = new Cinema();
     this.strip = new Strip(this); // journey strip + fast travel (W5)
+    this.credits = new Credits(this); // end-of-road card (R9)
 
     // Setup input
     this.setupInput();
@@ -88,6 +92,8 @@ class Game {
     // Make game accessible globally
     app.game = this;
     window.game = this; // Debug handle for the console/devtools only; modules read app.game.
+    window.redok = createRedok(this); // console API (T2, R8)
+    console.log(COPY.console.banner);
   }
 
   // Read-only: paused while any owner holds (splash, blur, quickview, visitor, minigame...).
@@ -610,6 +616,10 @@ class Game {
     this.interactions.update(this.cameraX);
     // Skill gauges (W2) fill as the bike rides past; inert during a course (R7).
     if (!this.minigames.activeMinigame) this.world.updateGauges(this.player.x + this.player.width / 2);
+    // Credits (R9): the end of the road, once per load, after the ride, never during a course.
+    if (this.player.lockBacktrack && !this.minigames.activeMinigame) {
+      this.credits.check(this.player.x + this.player.width / 2);
+    }
 
     // Update NPCs
     if (this.world.npcs) {

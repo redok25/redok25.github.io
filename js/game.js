@@ -631,6 +631,8 @@ class Game {
         // Nothing to lerp across a pause (minigame start teleports while paused).
         this.prevCameraX = this.cameraX;
         this.prevPlayerX = this.player.x;
+        const race = this.minigames && this.minigames.activeMinigame;
+        if (race && "prevNpcX" in race) race.prevNpcX = race.npcX;
       } else {
         const r = JOR.fixedSteps(this.simAcc || 0, dt);
         this.simAcc = r.acc;
@@ -654,8 +656,8 @@ class Game {
     requestAnimationFrame((time) => this.gameLoop(time));
   }
 
-  // Draw between the last two sim steps (only camera and player move fast enough to judder).
-  // ponytail: camera and player here; the Drag rival lerps itself via game.renderAlpha.
+  // Draw between the last two sim steps (camera and player here; the Drag rival lerps
+  // itself via game.renderAlpha). ponytail: add other movers if they visibly judder.
   renderInterpolated() {
     const camX = this.cameraX;
     const playerX = this.player.x;

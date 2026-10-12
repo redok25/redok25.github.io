@@ -13,8 +13,10 @@ import { AudioManager } from "./audio.js";
 import { app } from "./state.js";
 import { save } from "./save.js";
 import { Bengkel } from "./bengkel.js";
-import { CHAPTERS, Journey } from "./journey.js";
+import { CHAPTERS, Journey, arrivalX } from "./journey.js";
 import { Cinema } from "./cinema.js";
+import { fadeTeleport } from "./travel.js";
+import { Strip } from "./strip.js";
 
 class Game {
   constructor() {
@@ -64,6 +66,7 @@ class Game {
     // Chapters (V1): Prolog at the start; title card, letterbox and chime live in Cinema (V5).
     this.journey = new Journey(this.player.x + this.player.width / 2);
     this.cinema = new Cinema();
+    this.strip = new Strip(this); // journey strip + fast travel (W5)
 
     // Setup input
     this.setupInput();
@@ -457,6 +460,30 @@ class Game {
     this.effects.snowIntensity = this.effects.rainActive ? 0 : this.effects.ambientSnow;
   }
 
+  // Fast travel, redok.goto and the credits replay (R22). The "blur" owner alone does not
+  // block: DevTools focus blurs the page, and redok.goto must work from the console.
+  canTravel() {
+    const p = this.player;
+    if (!p.lockBacktrack || p.splashMoving || this._traveling) return false;
+    if (this.offscreenModalActive || this.minigames.activeMinigame) return false;
+    const owners = this._pauseOwners;
+    return !owners || owners.size === (owners.has("blur") ? 1 : 0);
+  }
+
+  // Fast travel (W5, R6, R14): fade, land 100 px into the chapter, and show its title card
+  // as the fade lifts (always, R4). The first entry is used up here so update() does not
+  // show the card a second time.
+  travelTo(id) {
+    if (!Number.isInteger(id) || id < 1 || id >= CHAPTERS.length || !this.canTravel()) return false;
+    return fadeTeleport(this, {
+      x: arrivalX(id),
+      onBlack: () => {
+        this.journey.firstEntry(this.journey.current);
+        this.cinema.showTitle(CHAPTERS[this.journey.current]);
+      },
+    });
+  }
+
   update(deltaTime) {
     if (this.paused) return;
     // Update player. When a scripted splash/camera scene is active or the
@@ -626,6 +653,7 @@ class Game {
     if (p._isOpeningSplash && simPlayerX < p.splashTargetX) {
       this.cinema.syncBeat((p.x - p._splashStartX) / (p.splashTargetX - p._splashStartX));
     }
+    this.strip.sync(this.player.x + this.player.width / 2);
     this.interactions.syncTooltip(this.cameraX);
   }
 

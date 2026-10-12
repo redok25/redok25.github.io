@@ -1,0 +1,104 @@
+/* ===================================
+   JOURNEY.CSS - Journey strip (W5) and credits card (R9).
+   =================================== */
+
+/* Strip: inside #ui-overlay (hidden during the splash and the opening ride), in the top band
+   between the Quick View button (x 14-175) and the audio toggle (46 px, right 14). Five
+   equal 24 px cells: node i sits in cell i, the dot runs over the same 120 px. */
+.journey-strip {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: repeat(5, 24px);
+  justify-items: center;
+  align-items: center;
+  padding: 4px;
+  background: rgba(20, 22, 30, 0.7);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  pointer-events: auto;
+  transition: opacity 0.2s;
+}
+
+.journey-line {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  background: rgba(244, 228, 193, 0.4);
+  pointer-events: none;
+}
+
+.journey-dot {
+  position: absolute;
+  top: -4px;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  background: #ff6b6b;
+  border: 1px solid #10141e;
+  z-index: 1;
+}
+
+.journey-node {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  font: 16px/1 "VT323", monospace;
+  color: #f4e4c1;
+  background: #3b2414;
+  border: 2px solid #f4e4c1;
+  cursor: pointer;
+}
+
+.journey-node:disabled {
+  cursor: default;
+}
+
+.journey-node[data-chapter="0"] {
+  opacity: 0.6;
+}
+
+.journey-node.is-current {
+  color: #10141e;
+  background: #38b764;
+}
+
+.journey-node.is-stamped::after {
+  content: "";
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 7px;
+  height: 7px;
+  background: #ffe135;
+  border: 1px solid #10141e;
+}
+
+.journey-strip.is-busy .journey-node {
+  opacity: 0.45;
+}
+
+/* A minigame course shares the top band with its HUD: the strip steps aside (R21). */
+.journey-strip.is-off {
+  visibility: hidden;
+}
+
+/* Phones: the centre of a 375 px screen is under the Quick View button. */
+@media (max-width: 480px) {
+  .journey-strip {
+    left: 181px;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-strip {
+    transition: none;
+  }
+}

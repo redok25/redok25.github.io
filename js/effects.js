@@ -535,7 +535,7 @@ export class EffectsManager {
 
     const flakes = this.snowFlakes;
     const w = this.canvas.width;
-    const ground = this.canvas.height - 80; // flakes land on the road top
+    const ground = Math.max(0, this.canvas.height - 80); // flakes land on the road top; >= 0 on a tiny viewport
     const count = Math.min(MAX_SNOW, Math.round((this.snowIntensity * (w + 40) * ground) / 2800));
     if (flakes.length > count) flakes.length = count;
     while (flakes.length < count) flakes.push(this.newFlake(cameraX, Math.random() * ground));

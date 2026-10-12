@@ -346,6 +346,36 @@
         s.play().catch(() => {});
       } catch (e) {}
     },
+    // Title card chime (V5): two soft notes on the shared Web Audio context (the engine's).
+    // Respects mute and the volume slider. The context exists only after a user gesture
+    // (Start); if it is still suspended this chime is skipped, the next one plays.
+    playChime() {
+      try {
+        if (this._isMuted || !(this._prevVolume > 0)) return;
+        const ctx = this._initWebAudio();
+        if (!ctx) return;
+        if (ctx.state !== "running") {
+          ctx.resume().catch(() => {});
+          return;
+        }
+        const peak = 0.08 * this._prevVolume;
+        const t0 = ctx.currentTime;
+        [659.25, 987.77].forEach((freq, i) => {
+          // E5 then B5, 120 ms apart
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const t = t0 + i * 0.12;
+          osc.type = "triangle";
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.0001, t);
+          gain.gain.exponentialRampToValueAtTime(peak, t + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
+          osc.connect(gain).connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.65);
+        });
+      } catch (e) {}
+    },
     isMuted() {
       return !!this._isMuted;
     },

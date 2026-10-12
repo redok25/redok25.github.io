@@ -4,7 +4,7 @@
 import { JOR } from "./helpers.js";
 import { Player } from "./player.js";
 import { World } from "./world.js";
-import { EffectsManager } from "./effects.js";
+import { EffectsManager, LEAF_AUTUMN } from "./effects.js";
 import { InteractionManager } from "./interactions.js";
 import { MinigameManager } from "./minigames.js";
 import { Camera } from "./camera.js";
@@ -13,6 +13,8 @@ import { AudioManager } from "./audio.js";
 import { app } from "./state.js";
 import { save } from "./save.js";
 import { Bengkel } from "./bengkel.js";
+import { CHAPTERS, Journey } from "./journey.js";
+import { Cinema } from "./cinema.js";
 
 class Game {
   constructor() {
@@ -58,6 +60,9 @@ class Game {
     this.interactions = new InteractionManager(this.player, this.world);
     this.minigames = new MinigameManager(this);
     this.bengkel = new Bengkel(this);
+    // Chapters (V1): Prolog at the start; title card, letterbox and chime live in Cinema (V5).
+    this.journey = new Journey(this.player.x + this.player.width / 2);
+    this.cinema = new Cinema();
 
     // Setup input
     this.setupInput();
@@ -436,6 +441,14 @@ class Game {
     close.focus();
   }
 
+  // A new current chapter: its biome (V2) and its ambient snow (V8). The title card (V5)
+  // is handled in update() so a minigame course does not use up a first entry.
+  enterChapter(id) {
+    const chapter = CHAPTERS[id];
+    this.world.biomeWanted = chapter.biome;
+    this.effects.ambientSnow = chapter.snow;
+  }
+
   update(deltaTime) {
     if (this.paused) return;
     // Update player. When a scripted splash/camera scene is active or the
@@ -447,6 +460,14 @@ class Game {
 
     // Camera: normal follow, or a tighter follow (0.4) while the scripted opening ride runs.
     this.camera.follow(this._splashCameraActive ? 0.4 : this.cameraSmoothing);
+
+    // Chapters (V1, R4 amended): fed after the camera with the bike's center. The biome
+    // follows the road even during a minigame course; the title card waits for the first
+    // real visit (a course through Bab 1-3 is no visit), so it is checked every step.
+    const entered = this.journey.update(this.player.x + this.player.width / 2);
+    if (entered >= 0) this.enterChapter(entered);
+    const here = this.journey.current;
+    if (!this.minigames.activeMinigame && this.journey.firstEntry(here)) this.cinema.showTitle(CHAPTERS[here]);
 
     // Detect if player is fully off-screen (left or right). If so, show
     // the offscreen modal which offers a single action to return the player
@@ -521,6 +542,8 @@ class Game {
       const spreadY = typeof cfg.spreadY === "number" ? cfg.spreadY : 12;
       const maxPerTick =
         typeof cfg.maxPerTick === "number" ? cfg.maxPerTick : 1;
+      // Bab 3 (autumn) drops orange leaves (V2); everywhere else they stay green.
+      const leafColor = CHAPTERS[this.journey.current].biome === "autumn" ? LEAF_AUTUMN : undefined;
 
       for (let i = 0; i < this.world.trees.length; i++) {
         const tree = this.world.trees[i];
@@ -542,6 +565,7 @@ class Game {
             spreadX: spreadX,
             spreadY: spreadY,
             force: true,
+            color: leafColor,
           });
         }
       }

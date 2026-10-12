@@ -103,3 +103,86 @@
   border: 3px solid var(--text-light);
   cursor: pointer;
 }
+
+/* === CINEMA: letterbox + chapter title card (V5, V6) === */
+/* Body-level, above #fade-overlay (3000) and below the loader/splash/opening layers.
+   Toggled with .is-on, never .hidden (the global .hidden rule is display:none). */
+.letterbox {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3100;
+}
+
+.letterbox-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: #000;
+  transition: transform 0.5s ease;
+}
+
+.letterbox-bar--top {
+  top: 0;
+  height: clamp(24px, 9vh, 80px);
+  transform: translateY(-100%);
+}
+
+/* Thin at the bottom: the bike sprite ends 30 px above the canvas bottom. */
+.letterbox-bar--bottom {
+  bottom: 0;
+  height: clamp(12px, 3vh, 26px);
+  transform: translateY(100%);
+}
+
+.letterbox.is-on .letterbox-bar {
+  transform: translateY(0);
+}
+
+.title-card {
+  position: fixed;
+  left: 50%;
+  top: 22%;
+  width: max-content;
+  max-width: 92vw;
+  text-align: center;
+  pointer-events: none;
+  z-index: 3200;
+  opacity: 0;
+  transform: translate(-50%, 8px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.title-card.is-on {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.title-card-name {
+  font-family: "VT323", monospace;
+  font-size: clamp(28px, 7.5vw, 56px);
+  line-height: 1;
+  color: var(--text-light);
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.6);
+}
+
+.title-card-sub {
+  margin-top: 6px;
+  font-family: "VT323", monospace;
+  font-size: clamp(18px, 4.6vw, 26px);
+  color: var(--primary);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.6);
+}
+
+/* Reduced motion: no bars; the title text only fades (V5). */
+@media (prefers-reduced-motion: reduce) {
+  .letterbox {
+    display: none;
+  }
+
+  .title-card,
+  .title-card.is-on {
+    transform: translate(-50%, 0);
+    transition: opacity 0.5s ease;
+  }
+}

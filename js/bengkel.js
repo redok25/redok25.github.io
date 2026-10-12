@@ -35,7 +35,12 @@ export class Bengkel {
     if (this.pendingCheat && !g.paused && !g._splashCameraActive && g.player.lockBacktrack) {
       const name = this.pendingCheat;
       this.pendingCheat = null;
-      if (g.cheats && Object.hasOwn(g.cheats, name)) g.cheats[name]();
+      // record() runs outside the loop's try/catch: a failing cheat must not stop the loop.
+      try {
+        if (g.cheats && Object.hasOwn(g.cheats, name)) g.cheats[name]();
+      } catch (e) {
+        console.error("Bengkel cheat failed:", name, e);
+      }
     }
   }
 

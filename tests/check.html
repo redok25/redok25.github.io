@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <!-- Resolve imports and game asset paths (assets/...) from the site root, like index.html. -->
+    <base href="../" />
+    <title>Engine checks</title>
+    <style>
+      body { font: 16px monospace; background: #111; color: #ddd; padding: 16px; }
+      .pass { color: #6f6; } .fail { color: #f66; }
+    </style>
+  </head>
+  <body>
+    <h1>Engine checks</h1>
+    <p>Open via http://localhost/portofolio-2d/tests/check.html (ES modules need http).</p>
+    <ul id="out"></ul>
+    <script type="module">
+      import { JOR } from "./js/helpers.js";
+      import { Player } from "./js/player.js";
+      import { DragRace } from "./js/minigames.js";
+
+      const out = document.getElementById("out");
+      const results = [];
+      const check = (name, ok, detail) => {
+        results.push(ok);
+        const li = document.createElement("li");
+        li.className = ok ? "pass" : "fail";
+        li.textContent = `${ok ? "PASS" : "FAIL"} ${name} (${detail})`;
+        out.append(li);
+      };
+
+      // Drive `player` (and an optional per-step hook) with frames of 1000/hz ms for `ms`.
+      function run(hz, ms, onStep) {
+        let acc = 0, step = 0;
+        for (let t = 0; t < ms; t += 1000 / hz) {
+          const r = JOR.fixedSteps(acc, 1000 / hz);
+          acc = r.acc;
+          for (let i = 0; i < r.steps; i++) onStep(step++);
+        }
+        return step;
+      }
+
+      // (a) Distance in 3 s is the same at 30, 60 and 144 Hz.
+      const distances = [30, 60, 144].map((hz) => {
+        const p = new Player(200, 500);
+        run(hz, 3000, () => p.update(JOR.STEP_MS, { KeyD: true }));
+        return p.x - 200;
+      });
+      const spread = Math.max(...distances) - Math.min(...distances);
+      check("3 s distance equal at 30/60/144 Hz", spread <= 10, distances.map(Math.round).join(" / ") + " px");
+
+      // (b) Drag Race: 250 ms reaction wins, 400 ms loses (reaction counted from the GO step).
+      function race(reactionMs) {
+        const p = new Player(2771, 500);
+        let outcome = null;
+        const manager = {
+          showMessage() {}, updateScore() {}, updateTimer() {},
+          stopMinigame(success) { outcome = success; },
+        };
+        const game = { player: p, canvas: { width: 1920 }, cameraX: 0 };
+        const r = new DragRace(game, manager);
+        r.start();
+        let goStep = null;
+        run(60, 30000, (step) => {
+          if (outcome !== null) return;
+          if (goStep === null && r.state === "RACING") goStep = step;
+          const held = goStep !== null && (step - goStep) * JOR.STEP_MS >= reactionMs;
+          p.update(JOR.STEP_MS, held ? { KeyD: true } : {});
+          r.update(JOR.STEP_MS);
+        });
+        return outcome;
+      }
+      check("Drag: 250 ms reaction wins", race(250) === true, String(race(250)));
+      check("Drag: 400 ms reaction loses", race(400) === false, String(race(400)));
+
+      document.title = results.every(Boolean) ? "ALL PASS" : "FAIL";
+      console.log(document.title);
+    </script>
+  </body>
+</html>

@@ -4,7 +4,9 @@
 
 const MAX_PARTICLES = 300;
 const MAX_RAIN = 400;
-const PARTICLE_COLORS = ["#8b7355", "#4b692f"]; // dust, leaf
+const MAX_SNOW = 200;
+export const LEAF_AUTUMN = "#d9822b"; // Bab 3 leaves (V2)
+const PARTICLE_COLORS = ["#8b7355", "#4b692f", LEAF_AUTUMN]; // dust, leaf, autumn leaf
 
 export class EffectsManager {
   // accept world reference so clouds can be placed in world space and parallax relative to camera
@@ -20,6 +22,12 @@ export class EffectsManager {
     this.rainActive = false;
     this.rainParticles = [];
     this.rainIntensity = 0; // 0 to 1 for smooth fade in/out
+
+    // Ambient snow (V8): a rain-path variant. ambientSnow is the chapter's intensity
+    // (game.enterChapter: Bab 4 = 0.3); active rain (cheat or real weather) wins over it.
+    this.ambientSnow = 0;
+    this.snowIntensity = 0;
+    this.snowFlakes = [];
 
     // Time of Day
     this.forcedTime = null; // 'morning', 'noon', 'afternoon', 'night', or null (auto)
@@ -111,6 +119,7 @@ export class EffectsManager {
   update(deltaTime, cameraX = 0) {
     this.windOffset += deltaTime * 0.001;
     this.updateRain(deltaTime, cameraX);
+    this.updateSnow(deltaTime, cameraX);
     this.updateTimeOfDay(deltaTime);
 
     // Update clouds
@@ -325,6 +334,7 @@ export class EffectsManager {
   // - opts.count: number (optional) - how many leaf particles to spawn (default 1)
   // - opts.spreadX / opts.spreadY: numbers (optional) - spawn spread
   // - opts.force: boolean (optional) - force spawn (bypass internal randomness)
+  // - opts.color: string (optional) - leaf color, one of PARTICLE_COLORS (Bab 3: LEAF_AUTUMN)
   createLeafParticles(x, y, opts = {}) {
     const cameraX = typeof opts.cameraX === "number" ? opts.cameraX : 0;
     const isScreen = !!opts.isScreen;
@@ -347,7 +357,7 @@ export class EffectsManager {
         vx: (Math.random() - 0.5) * 1,
         vy: Math.random() * 1 + 0.5,
         size: 3 + Math.random() * 2,
-        color: "#4b692f",
+        color: opts.color || "#4b692f",
         opacity: 1,
         life: 2000 + Math.random() * 1000,
         maxLife: 3000,
@@ -512,5 +522,63 @@ export class EffectsManager {
     
     this.ctx.stroke();
     this.ctx.restore();
+  }
+
+  // Snow (V8): a pool of flakes sized by intensity and screen area (~130 at 1440x900 and
+  // ~26 at 375x667 for 0.3). Flakes are spread over the whole sky and fade in, so the
+  // snowfall arrives with the 1 s biome crossfade instead of trickling down from the top.
+  updateSnow(deltaTime, cameraX) {
+    const target = this.rainActive ? 0 : this.ambientSnow;
+    const ease = deltaTime * 0.0003; // 0.3 per second
+    if (this.snowIntensity < target) this.snowIntensity = Math.min(target, this.snowIntensity + ease);
+    else if (this.snowIntensity > target) this.snowIntensity = Math.max(target, this.snowIntensity - ease);
+
+    const flakes = this.snowFlakes;
+    const w = this.canvas.width;
+    const ground = this.canvas.height - 80; // flakes land on the road top
+    const count = Math.min(MAX_SNOW, Math.round((this.snowIntensity * (w + 40) * ground) / 2800));
+    if (flakes.length > count) flakes.length = count;
+    while (flakes.length < count) flakes.push(this.newFlake(cameraX, Math.random() * ground));
+
+    const s = deltaTime * 0.001;
+    const span = w + 40;
+    for (const f of flakes) {
+      f.y += f.vy * s;
+      f.x += (Math.sin(f.phase + f.y * 0.02) * 15 - 20) * s; // flutter + a light wind to the left
+      f.a = Math.min(1, f.a + s * 2); // fade in over 0.5 s
+      if (f.y >= ground) {
+        // Landed: back to the top somewhere in view, faded out.
+        f.y = -10;
+        f.a = 0;
+        f.x = cameraX - 20 + Math.random() * span;
+      }
+      // Wrap around the view: the snowfall rides along instead of thinning out behind the bike.
+      f.x = cameraX - 20 + ((((f.x - cameraX + 20) % span) + span) % span);
+    }
+  }
+
+  newFlake(cameraX, y) {
+    return {
+      x: cameraX - 20 + Math.random() * (this.canvas.width + 40),
+      y,
+      vy: 40 + Math.random() * 50, // px per second
+      size: Math.random() < 0.3 ? 3 : 2,
+      phase: Math.random() * Math.PI * 2,
+      a: 0,
+    };
+  }
+
+  // Drawn after rain: one fillRect per flake (<= 200), alpha per flake for the fade-in.
+  renderSnow(cameraX) {
+    const flakes = this.snowFlakes;
+    if (!flakes.length) return;
+    const ctx = this.ctx;
+    const alpha = ctx.globalAlpha;
+    ctx.fillStyle = "#f4f8ff";
+    for (const f of flakes) {
+      ctx.globalAlpha = 0.9 * f.a;
+      ctx.fillRect(Math.round(f.x - cameraX), Math.round(f.y), f.size, f.size);
+    }
+    ctx.globalAlpha = alpha;
   }
 }

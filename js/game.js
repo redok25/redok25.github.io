@@ -612,6 +612,9 @@ class Game {
     // Rain (on top of everything)
     this.effects.renderRain(this.cameraX);
 
+    // Ambient snow (V8), on top like rain
+    this.effects.renderSnow(this.cameraX);
+
     // Render interaction indicators (UI stays on top and bright)
     this.interactions.render(this.ctx, this.cameraX);
 

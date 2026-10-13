@@ -17,11 +17,12 @@ export class Credits {
     this.shown = false; // once per page load
     if (!this.el) return;
     // A key still held from the ride (Space for a wheelie) must not press the button that
-    // takes focus when the card opens: auto-repeat keydowns are ignored inside the card (R29).
+    // takes focus when the card opens: auto-repeat Space/Enter is ignored inside the card (R29);
+    // held arrows still scroll it.
     this.el.addEventListener("keydown", (e) => {
-      if (e.repeat) e.preventDefault();
+      if (e.repeat && (e.key === " " || e.key === "Enter")) e.preventDefault();
     });
-    const q =(sel) => this.el.querySelector(sel);
+    const q = (sel) => this.el.querySelector(sel);
     q(".credits-title").textContent = COPY.credits.title;
     this.el.querySelectorAll(".credits-line").forEach((p, i) => {
       p.textContent = COPY.credits.lines[i] || "";

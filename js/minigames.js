@@ -281,7 +281,7 @@ export class MinigameManager {
           }
         }),
     });
-    // Refused (a scripted move owns the bike): nothing starts, give the game back.
+    // Refused (another travel or the opening ride runs): nothing starts, give the game back.
     if (!started) JOR.releasePause(this.game, "minigame");
   }
 

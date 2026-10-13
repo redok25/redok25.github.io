@@ -370,7 +370,7 @@ class Game {
   // Called when user presses the single 'Kembali' button in the modal.
   // Computes a sensible target X (in world coords) and instructs the
   // player to move there using the scripted movement. The modal remains
-  // visible until the move completes.
+  // visible until the move completes (or a fade-teleport ends it at its black frame).
   handleOffscreenReturn() {
     // Prevent double-clicks: if the button is already disabled, do nothing.
     const btn = document.getElementById("offscreen-return-btn");
@@ -524,7 +524,7 @@ class Game {
       }
       // Note: do NOT auto-hide the modal here if it's active; it should be
       // hidden only when the scripted move completes and the player is back
-      // in view (the callback will hide it). However if the player somehow
+      // in view (the callback will hide it; a fade-teleport ends it early). However if the player somehow
       // re-enters view without modal active, ensure modal is hidden.
     } catch (e) {
       // ignore detection errors

@@ -641,7 +641,7 @@ class Game {
   syncUi(simPlayerX = this.player.x) {
     const tip = this._wheelieTip ??= document.getElementById("wheelie-tooltip");
     if (tip) {
-      const show = !!this.player.canWheelie;
+      const show = !!this.player.canWheelie && !this.paused;
       if (show !== this._wheelieShown) {
         tip.classList.toggle("hidden", !show);
         this._wheelieShown = show;
@@ -747,7 +747,7 @@ class Game {
     let alpha = this.paused ? 1 : (this.simAcc || 0) / JOR.STEP_MS;
     const prevCam = this.prevCameraX ?? camX;
     const prevX = this.prevPlayerX ?? playerX;
-    // Unpaused teleports (minigame exit, intro skip) must not sweep across the screen.
+    // Unpaused jumps (the opening-ride skip) must not sweep across the screen; fadeTeleport moves happen while paused.
     const half = this.canvas.width / 2;
     if (Math.abs(camX - prevCam) > half || Math.abs(playerX - prevX) > half) alpha = 1;
     this.cameraX = prevCam + (camX - prevCam) * alpha;

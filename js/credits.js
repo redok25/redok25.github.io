@@ -16,7 +16,12 @@ export class Credits {
     this.el = document.getElementById("credits");
     this.shown = false; // once per page load
     if (!this.el) return;
-    const q = (sel) => this.el.querySelector(sel);
+    // A key still held from the ride (Space for a wheelie) must not press the button that
+    // takes focus when the card opens: auto-repeat keydowns are ignored inside the card (R29).
+    this.el.addEventListener("keydown", (e) => {
+      if (e.repeat) e.preventDefault();
+    });
+    const q =(sel) => this.el.querySelector(sel);
     q(".credits-title").textContent = COPY.credits.title;
     this.el.querySelectorAll(".credits-line").forEach((p, i) => {
       p.textContent = COPY.credits.lines[i] || "";

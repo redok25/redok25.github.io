@@ -49,7 +49,7 @@ export class Strip {
       for (let i = 1; i < this.nodes.length; i++) this.nodes[i].disabled = busy;
       this._busy = busy;
     }
-    const left = (stripPos(centerX) * 100).toFixed(1) + "%";
+    const left = Math.round(stripPos(centerX) * 120) + "px"; // the track is 5 x 24 px
     if (left !== this._left && this.dot) {
       this.dot.style.left = left;
       this._left = left;

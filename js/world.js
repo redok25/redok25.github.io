@@ -14,7 +14,7 @@ const WINTER_SKY = ["#a7b8c8", "#eef3f7"];
 // Autumn trees (V2): an orange wash over each tree sprite's opaque pixels.
 const AUTUMN_TREE_TINT = "rgba(214, 110, 30, 0.55)";
 // Decoration props (V4; sprites restored from commit 3c215ff, license D512): passive scenery
-// in the tree plane, never in getObjects(). x = left edge in world px (R3 zones). Scale is
+// in the tree plane, never in world.objects. x = left edge in world px (R3 zones). Scale is
 // nearest-neighbour. lift raises a prop off its ground line: the laundry hangs on Fence 1's
 // top rail (sprite row 5 x 3 = 15 px below the fence top).
 const PROPS = [
@@ -44,7 +44,7 @@ const SIGN_FACE = "#f4e4c1";
 const SIGN_WOOD = "#5a3a22";
 
 // Skill gauges (W2, R3, R26): centre x of the six posts in Bab 2, in Quick View order.
-// Passive scenery in the props plane: never E targets, never in getObjects().
+// Passive scenery in the props plane: never E targets, never in world.objects.
 const GAUGE_X = [4100, 4200, 4300, 4400, 4500, 4600];
 const GAUGE_W = 72;
 const GAUGE_H = 118;
@@ -1158,7 +1158,7 @@ export class World {
     g.font = '18px "VT323", monospace';
     g.fillText(JOR.fillTokens(COPY.billboard.count, { count: b.count }), b.width / 2, 50);
     g.font = "14px sans-serif"; // emoji: the system emoji font
-    g.fillText(b.icons.join(" "), b.width / 2, 69);
+    g.fillText(b.icons.join(" "), b.width / 2, 69, b.width - 12);
   }
 
   renderBillboards(cameraX) {
@@ -1205,7 +1205,7 @@ export class World {
     x.fillStyle = SIGN_INK;
     x.textAlign = "center";
     x.font = '16px "VT323", monospace';
-    x.fillText(g.name, g.width / 2, 20);
+    x.fillText(g.name, g.width / 2, 20, g.width - 8);
     x.font = '20px "VT323", monospace';
     x.fillText(String(g.level), g.width / 2, 55);
   }
@@ -1228,7 +1228,7 @@ export class World {
       ctx.drawImage(g.canvas, screenX, g.y);
       if (g.fill > 0) {
         ctx.fillStyle = GAUGE_FILL;
-        ctx.fillRect(screenX + GAUGE_BAR.x, g.y + GAUGE_BAR.y, Math.round(GAUGE_BAR.w * (g.level / 100) * g.fill), GAUGE_BAR.h);
+        ctx.fillRect(screenX + GAUGE_BAR.x, g.y + GAUGE_BAR.y, Math.round(GAUGE_BAR.w * (Math.min(100, Math.max(0, g.level)) / 100) * g.fill), GAUGE_BAR.h);
       }
     }
   }
@@ -1289,9 +1289,5 @@ export class World {
 
     this.ctx.fillStyle = this._fog;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-  }
-
-  getObjects() {
-    return this.objects;
   }
 }

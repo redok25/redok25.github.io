@@ -529,13 +529,4 @@ export class Player {
 
     ctx.restore();
   }
-
-  getBounds() {
-    return {
-      x: this.x,
-      y: this.y,
-      width: this.width,
-      height: this.height,
-    };
-  }
 }

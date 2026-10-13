@@ -9,14 +9,29 @@ import { JOR } from "./helpers.js";
 export const TRAVEL_OWNER = "travel";
 const FADE_MS = 1000; // = the .fade-overlay opacity transition (css/partials/minigame.css)
 
+// The offscreen "Kembali" return is moot once the bike is teleported on screen: finish its
+// scripted move (the callback hides the modal and re-enables the button), or just hide the
+// modal when the move was never started.
+function endOffscreenReturn(game) {
+  const p = game.player;
+  if (p.splashMoving) {
+    const done = p.splashCallback;
+    p.splashMoving = false;
+    p.splashCallback = null;
+    if (typeof done === "function") done(0);
+  } else if (game.offscreenModalActive) {
+    game.hideOffscreenModal();
+  }
+}
+
 // Fade to black, put the bike's left edge at x (standing, facing right), fade back in.
-// Returns false and does nothing while another travel runs or a scripted move owns the
-// bike (the offscreen "Kembali" return would snap it back). The "travel" pause owner is
-// taken right here, synchronously, so no sim step runs under the black: a course cannot
-// end, a click cannot start a minigame, and no title card fires before the move.
+// Returns false and does nothing while another travel or the opening ride runs; an offscreen
+// "Kembali" return is ended at the black frame. The "travel" pause owner is taken right
+// here, synchronously, so no sim step runs under the black: a course cannot end, a click
+// cannot start a minigame, and no title card fires before the move.
 export function fadeTeleport(game, { x, onBlack = null, onDone = null }) {
   const p = game.player;
-  if (game._traveling || p.splashMoving || game.offscreenModalActive) return false;
+  if (game._traveling || (p.splashMoving && p._isOpeningSplash)) return false;
   game._traveling = true;
   JOR.holdPause(game, TRAVEL_OWNER);
   game.releaseInput();
@@ -24,6 +39,7 @@ export function fadeTeleport(game, { x, onBlack = null, onDone = null }) {
   if (overlay) overlay.style.opacity = "1";
   setTimeout(() => {
     try {
+      endOffscreenReturn(game);
       p.x = x;
       p.velocityX = 0;
       p.wheelieActive = false;
@@ -33,6 +49,7 @@ export function fadeTeleport(game, { x, onBlack = null, onDone = null }) {
       game.camera.jumpTo(x - game.canvas.width / 3);
       game.syncChapterAt(x + p.width / 2);
       if (onBlack) onBlack();
+      game.interactions.update(game.camera.x);
     } finally {
       if (overlay) overlay.style.opacity = "0";
       setTimeout(() => {

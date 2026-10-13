@@ -107,7 +107,7 @@
   z-index: 3300;
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding: 72px 16px 16px; /* the top row belongs to the Quick View button */
   background: rgba(10, 12, 20, 0.6);
   opacity: 0;
   visibility: hidden;
@@ -123,7 +123,7 @@
 .credits-card {
   width: 100%;
   max-width: 420px;
-  max-height: calc(100dvh - 32px);
+  max-height: calc(100dvh - 88px);
   overflow-y: auto;
   text-align: center;
   /* .pixel-panel only pads: the panel look comes from here (as .modal-content does). */

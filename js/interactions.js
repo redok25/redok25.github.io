@@ -118,8 +118,9 @@ export class InteractionManager {
       this.scan(this.world.npcs, "npc", centerX);
     }
 
-    // "Tujuan:" (W4): the nearest unstamped station, shown only while it is fully off-screen.
-    const dest = inert ? null : nextDestination(this.world.objects, this.stamps, centerX);
+    // "Tujuan:" (W4): the nearest unstamped station, shown only while it is fully off-screen
+    // and no E target is in range (on phones the tooltip would sit on the prompt).
+    const dest = inert || (this._best && this._bestKind !== "npc") ? null : nextDestination(this.world.objects, this.stamps, centerX);
     let off = null;
     if (dest && typeof cameraX === "number") {
       const left = dest.x - cameraX;

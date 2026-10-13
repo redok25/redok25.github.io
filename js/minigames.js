@@ -139,7 +139,7 @@ export class MinigameManager {
 
     // Esc = "Nanti Saja" while the start modal is open (keyboard-only players, R29).
     document.addEventListener("keydown", (e) => {
-      if (e.key !== "Escape" || !this.pendingMinigame) return;
+      if (e.key !== "Escape" || !this.pendingMinigame || document.querySelector("dialog[open]")) return;
       if (!this.modalElement || this.modalElement.classList.contains("hidden")) return;
       this.hideModal();
       this.pendingMinigame = null;
@@ -369,6 +369,7 @@ export class MinigameManager {
   }
 
   hideHUD() {
+    if (this.timerElement) this.timerElement.style.color = "";
     if (this.hudElement) this.hudElement.classList.add("hidden");
     // Hide exit button separately
     if (this.btnExitMinigame) {

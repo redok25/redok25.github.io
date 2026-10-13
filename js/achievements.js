@@ -20,18 +20,24 @@ const COVERS =
 const PHONE = "(max-width: 500px), (max-height: 500px)";
 const TOAST_MS = 4000; // one toast's life
 const TOAST_GAP_MS = TOAST_MS + 250; // + its 180 ms fade-out: the next one takes the same row
+const COVER_RECHECK_MS = 50; // a covered toast is rechecked ~20x/s, not every frame
 
 // A course win earns that course's achievement (3a stopMinigame result .type -> id).
 const WIN = { wheelie_challenge: "wheelie", red_light_green_light: "lampu", drag_race: "drag" };
 
-const pending = []; // unlocked this load, toast not shown yet
+const pending = []; // [text, type] toasts not shown yet: achievements, and kopi finds (queueToast)
 let nextAt = 0;
 let phone = null;
+
+// One toast through the same queue (it waits for dialogs and, on phones, the title card).
+export function queueToast(text, type = "achievement") {
+  pending.push([text, type]);
+}
 
 // True only the first time: unknown ids and repeats are ignored, so callers just call it.
 export function unlock(id, s = save) {
   if (!addAchievement(s, id)) return false;
-  pending.push(id);
+  queueToast(JOR.fillTokens(COPY.achievements.toast, { name: COPY.achievements.list[id].name }));
   return true;
 }
 
@@ -52,9 +58,12 @@ export function catchUpAchievements(s = save) {
 export function flushAchievementToasts() {
   if (!pending.length) return;
   const now = performance.now();
-  if (now < nextAt || document.hidden || document.querySelector(COVERS)) return;
-  if ((phone ??= matchMedia(PHONE)).matches && document.querySelector(".title-card.is-on")) return;
-  const { name } = COPY.achievements.list[pending.shift()];
-  showCustomAlert(JOR.fillTokens(COPY.achievements.toast, { name }), { type: "achievement", duration: TOAST_MS });
+  if (now < nextAt || document.hidden) return;
+  if (document.querySelector(COVERS) || ((phone ??= matchMedia(PHONE)).matches && document.querySelector(".title-card.is-on"))) {
+    nextAt = now + COVER_RECHECK_MS;
+    return;
+  }
+  const [text, type] = pending.shift();
+  showCustomAlert(text, { type, duration: TOAST_MS });
   nextAt = now + TOAST_GAP_MS;
 }

@@ -309,7 +309,10 @@ export class World {
       tree.y = Math.floor(ground - tree.height + tree.jitterY) - 5;
     });
     const npcY = ground - NPC_HEIGHT - 12.5;
-    this.npcs.forEach((npc) => (npc.y = npcY));
+    this.npcs.forEach((npc) => {
+      npc.y = npcY;
+      if (npc.chatBubble) { npc.chatBubble.rows = null; npc.chatBubble.w = 0; } // re-measured at the new width
+    });
     this.specialNPCs.forEach((npc) => (npc.y = npcY));
     this.billboards.forEach((b) => (b.y = ground - BILLBOARD_SINK - b.height));
     this.gauges.forEach((g) => (g.y = ground - PROP_SINK - g.height));

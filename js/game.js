@@ -22,7 +22,7 @@ import { Credits } from "./credits.js";
 import { Journal } from "./journal.js";
 import { createRedok } from "./redok.js";
 import { COPY } from "./copy.js";
-import { unlock, catchUpAchievements, flushAchievementToasts } from "./achievements.js";
+import { unlock, queueToast, catchUpAchievements, flushAchievementToasts } from "./achievements.js";
 
 class Game {
   constructor() {
@@ -299,6 +299,8 @@ class Game {
       if (getIds(save, "seen", this.projectIds).length === this.projectIds.length) unlock("kurator"); // P5
     };
     document.querySelectorAll(JOR.PROJECT_CARDS + "[data-seen]").forEach((card) => markSeen(card.id));
+    // A card removed in a later deploy can leave the stored list complete with nothing new to see.
+    if (this.projectIds.length && getIds(save, "seen", this.projectIds).length === this.projectIds.length) unlock("kurator");
     document.addEventListener("qv:seen", (e) => markSeen(e.detail && e.detail.id));
   }
 
@@ -546,12 +548,13 @@ class Game {
     this.effects.emit("spark", cup.x - KOPI_SIZE / 2, y, -1, 4, KOPI_SIZE);
     AudioManager.playChime();
     const emas = isEmas(this.kopi);
+    const tokens = { found: this.kopi.length, total: KOPI.length };
+    // Queued (not shown at once): it waits for a dialog and, on phones, the chapter title card.
+    queueToast(emas ? COPY.kopi.emas : JOR.fillTokens(COPY.kopi.found, tokens), "success");
     if (emas) {
       this.setGold();
-      unlock("kopi"); // P5 Pemburu Kopi
+      unlock("kopi"); // P5 Pemburu Kopi, queued after the kopi toast
     }
-    const tokens = { found: this.kopi.length, total: KOPI.length };
-    showCustomAlert(emas ? COPY.kopi.emas : JOR.fillTokens(COPY.kopi.found, tokens), { type: "success" });
   }
 
   // Motor Emas (P3): gold copies of the three bike sprites, made once; player.render draws
@@ -774,8 +777,8 @@ class Game {
     // Render world with parallax. Pass `effects` so clouds can be drawn
     // between background layers (behind the nearest bg layer).
     const windSway = this.effects.getWindSway();
-    // A course hides the cups (they are inert there, R28).
-    this.world.render(this.cameraX, windSway, this.effects, this.minigames.activeMinigame ? null : this.kopi);
+    // The opening ride and a course hide the cups (they are inert there, R28).
+    this.world.render(this.cameraX, windSway, this.effects, this.player.lockBacktrack && !this.minigames.activeMinigame ? this.kopi : null);
 
     // Render player (before overlays so it gets tinted)
     this.player.render(this.ctx, this.cameraX);

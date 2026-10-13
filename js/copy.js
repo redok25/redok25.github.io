@@ -115,6 +115,7 @@ export const COPY = {
     seenHint: "Dihitung jujur: cuma kartu proyek yang beneran kebaca di Quick View.",
     seenOpen: "Buka daftar proyek",
     kopi: "Kopi rahasia",
+    kopiFound: "Sudah ketemu!",
     secrets: "Kata rahasia",
     secretsHint: "Ada kata ajaib yang bisa diketik. NPC kadang keceplosan.",
     secretsFound: "Ketemu: {words}",

@@ -62,7 +62,7 @@ export class Journal {
 
     // A key still held (Space from a wheelie, Enter from the close button) must not press a
     // button that just took the focus: auto-repeat Space/Enter is ignored in the journal and
-    // on its button, which gets the focus back when the journal closes (R29).
+    // on its button. Closing returns the focus to where it was (the button when it opened it).
     const ignoreHeld = (e) => {
       if (e.repeat && (e.key === " " || e.key === "Enter")) e.preventDefault();
     };
@@ -137,7 +137,7 @@ export class Journal {
         list("stamp", JOR.QV_SECTIONS.map((id) => [COPY.stations[id], stamps.includes(id)]))),
       section("seen", t.seen, seen, ids.length, el("p", "journal-hint", t.seenHint), go),
       section("kopi", t.kopi, kopi.length, KOPI_IDS.length,
-        list("kopi", KOPI_IDS.map((id) => [COPY.kopi.hints[id], kopi.includes(id)]))),
+        list("kopi", KOPI_IDS.map((id) => [COPY.kopi.hints[id], kopi.includes(id), kopi.includes(id) ? t.kopiFound : null]))),
       section("secrets", t.secrets, secrets.length, SECRETS.length, el("p", "journal-hint", t.secretsHint), ...found),
       section("bests", t.bests, 0, null, list("best", bests)),
       section("achievements", t.achievements, done.length, ACHIEVEMENT_IDS.length,

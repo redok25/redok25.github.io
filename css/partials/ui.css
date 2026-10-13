@@ -215,6 +215,14 @@
   white-space: nowrap;
 }
 
+/* Phones: the "Tujuan:" pill spans the screen at mid-height and would sit on the E prompt;
+   while the prompt is up, the prompt wins. */
+@media (max-width: 500px) {
+  .interaction-prompt:not(.hidden) ~ .interaction-tooltip {
+    visibility: hidden;
+  }
+}
+
 /* Wheelie Tooltip */
 .wheelie-tooltip {
   position: absolute;

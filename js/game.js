@@ -19,6 +19,7 @@ import { Cinema } from "./cinema.js";
 import { fadeTeleport } from "./travel.js";
 import { Strip } from "./strip.js";
 import { Credits } from "./credits.js";
+import { Journal } from "./journal.js";
 import { createRedok } from "./redok.js";
 import { COPY } from "./copy.js";
 import { unlock, catchUpAchievements, flushAchievementToasts } from "./achievements.js";
@@ -73,6 +74,7 @@ class Game {
     this.cinema = new Cinema();
     this.strip = new Strip(this); // journey strip + fast travel (W5)
     this.credits = new Credits(this); // end-of-road card (R9)
+    this.journal = new Journal(this); // Jurnal Perjalanan (P1)
     this.kopi = getIds(save, "kopi", KOPI_IDS); // Kopi Rahasia found (P3); changes only in takeKopi
     catchUpAchievements(); // P5: 2b stamps and 3a bests earned before achievements existed (no toast)
 

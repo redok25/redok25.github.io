@@ -78,6 +78,13 @@ onAction("contact-submit", handleContactSubmit);
     if (e.target === dialog && downOnBackdrop) close();
   });
 
+  // A key still held from whatever opened Quick View (Enter on the journal's or the credits'
+  // button) must not press the button that just took the focus (R29): auto-repeat Space/Enter
+  // on a button or link is ignored. Typing and held-Space scrolling are untouched.
+  dialog.addEventListener("keydown", (e) => {
+    if (e.repeat && (e.key === " " || e.key === "Enter") && e.target.closest("button, a, summary")) e.preventDefault();
+  });
+
   // Keep #quick/<section> in sync while scrolling (S8): the section at the top of the
   // dialog wins; at the very bottom the last section wins. Computed from geometry on
   // every scroll, so jumps and reflows cannot leave a stale hash behind.

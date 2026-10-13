@@ -4,7 +4,7 @@
 // JOR.contentTokens, D498), never typed in. "**x**" marks bold; it is rendered as a
 // <strong> node, never through innerHTML. Game graph only; no DOM, so node tests import it.
 // Phase 2b keys: stations, billboard, strip, credits, console. Phase 3a: minigame.
-// Phase 3b: kopi, achievements.
+// Phase 3b: kopi, achievements, journal.
 // ===================================
 export const COPY = {
   // Chapter title cards (V5): "label · title" over the subtitle. Index = chapter id.
@@ -101,5 +101,30 @@ export const COPY = {
       tamat: { name: "Tamat", desc: "Sampai di ujung jalan." },
       insinyur: { name: "Insinyur", desc: "Intip dapur mesin di Mode Bengkel." },
     },
+  },
+  // Jurnal Perjalanan (P1). {got}/{total} are counts from the save over the list each comes
+  // from (stations, Quick View cards, kopi, secrets, achievements). {words} = the secret words
+  // found so far: typed input, not UI copy. Course names key on the minigame ids (BEST_IDS).
+  journal: {
+    button: "Jurnal Perjalanan (J)",
+    title: "📔 Jurnal Perjalanan",
+    close: "Tutup jurnal",
+    count: "{got}/{total}",
+    stamps: "Stempel stasiun",
+    seen: "Proyek dilihat",
+    seenHint: "Dihitung jujur: cuma kartu proyek yang beneran kebaca di Quick View.",
+    seenOpen: "Buka daftar proyek",
+    kopi: "Kopi rahasia",
+    secrets: "Kata rahasia",
+    secretsHint: "Ada kata ajaib yang bisa diketik. NPC kadang keceplosan.",
+    secretsFound: "Ketemu: {words}",
+    bests: "Rekor minigame",
+    noBest: "Belum ada rekor",
+    courses: {
+      wheelie_challenge: "Tantangan Wheelie",
+      red_light_green_light: "Lampu Merah Lampu Hijau",
+      drag_race: "Balap Drag",
+    },
+    achievements: "Pencapaian",
   },
 };

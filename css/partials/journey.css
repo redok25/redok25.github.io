@@ -1,5 +1,5 @@
 /* ===================================
-   JOURNEY.CSS - Journey strip (W5) and credits card (R9).
+   JOURNEY.CSS - Journey strip (W5), credits card (R9) and the journal (P1).
    =================================== */
 
 /* Strip: inside #ui-overlay (hidden during the splash and the opening ride), in the top band
@@ -190,4 +190,175 @@
   .credits.is-on {
     transition: none;
   }
+}
+
+/* Journal button (P1): the audio toggle's look (class audio-toggle), one slot to its left
+   (46 px + 10 px gap). It sits after the minigame HUD in #ui-overlay, so a running course
+   hides it, as the journal itself refuses to open then (R28). */
+.journal-open {
+  right: 70px;
+}
+
+.minigame-hud:not(.hidden) ~ .journal-open {
+  visibility: hidden;
+}
+
+/* Journal (P1): a modal <dialog> (top layer). Like Quick View it is its own scroll container:
+   body is position:fixed with touch-action:none, so only this box scrolls on phones. */
+.journal {
+  width: min(440px, calc(100vw - 24px));
+  max-width: none; /* the UA's dialog:modal max-width would clamp 351 px to 337 at 375 */
+  max-height: calc(100dvh - 24px);
+  margin: auto;
+  padding: 0;
+  border: 4px solid var(--panel-border);
+  background: var(--panel-bg);
+  color: var(--text-light);
+  font-family: "VT323", monospace;
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.5);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+.journal::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.journal-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--panel-bg);
+  border-bottom: 3px solid var(--panel-border);
+}
+
+.journal-title {
+  min-width: 0;
+  font-size: 26px;
+  font-weight: normal;
+  color: var(--accent);
+}
+
+/* Focused on open only so that no button holds the focus (a held key presses nothing). */
+.journal-title:focus {
+  outline: none;
+}
+
+.journal-close {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  font: 24px/1 "VT323", monospace;
+  color: var(--text-light);
+  background: var(--accent);
+  border: 3px solid var(--text-light);
+  cursor: pointer;
+}
+
+.journal-body {
+  padding: 0 14px 14px;
+}
+
+.journal-sec {
+  padding: 10px 0;
+  border-bottom: 2px solid var(--panel-border);
+}
+
+.journal-sec:last-child {
+  border-bottom: 0;
+}
+
+.journal-h {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 22px;
+  font-weight: normal;
+}
+
+.journal-count {
+  color: #ffe135;
+}
+
+.journal-list {
+  display: grid;
+  gap: 4px;
+  list-style: none;
+}
+
+/* A row: its mark (::before) on the left, the name and an optional second line beside it. */
+.journal-item {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  column-gap: 6px;
+  font-size: 19px;
+  line-height: 1.15;
+}
+
+.journal-item::before {
+  grid-row: span 2;
+}
+
+.journal-name,
+.journal-sub {
+  grid-column: 2;
+}
+
+.journal-item:not(.is-on) .journal-name {
+  opacity: 0.6;
+}
+
+.journal-sub,
+.journal-hint {
+  font-size: 17px;
+  opacity: 0.8;
+}
+
+.journal-hint {
+  margin-bottom: 6px;
+}
+
+.journal-found {
+  font-size: 17px;
+  color: var(--primary);
+}
+
+/* Row marks: a stamp per station, a cup per kopi (a black silhouette until found), a clock
+   per minigame record, a trophy or a lock per achievement. */
+.journal-list--stamp .journal-item::before {
+  content: "⬜";
+}
+
+.journal-list--stamp .is-on::before {
+  content: "✅";
+}
+
+.journal-list--kopi .journal-item::before {
+  content: "☕";
+  filter: brightness(0);
+  opacity: 0.6;
+}
+
+.journal-list--kopi .is-on::before {
+  filter: none;
+  opacity: 1;
+}
+
+.journal-list--best .journal-item::before {
+  content: "⏱️";
+}
+
+.journal-list--ach .journal-item::before {
+  content: "🔒";
+}
+
+.journal-list--ach .is-on::before {
+  content: "🏆";
 }

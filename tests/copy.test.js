@@ -3,7 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { COPY } from "../js/copy.js";
 import { makeJOR } from "../js/helpers.js";
-import { ACHIEVEMENT_IDS } from "../js/save.js";
+import { BEST_IDS, ACHIEVEMENT_IDS } from "../js/save.js";
 
 const JOR = makeJOR({});
 const TOKENS = Object.keys(JOR.projectStats([])); // the keys JOR.contentTokens provides
@@ -78,4 +78,19 @@ test("copy 3b: achievements match the save ids, plain text, no digits, fit a 375
     assert.ok(JOR.fillTokens(COPY.achievements.toast, { name }).length <= 40, name);
   }
   assert.equal(JOR.fillTokens(COPY.achievements.toast, { name: COPY.achievements.list.drag.name }), "🏆 Pencapaian: Raja Drag");
+});
+
+test("copy 3b: journal copy uses only its tokens, no typed digits, and fits a 375 px phone (P1)", () => {
+  const allowed = ["got", "total", "words"];
+  const walk = (v, fn) => (typeof v === "string" ? fn(v) : Object.values(v).forEach((x) => walk(x, fn)));
+  walk(COPY.journal, (s) => {
+    for (const [, t] of s.matchAll(/\{(\w+)\}/g)) assert.ok(allowed.includes(t), `{${t}}`);
+    assert.ok(!/\d/.test(s.replace(/\{\w+\}/g, "")), s);
+    assert.ok(s.length <= 72, s);
+  });
+  for (const k of ["stamps", "seen", "kopi", "secrets", "bests", "achievements"]) {
+    assert.ok(COPY.journal[k].length <= 18, k); // a heading shares its row with "15/15"
+  }
+  assert.deepEqual(Object.keys(COPY.journal.courses), BEST_IDS);
+  assert.equal(JOR.fillTokens(COPY.journal.count, { got: 0, total: 15 }), "0/15");
 });

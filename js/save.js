@@ -92,7 +92,7 @@ export function getAudio(s) {
 // Minigame personal bests (P6): sim steps per course id, lower is better. Wheelie: course
 // start to the end of the 5 s hold; Drag: GO to the finish; RLGL: steps outside red lights.
 // Untrusted on read like stamps; a write builds a new object (DEFAULTS.bests is shared).
-const BEST_IDS = ["wheelie_challenge", "red_light_green_light", "drag_race"];
+export const BEST_IDS = ["wheelie_challenge", "red_light_green_light", "drag_race"];
 const MAX_BEST_STEPS = 1e7; // ~46 h: keeps a junk stored number off the result card
 
 const validSteps = (n) => Number.isInteger(n) && n > 0 && n < MAX_BEST_STEPS;

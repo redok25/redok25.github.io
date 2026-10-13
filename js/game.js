@@ -21,6 +21,7 @@ import { Strip } from "./strip.js";
 import { Credits } from "./credits.js";
 import { createRedok } from "./redok.js";
 import { COPY } from "./copy.js";
+import { unlock, catchUpAchievements, flushAchievementToasts } from "./achievements.js";
 
 class Game {
   constructor() {
@@ -73,6 +74,7 @@ class Game {
     this.strip = new Strip(this); // journey strip + fast travel (W5)
     this.credits = new Credits(this); // end-of-road card (R9)
     this.kopi = getIds(save, "kopi", KOPI_IDS); // Kopi Rahasia found (P3); changes only in takeKopi
+    catchUpAchievements(); // P5: 2b stamps and 3a bests earned before achievements existed (no toast)
 
     // Setup input
     this.setupInput();
@@ -180,6 +182,7 @@ class Game {
     const timeCheat = (mode, text, type = "success") => () => {
       this.effects.setTimeOfDay(mode);
       showCustomAlert(text, { type });
+      unlock("cuaca"); // P5 Peretas Cuaca: a typed or ?bengkel= sky cheat (never redok or real weather)
     };
     const cheats = {
       rain: () => {
@@ -188,6 +191,7 @@ class Game {
           type: "success",
           duration: 3000,
         });
+        unlock("cuaca");
       },
       morning: timeCheat("morning", "Selamat pagi!"),
       afternoon: timeCheat("afternoon", "Selamat sore!"),
@@ -288,7 +292,10 @@ class Game {
     // fires "qv:seen"; the save keeps it. Cards marked before the game existed (that same deep
     // link) are caught up in this task, right before the listener, so none is missed.
     this.projectIds = Array.from(document.querySelectorAll(JOR.PROJECT_CARDS), (card) => card.id);
-    const markSeen = (id) => addId(save, "seen", id, this.projectIds); // true = a new project
+    const markSeen = (id) => {
+      if (!addId(save, "seen", id, this.projectIds)) return;
+      if (getIds(save, "seen", this.projectIds).length === this.projectIds.length) unlock("kurator"); // P5
+    };
     document.querySelectorAll(JOR.PROJECT_CARDS + "[data-seen]").forEach((card) => markSeen(card.id));
     document.addEventListener("qv:seen", (e) => markSeen(e.detail && e.detail.id));
   }
@@ -507,6 +514,7 @@ class Game {
       onBlack: () => {
         this.journey.firstEntry(this.journey.current);
         this.cinema.showTitle(CHAPTERS[this.journey.current]);
+        unlock("berangkat"); // P5: fast travel can skip Bab 1; any chapter card ends the Prolog
       },
     });
   }
@@ -536,7 +544,10 @@ class Game {
     this.effects.emit("spark", cup.x - KOPI_SIZE / 2, y, -1, 4, KOPI_SIZE);
     AudioManager.playChime();
     const emas = isEmas(this.kopi);
-    if (emas) this.setGold();
+    if (emas) {
+      this.setGold();
+      unlock("kopi"); // P5 Pemburu Kopi
+    }
     const tokens = { found: this.kopi.length, total: KOPI.length };
     showCustomAlert(emas ? COPY.kopi.emas : JOR.fillTokens(COPY.kopi.found, tokens), { type: "success" });
   }
@@ -575,7 +586,10 @@ class Game {
     const entered = this.journey.update(this.player.x + this.player.width / 2);
     if (entered >= 0) this.enterChapter(entered);
     const here = this.journey.current;
-    if (!this.minigames.activeMinigame && this.journey.firstEntry(here)) this.cinema.showTitle(CHAPTERS[here]);
+    if (!this.minigames.activeMinigame && this.journey.firstEntry(here)) {
+      this.cinema.showTitle(CHAPTERS[here]);
+      unlock("berangkat"); // P5: the first chapter card after the Prolog; its toast follows the card
+    }
 
     // Detect if player is fully off-screen (left or right). If so, show
     // the offscreen modal which offers a single action to return the player
@@ -740,6 +754,7 @@ class Game {
     }
     this.strip.sync(this.player.x + this.player.width / 2);
     this.interactions.syncTooltip(this.cameraX);
+    flushAchievementToasts(); // P5: a length check unless a toast waits
   }
 
   render() {

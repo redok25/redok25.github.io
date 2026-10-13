@@ -4,7 +4,7 @@
 // JOR.contentTokens, D498), never typed in. "**x**" marks bold; it is rendered as a
 // <strong> node, never through innerHTML. Game graph only; no DOM, so node tests import it.
 // Phase 2b keys: stations, billboard, strip, credits, console. Phase 3a: minigame.
-// Phase 3b: kopi.
+// Phase 3b: kopi, achievements.
 // ===================================
 export const COPY = {
   // Chapter title cards (V5): "label · title" over the subtitle. Index = chapter id.
@@ -81,6 +81,25 @@ export const COPY = {
       wheelie: "Ada kopi melayang di Bengkel Skill. Angkat roda depan!",
       warung: "Pas hujan, ada kopi neduh di emperan warung.",
       ujung: "Jalan belum habis waktu kartu terakhir muncul.",
+    },
+  },
+  // Achievements (P5). Key = save id (save.js ACHIEVEMENT_IDS, same order: the journal's).
+  // name: the toast and the journal; desc: the journal's hint. Plain text (toasts use
+  // textContent, so no **bold**); {name} in the toast is the only token.
+  achievements: {
+    toast: "🏆 Pencapaian: {name}",
+    list: {
+      berangkat: { name: "Berangkat", desc: "Beres prolog, motor mulai jalan." },
+      tur: { name: "Tur Lengkap", desc: "Kumpulin stempel di semua stasiun." },
+      kurator: { name: "Kurator", desc: "Lihat semua proyek di Quick View." },
+      kopi: { name: "Pemburu Kopi", desc: "Temukan semua kopi rahasia." },
+      cuaca: { name: "Peretas Cuaca", desc: "Ubah langit pakai kode rahasia." },
+      wheelie: { name: "Raja Wheelie", desc: "Menang tantangan wheelie." },
+      lampu: { name: "Lampu Hijau", desc: "Lolos lampu merah sampai finish." },
+      drag: { name: "Raja Drag", desc: "Kalahkan rival di balap drag." },
+      rekor: { name: "Kalahkan Diri Sendiri", desc: "Pecahkan rekor minigame-mu sendiri." },
+      tamat: { name: "Tamat", desc: "Sampai di ujung jalan." },
+      insinyur: { name: "Insinyur", desc: "Intip dapur mesin di Mode Bengkel." },
     },
   },
 };

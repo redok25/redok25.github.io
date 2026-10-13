@@ -125,7 +125,7 @@
 /* Custom alert styles */
 #custom-alert-container {
   position: fixed;
-  top: 20px;
+  top: 72px; /* under the top band: Quick View button, journey strip, audio toggle (P5) */
   right: 20px;
   display: flex;
   flex-direction: column;
@@ -184,15 +184,40 @@
   background: linear-gradient(180deg, #e74c3c, #c0392b);
 }
 
+/* Achievement toasts (P5): gold, and they leave on their own. No pointer events, so a tap
+   meant for the result card or credits buttons underneath always reaches them. */
+.custom-alert--achievement {
+  color: #1d1d1d;
+  background: linear-gradient(180deg, #ffe135, #f0b90b);
+  pointer-events: none;
+}
+
+.custom-alert--achievement .custom-alert__close {
+  display: none;
+}
+
 @media (max-width: 600px) {
   #custom-alert-container {
     left: 12px;
     right: 12px;
-    top: 12px;
   }
   .custom-alert {
     width: auto;
     max-width: none;
+  }
+}
+
+/* Narrow phones: the journey strip has its own row at 72-104 px (journey.css), so toasts
+   start under it (P5). */
+@media (max-width: 500px) {
+  #custom-alert-container {
+    top: 112px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .custom-alert {
+    transform: none; /* fade only */
   }
 }
 

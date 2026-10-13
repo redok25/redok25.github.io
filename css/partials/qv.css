@@ -461,9 +461,9 @@
   }
 }
 
-/* The always-on Quick View button sits top-left: keep toasts and the minigame HUD clear of it. */
+/* The always-on Quick View button sits top-left: keep the minigame HUD clear of it.
+   (Toasts clear the whole top band in modals.css.) */
 @media (max-width: 600px) {
-  #custom-alert-container,
   .minigame-hud {
     top: 64px;
   }

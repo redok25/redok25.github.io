@@ -6,6 +6,7 @@
 // ===================================
 import { JOR } from "./helpers.js";
 import { COPY } from "./copy.js";
+import { unlock } from "./achievements.js";
 
 export const CREDITS_X = 7100;
 const OWNER = "credits";
@@ -70,6 +71,7 @@ export class Credits {
     // preventScroll: on a short phone the card scrolls, and focus must not skip its title.
     this.el.querySelector(".credits-card").scrollTop = 0;
     this.el.querySelector(".credits-replay").focus({ preventScroll: true });
+    unlock("tamat"); // P5: the toast shows over the card and never takes its focus or taps
   }
 
   close() {

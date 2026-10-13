@@ -5,6 +5,8 @@
 // "work" = ms spent inside one gameLoop body (sim steps + render): the 16.7 ms budget.
 // FPS comes from the rAF interval and is shown separately.
 // ===================================
+import { unlock } from "./achievements.js";
+
 const SAMPLES = 120;
 const BUDGET_MS = 1000 / 60;
 
@@ -13,6 +15,7 @@ export class Bengkel {
     this.game = game;
     const param = new URLSearchParams(location.search).get("bengkel");
     this.on = param !== null;
+    if (this.on) unlock("insinyur"); // P5: ?bengkel opens the workshop too (phones have no backtick)
     // Untrusted input: only a name that exists in the cheat table is ever run.
     this.pendingCheat = param || null;
     this.work = new Float32Array(SAMPLES);
@@ -23,6 +26,7 @@ export class Bengkel {
 
   toggle() {
     this.on = !this.on;
+    if (this.on) unlock("insinyur"); // P5 Insinyur
   }
 
   record(intervalMs, workMs, steps) {

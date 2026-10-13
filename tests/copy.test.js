@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { COPY } from "../js/copy.js";
 import { makeJOR } from "../js/helpers.js";
+import { ACHIEVEMENT_IDS } from "../js/save.js";
 
 const JOR = makeJOR({});
 const TOKENS = Object.keys(JOR.projectStats([])); // the keys JOR.contentTokens provides
@@ -66,4 +67,15 @@ test("copy 3a: result lines only use {time}, no typed digits, and fit a 375 px c
     assert.ok(JOR.fillTokens(s, { time: "99,99" }).length <= 36, s);
   }
   assert.equal(JOR.fillTokens(COPY.minigame.best, { time: "5,15" }), "Rekor: 5,15 detik");
+});
+
+test("copy 3b: achievements match the save ids, plain text, no digits, fit a 375 px toast (P5)", () => {
+  assert.deepEqual(Object.keys(COPY.achievements.list), ACHIEVEMENT_IDS);
+  assert.deepEqual([...COPY.achievements.toast.matchAll(/\{(\w+)\}/g)].map((m) => m[1]), ["name"]);
+  for (const { name, desc } of Object.values(COPY.achievements.list)) {
+    for (const s of [name, desc]) assert.ok(!/[\d{}<>*]/.test(s), s); // D498, no tokens, no markup or **bold**
+    assert.ok(name.length <= 22 && desc.length <= 36, name);
+    assert.ok(JOR.fillTokens(COPY.achievements.toast, { name }).length <= 40, name);
+  }
+  assert.equal(JOR.fillTokens(COPY.achievements.toast, { name: COPY.achievements.list.drag.name }), "🏆 Pencapaian: Raja Drag");
 });

@@ -8,6 +8,7 @@ import { JOR } from "./helpers.js";
 import { openModal, openProjectsYear } from "./content.js";
 import { app } from "./state.js";
 import { save, getStamps, addStamp } from "./save.js";
+import { unlock } from "./achievements.js";
 
 // E priority (W3): station > special NPC > billboard > regular NPC, then distance.
 export const KIND_RANK = { station: 0, special: 1, billboard: 2, npc: 3 };
@@ -220,7 +221,10 @@ export class InteractionManager {
   }
 
   stamp(id) {
-    if (addStamp(save, id)) this.stamps = getStamps(save);
+    if (!addStamp(save, id)) return;
+    this.stamps = getStamps(save);
+    // P5 Tur Lengkap: its toast waits for the Quick View this stamp is opening.
+    if (this.stamps.length === JOR.QV_SECTIONS.length) unlock("tur");
   }
 
   // The ▼ marker over a station or billboard in E range (NPCs have their own badges/bubbles).

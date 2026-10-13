@@ -9,7 +9,7 @@
 import { JOR } from "./helpers.js";
 
 export const SAVE_KEY = "jor.save.v1";
-const DEFAULTS = { v: 1, visits: null, weatherOptIn: false, stamps: [], bests: {}, audio: null, seen: [], secrets: [], kopi: [] };
+const DEFAULTS = { v: 1, visits: null, weatherOptIn: false, stamps: [], bests: {}, audio: null, seen: [], secrets: [], kopi: [], achievements: [] };
 
 export function createSave(store) {
   let data = load();
@@ -126,3 +126,7 @@ export function recordBest(s, id, steps) {
 export function formatSteps(steps) {
   return ((steps * JOR.STEP_MS) / 1000).toFixed(2).replace(".", ",");
 }
+
+// Achievements (P5): the ids earned, in this order (the journal's). Stored, so never
+// renamed; a later one is appended. Read and written with getIds/addId; names in copy.js.
+export const ACHIEVEMENT_IDS = ["berangkat", "tur", "kurator", "kopi", "cuaca", "wheelie", "lampu", "drag", "rekor", "tamat", "insinyur"];

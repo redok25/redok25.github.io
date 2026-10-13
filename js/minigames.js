@@ -6,6 +6,7 @@ import { JOR } from "./helpers.js";
 import { fadeTeleport } from "./travel.js";
 import { COPY } from "./copy.js";
 import { save, recordBest, formatSteps } from "./save.js";
+import { unlockMinigame } from "./achievements.js";
 
 // Return to the NPC (W6, R15): the bike's centre lands this far left of the NPC's home
 // centre, facing it. 40 px keeps the NPC the strict best E target and keeps every NPC's
@@ -328,6 +329,7 @@ export class MinigameManager {
 
     const result = { type: this.lastType, success, ...recordBest(save, this.lastType, success ? steps : null) };
     this.showResultModal(result, message);
+    unlockMinigame(result); // P5: wins and a beaten record; their toasts land above the card
     return result;
   }
 

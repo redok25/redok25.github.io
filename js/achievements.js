@@ -68,13 +68,18 @@ function covered() {
 }
 
 // Once per drawn frame (Game.syncUi); a length check while nothing waits. Achievements take
-// turns in one row; another toast (a kopi find) only waits for a cover.
+// turns in one row, TOAST_GAP_MS apart; any other toast (a kopi find) goes ahead of them as soon
+// as nothing covers the band, and does not move their gap.
 export function flushAchievementToasts() {
   if (!pending.length || document.hidden) return;
   const now = performance.now();
-  if (pending[0][1] === "achievement" && now < nextAt) return;
+  let i = 0;
+  if (now < nextAt) {
+    while (i < pending.length && pending[i][1] === "achievement") i++;
+    if (i === pending.length) return;
+  }
   if (covered()) return;
-  const [text, type] = pending.shift();
+  const [text, type] = pending.splice(i, 1)[0];
   showCustomAlert(text, { type, duration: TOAST_MS });
-  nextAt = now + TOAST_GAP_MS;
+  if (type === "achievement") nextAt = now + TOAST_GAP_MS;
 }

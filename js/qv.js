@@ -108,6 +108,30 @@ onAction("contact-submit", handleContactSubmit);
         { threshold: 0.3 }
       ).observe(skills);
     }
+
+    // Honest "seen" (P2): a project card counts once at least SEEN_RATIO of it is visible inside
+    // the open dialog, which is the scroll container (a closed dialog shows nothing, and a
+    // billboard ridden past never opens it). The bottom margin keeps the phone sticky contact
+    // bar (< 48 px) out of the view. qv.js never imports the game: it marks the card
+    // (data-seen, which the game catches up on when it starts after a #quick deep link) and
+    // fires "qv:seen"; the game keeps it in the save.
+    // ponytail: the ratio is of the card's own box, so a card taller than 1/SEEN_RATIO of the
+    // view (a long <details> opened on a short phone) cannot count while open; it counted
+    // before it was opened. Add an intersectionRect-height rule if a probe ever finds one.
+    const SEEN_RATIO = 0.6;
+    const seenIO = new IntersectionObserver(
+      (entries) => {
+        for (const en of entries) {
+          const card = en.target;
+          if (en.intersectionRatio < SEEN_RATIO || card.hasAttribute("data-seen")) continue;
+          card.setAttribute("data-seen", "");
+          seenIO.unobserve(card);
+          document.dispatchEvent(new CustomEvent("qv:seen", { detail: { id: card.id } }));
+        }
+      },
+      { root: dialog, rootMargin: "0px 0px -48px 0px", threshold: SEEN_RATIO }
+    );
+    dialog.querySelectorAll(JOR.PROJECT_CARDS).forEach((card) => seenIO.observe(card));
   }
 
   document.addEventListener("click", (e) => {

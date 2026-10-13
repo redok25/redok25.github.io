@@ -9,7 +9,7 @@
 import { JOR } from "./helpers.js";
 
 export const SAVE_KEY = "jor.save.v1";
-const DEFAULTS = { v: 1, visits: null, weatherOptIn: false, stamps: [], bests: {}, audio: null };
+const DEFAULTS = { v: 1, visits: null, weatherOptIn: false, stamps: [], bests: {}, audio: null, seen: [], secrets: [] };
 
 export function createSave(store) {
   let data = load();
@@ -45,22 +45,37 @@ export function createSave(store) {
 
 export const save = createSave(JOR.store);
 
-// Chapter stamps (W4, R10, R24): the station ids opened by E or a tap. A stored value is
-// untrusted (any JSON), so it is normalised on every read; a write always stores a new
-// array, because DEFAULTS.stamps is shared by every load and must never be mutated.
+// Id lists (stamps, seen projects P2, secrets P4, and any later list of ids): an array kept
+// in the order of `valid`, the COMPLETE list of ids that key may hold. A stored value is
+// untrusted (any JSON), so it is normalised on every read; a write always stores a new array,
+// because DEFAULTS' arrays are shared by every load and must never be mutated. A write keeps
+// only ids in `valid`, so a caller passing a partial list would erase the others.
+export function getIds(s, key, valid) {
+  const raw = s.get(key);
+  return Array.isArray(raw) ? valid.filter((id) => raw.includes(id)) : [];
+}
+
+// True only when id is valid and new: the caller's "first time" moment.
+export function addId(s, key, id, valid) {
+  if (!valid.includes(id)) return false;
+  const ids = getIds(s, key, valid);
+  if (ids.includes(id)) return false;
+  s.set(key, [...ids, id]);
+  return true;
+}
+
+// Chapter stamps (W4, R10, R24): the station ids opened by E or a tap, in Quick View order.
 export function getStamps(s) {
-  const raw = s.get("stamps");
-  if (!Array.isArray(raw)) return [];
-  return JOR.QV_SECTIONS.filter((id) => raw.includes(id));
+  return getIds(s, "stamps", JOR.QV_SECTIONS);
 }
 
 export function addStamp(s, id) {
-  if (!JOR.QV_SECTIONS.includes(id)) return false;
-  const stamps = getStamps(s);
-  if (stamps.includes(id)) return false;
-  s.set("stamps", [...stamps, id]);
-  return true;
+  return addId(s, "stamps", id, JOR.QV_SECTIONS);
 }
+
+// Secrets (P4): every word of game.js's cheat table, in its order, plus the visitor egg. A
+// word counts the first time it really runs (typed, ?bengkel=<word>, or the egg opening).
+export const SECRETS = ["rain", "morning", "afternoon", "noon", "night", "reset", "wheeliegame", "lightgame", "racegame", "glitch", "visitor"];
 
 // Audio settings (P8): { volume 0..1, muted }. Untrusted like every stored value: a volume
 // that is not a finite number falls back to the default, others are clamped to 0..1, and 0

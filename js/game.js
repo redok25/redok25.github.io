@@ -11,7 +11,7 @@ import { Camera } from "./camera.js";
 import { showCustomAlert } from "./content.js";
 import { AudioManager } from "./audio.js";
 import { app } from "./state.js";
-import { save } from "./save.js";
+import { save, addId, SECRETS } from "./save.js";
 import { Bengkel } from "./bengkel.js";
 import { CHAPTERS, Journey, arrivalX } from "./journey.js";
 import { Cinema } from "./cinema.js";
@@ -196,6 +196,16 @@ class Game {
       racegame: () => this.minigames.startMinigame("drag_race"),
       glitch: () => this.showGlitch(),
     };
+    // Secrets (P4): a word counts the first time its cheat really runs: typed here (after the
+    // guards below, so a word eaten by a pause never counts) or as ?bengkel=<word>, which runs
+    // this same table. It records after the cheat returns: a cheat that throws records nothing.
+    // Reassigning existing keys keeps their order, so "afternoon" still beats "noon".
+    for (const [word, run] of Object.entries(cheats)) {
+      cheats[word] = () => {
+        run();
+        addId(save, "secrets", word, SECRETS);
+      };
+    }
     this.cheats = cheats;
     const nextWord = JOR.createWordBuffer(Object.keys(cheats));
     window.addEventListener("keydown", (e) => {
@@ -271,6 +281,13 @@ class Game {
     document.addEventListener("qv:close", () => JOR.releasePause(this, "quickview"));
     // A #quick deep link opens Quick View before the game exists; its qv:open already fired.
     if (document.getElementById("qv")?.open) JOR.holdPause(this, "quickview");
+    // Honest "seen" (P2): qv.js marks a project card it saw in the open dialog (data-seen) and
+    // fires "qv:seen"; the save keeps it. Cards marked before the game existed (that same deep
+    // link) are caught up in this task, right before the listener, so none is missed.
+    this.projectIds = Array.from(document.querySelectorAll(JOR.PROJECT_CARDS), (card) => card.id);
+    const markSeen = (id) => addId(save, "seen", id, this.projectIds); // true = a new project
+    document.querySelectorAll(JOR.PROJECT_CARDS + "[data-seen]").forEach((card) => markSeen(card.id));
+    document.addEventListener("qv:seen", (e) => markSeen(e.detail && e.detail.id));
   }
 
   // Real weather is opt-in (D499): off by default, remembered, revocable.

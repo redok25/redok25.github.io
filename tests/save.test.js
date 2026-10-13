@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { makeJOR } from "../js/helpers.js";
-import { createSave, SAVE_KEY, getStamps, addStamp, getBest, recordBest, formatSteps, getAudio } from "../js/save.js";
+import { createSave, SAVE_KEY, getStamps, addStamp, getBest, recordBest, formatSteps, getAudio, getIds, addId, SECRETS } from "../js/save.js";
 
 const memoryStorage = (init = {}) => {
   const data = { ...init };
@@ -138,4 +138,45 @@ test("formatSteps (P6): sim steps as seconds with a decimal comma", () => {
   assert.equal(formatSteps(309), "5,15");
   assert.equal(formatSteps(320), "5,33");
   assert.equal(formatSteps(548), "9,13");
+});
+
+test("ids (P2, P4): a stored list is untrusted and reads as the valid ids it holds, in their order", () => {
+  const valid = ["p-a", "p-b", "p-c"];
+  const withSeen = (seen) => createSave(storeOf(memoryStorage({ [SAVE_KEY]: JSON.stringify({ v: 1, seen }) })));
+  for (const junk of ["p-a", null, 7, true, { 0: "p-a", length: 1 }]) {
+    assert.deepEqual(getIds(withSeen(junk), "seen", valid), [], JSON.stringify(junk));
+  }
+  assert.deepEqual(getIds(withSeen(["p-c", 1, null, {}, ["p-b"], "p-evil", "p-a", "p-a"]), "seen", valid), ["p-a", "p-c"]);
+  // A Phase 3a record has no seen key at all.
+  const old = createSave(storeOf(memoryStorage({ [SAVE_KEY]: JSON.stringify({ v: 1, stamps: ["about"] }) })));
+  assert.deepEqual(getIds(old, "seen", valid), []);
+});
+
+test("ids (P2, P4): addId stores a valid new id once, as a new array, and drops junk on write", () => {
+  const valid = ["p-a", "p-b", "p-c"];
+  const storage = memoryStorage({ [SAVE_KEY]: JSON.stringify({ v: 1, seen: ["p-evil", "p-b", 3] }) });
+  const s = createSave(storeOf(storage));
+  assert.equal(addId(s, "seen", "p-evil", valid), false); // not a card in the list
+  assert.equal(addId(s, "seen", undefined, valid), false); // a qv:seen without a detail
+  assert.equal(addId(s, "seen", "p-b", valid), false); // seen before
+  assert.equal(addId(s, "seen", "p-a", valid), true);
+  assert.equal(addId(s, "seen", "p-a", valid), false);
+  assert.deepEqual(JSON.parse(storage.data[SAVE_KEY]).seen, ["p-b", "p-a"]);
+  assert.deepEqual(getIds(createSave(storeOf(storage)), "seen", valid), ["p-a", "p-b"]);
+  // The list must be complete: a write keeps only the ids it names.
+  addId(s, "seen", "p-c", ["p-c"]);
+  assert.deepEqual(s.get("seen"), ["p-c"]);
+  // DEFAULTS' arrays are shared by every load: a fresh save still starts empty.
+  addId(createSave(storeOf(memoryStorage())), "seen", "p-c", valid);
+  assert.deepEqual(getIds(createSave(storeOf(memoryStorage())), "seen", valid), []);
+});
+
+test("secrets (P4): the cheat table's words plus the visitor egg, each counted once", () => {
+  assert.deepEqual(SECRETS, ["rain", "morning", "afternoon", "noon", "night", "reset", "wheeliegame", "lightgame", "racegame", "glitch", "visitor"]);
+  const s = createSave(storeOf(memoryStorage()));
+  assert.equal(addId(s, "secrets", "visitor", SECRETS), true);
+  assert.equal(addId(s, "secrets", "rain", SECRETS), true);
+  assert.equal(addId(s, "secrets", "rain", SECRETS), false);
+  assert.equal(addId(s, "secrets", "hujan", SECRETS), false);
+  assert.deepEqual(getIds(s, "secrets", SECRETS), ["rain", "visitor"]);
 });

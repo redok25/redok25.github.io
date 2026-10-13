@@ -5,6 +5,8 @@
 export function makeJOR(root) {
   const TYPING_TAGS = ["INPUT", "TEXTAREA", "SELECT"];
   const QV_SECTIONS = ["about", "skills", "projects", "contact"];
+  // Quick View project cards (P2): each one's stable id "p-{slug}" is its "seen" id.
+  const PROJECT_CARDS = "#qv-projects .project-card[id^='p-']";
 
   function isTypingTarget(target) {
     return (
@@ -240,6 +242,7 @@ export function makeJOR(root) {
 
   return {
     QV_SECTIONS,
+    PROJECT_CARDS,
     isTypingTarget,
     isUiBlocking,
     shouldIgnoreGameKey,

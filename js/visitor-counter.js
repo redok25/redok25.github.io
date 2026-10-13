@@ -5,7 +5,7 @@
 import { JOR } from "./helpers.js";
 import { app } from "./state.js";
 import { onAction } from "./actions.js";
-import { save } from "./save.js";
+import { save, addId, SECRETS } from "./save.js";
 import { AudioManager } from "./audio.js";
 
 class VisitorCounter {
@@ -48,6 +48,7 @@ class VisitorCounter {
     });
     modal.classList.remove("hidden");
     if (app.game) JOR.holdPause(app.game, "visitor");
+    addId(save, "secrets", "visitor", SECRETS); // P4: a secret once the egg really opens
     this.playDiscoverySound();
   }
 

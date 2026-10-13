@@ -3,7 +3,7 @@
 // ===================================
 import { JOR } from "./helpers.js";
 import { Player } from "./player.js";
-import { World } from "./world.js";
+import { World, goldCopy } from "./world.js";
 import { EffectsManager, LEAF_AUTUMN, shakeOffset } from "./effects.js";
 import { InteractionManager } from "./interactions.js";
 import { MinigameManager } from "./minigames.js";
@@ -11,7 +11,8 @@ import { Camera } from "./camera.js";
 import { showCustomAlert } from "./content.js";
 import { AudioManager } from "./audio.js";
 import { app } from "./state.js";
-import { save, addId, SECRETS } from "./save.js";
+import { save, getIds, addId, SECRETS } from "./save.js";
+import { KOPI, KOPI_IDS, KOPI_SIZE, kopiShown, kopiReach, isEmas } from "./kopi.js";
 import { Bengkel } from "./bengkel.js";
 import { CHAPTERS, Journey, arrivalX } from "./journey.js";
 import { Cinema } from "./cinema.js";
@@ -71,6 +72,7 @@ class Game {
     this.cinema = new Cinema();
     this.strip = new Strip(this); // journey strip + fast travel (W5)
     this.credits = new Credits(this); // end-of-road card (R9)
+    this.kopi = getIds(save, "kopi", KOPI_IDS); // Kopi Rahasia found (P3); changes only in takeKopi
 
     // Setup input
     this.setupInput();
@@ -122,6 +124,7 @@ class Game {
           : true;
 
       if (playerReady && worldReady && effectsReady) {
+        if (isEmas(this.kopi)) this.setGold(); // Motor Emas from an earlier visit (P3)
         this.world.streamBiomes();
         // All assets loaded — but keep loading screen visible for at least
         // `this.minimumLoadingMs` to avoid a quick flash for very fast loads.
@@ -508,6 +511,51 @@ class Game {
     });
   }
 
+  // Kopi Rahasia (P3): a cup the bike's centre (sim x) passes within KOPI_RADIUS of while it
+  // shows (night, rain), the floating one only at full wheelie. Once per unpaused step.
+  checkKopi() {
+    const p = this.player;
+    const cx = p.x + p.width / 2;
+    const e = this.effects;
+    const nightA = e.currentTimeState ? e.currentTimeState.a : 0;
+    const full = p.wheelieRotation >= p.wheelieMaxRotation;
+    for (let i = 0; i < KOPI.length; i++) {
+      const cup = KOPI[i];
+      if (this.kopi.includes(cup.id)) continue;
+      if (kopiReach(cup, cx, kopiShown(cup, nightA, e.rainIntensity), full)) this.takeKopi(cup);
+    }
+  }
+
+  // One cup found: saved, then the cues (sparks at the cup, the chime, a toast). The last one
+  // turns the bike gold (Motor Emas). P5 hooks its "Pemburu Kopi" check here.
+  takeKopi(cup) {
+    if (!addId(save, "kopi", cup.id, KOPI_IDS)) return;
+    this.kopi = getIds(save, "kopi", KOPI_IDS);
+    const y = this.world.groundY() - cup.lift - KOPI_SIZE / 2;
+    this.effects.emit("spark", cup.x - KOPI_SIZE / 2, y, 1, 4, KOPI_SIZE);
+    this.effects.emit("spark", cup.x - KOPI_SIZE / 2, y, -1, 4, KOPI_SIZE);
+    AudioManager.playChime();
+    const emas = isEmas(this.kopi);
+    if (emas) this.setGold();
+    const tokens = { found: this.kopi.length, total: KOPI.length };
+    showCustomAlert(emas ? COPY.kopi.emas : JOR.fillTokens(COPY.kopi.found, tokens), { type: "success" });
+  }
+
+  // Motor Emas (P3): gold copies of the three bike sprites, made once; player.render draws
+  // them. player.sprites stays as is: the Drag rival is drawn from it.
+  setGold() {
+    const p = this.player;
+    if (p.goldSprites) return;
+    try {
+      const gold = {};
+      for (const name in p.sprites) gold[name] = goldCopy(p.sprites[name]);
+      p.goldSprites = gold;
+    } catch (e) {
+      // An unreadable canvas keeps the normal bike: this runs in the loader's check, and a
+      // throw there would stop the game from ever starting for a 4/4 profile.
+    }
+  }
+
   update(deltaTime) {
     if (this.paused) return;
     // Update player. When a scripted splash/camera scene is active or the
@@ -640,6 +688,9 @@ class Game {
     this.interactions.update(this.cameraX);
     // Skill gauges (W2) fill as the bike rides past; inert during a course (R7).
     if (!this.minigames.activeMinigame) this.world.updateGauges(this.player.x + this.player.width / 2);
+    // Kopi Rahasia (P3): only the rider's own riding finds a cup: not the opening ride, not a
+    // course (R28), not the offscreen "Kembali" return (it can slide back over a cup).
+    if (this.player.lockBacktrack && !this.offscreenModalActive && !this.minigames.activeMinigame) this.checkKopi();
     // Credits (R9): the end of the road, once per load, after the ride, never during a course.
     if (this.player.lockBacktrack && !this.minigames.activeMinigame) {
       this.credits.check(this.player.x + this.player.width / 2);
@@ -705,7 +756,8 @@ class Game {
     // Render world with parallax. Pass `effects` so clouds can be drawn
     // between background layers (behind the nearest bg layer).
     const windSway = this.effects.getWindSway();
-    this.world.render(this.cameraX, windSway, this.effects);
+    // A course hides the cups (they are inert there, R28).
+    this.world.render(this.cameraX, windSway, this.effects, this.minigames.activeMinigame ? null : this.kopi);
 
     // Render player (before overlays so it gets tinted)
     this.player.render(this.ctx, this.cameraX);

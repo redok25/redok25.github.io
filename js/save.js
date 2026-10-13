@@ -9,7 +9,7 @@
 import { JOR } from "./helpers.js";
 
 export const SAVE_KEY = "jor.save.v1";
-const DEFAULTS = { v: 1, visits: null, weatherOptIn: false, stamps: [], bests: {}, audio: null, seen: [], secrets: [] };
+const DEFAULTS = { v: 1, visits: null, weatherOptIn: false, stamps: [], bests: {}, audio: null, seen: [], secrets: [], kopi: [] };
 
 export function createSave(store) {
   let data = load();

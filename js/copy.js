@@ -4,6 +4,7 @@
 // JOR.contentTokens, D498), never typed in. "**x**" marks bold; it is rendered as a
 // <strong> node, never through innerHTML. Game graph only; no DOM, so node tests import it.
 // Phase 2b keys: stations, billboard, strip, credits, console. Phase 3a: minigame.
+// Phase 3b: kopi.
 // ===================================
 export const COPY = {
   // Chapter title cards (V5): "label · title" over the subtitle. Index = chapter id.
@@ -69,5 +70,17 @@ export const COPY = {
     },
     best: "Rekor: {time} detik",
     newBest: "REKOR BARU!",
+  },
+  // Kopi Rahasia (P3). Toasts are plain text (no **bold**): {found} and {total} are counted
+  // from js/kopi.js. hints: one line per cup for the journal (P1), keyed by KOPI id.
+  kopi: {
+    found: "☕ Kopi rahasia ketemu! {found}/{total}",
+    emas: "✨ Semua kopi ketemu! Motormu sekarang Motor Emas.",
+    hints: {
+      pagar: "Malam-malam, ada kopi nangkring di pagar Asal-Usul.",
+      wheelie: "Ada kopi melayang di Bengkel Skill. Angkat roda depan!",
+      warung: "Pas hujan, ada kopi neduh di emperan warung.",
+      ujung: "Jalan belum habis waktu kartu terakhir muncul.",
+    },
   },
 };

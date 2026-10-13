@@ -32,6 +32,7 @@ export class Player {
     };
 
     this.spritesLoaded = false;
+    this.goldSprites = null; // Motor Emas (P3): gold copies of `sprites`, set by game.setGold
     this.loadSprites();
     // track previous animation so we can trigger audio on changes
     this._prevAnimation = this.currentAnimation;
@@ -365,6 +366,7 @@ export class Player {
     ctx.imageSmoothingEnabled = false;
 
     const screenX = this.x - cameraX;
+    const img = this.goldSprites ? this.goldSprites[this.currentAnimation] : sprite;
 
     // Apply wheelie rotation if active
     if (this.wheelieRotation > 0) {
@@ -396,14 +398,14 @@ export class Player {
     if (!this.facingRight) {
       ctx.scale(-1, 1);
       ctx.drawImage(
-        sprite,
+        img,
         -(screenX + this.width),
         this.y,
         this.width,
         this.height
       );
     } else {
-      ctx.drawImage(sprite, screenX, this.y, this.width, this.height);
+      ctx.drawImage(img, screenX, this.y, this.width, this.height);
     }
 
     // Draw wheels and exhaust BEFORE restoring context so they follow the rotation

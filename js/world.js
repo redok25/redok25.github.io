@@ -6,6 +6,7 @@ import { SpecialNPC } from "./special-npc.js";
 import { CHAPTERS, createBiomeFade, stepBiomeFade, biomeWeight } from "./journey.js";
 import { COPY } from "./copy.js";
 import { JOR } from "./helpers.js";
+import { KOPI, KOPI_SIZE, kopiShown, goldPixel } from "./kopi.js";
 
 const NPC_HEIGHT = 87; // NPC draw height (npc.js / special-npc.js default)
 const BIOMES = ["normal", "autumn", "winter"];
@@ -22,6 +23,7 @@ const PROPS = [
   { file: "fence-1", x: 760, scale: 3 },
   { file: "laundry", x: 759, scale: 3, lift: 3 },
   { file: "fence-2", x: 991, scale: 3 },
+  { file: "fence-1", x: 3010, scale: 3 }, // Bab 1: Kopi Rahasia #1 sits on its lower rail (kopi.js)
   { file: "wooden-shed", x: 4661, scale: 3 }, // roofs the Skills sign (center 4835)
   { file: "barrel", x: 4676, scale: 3 },
   { file: "standing-torch", x: 5747, scale: 2 }, // either side of the warung (5771-6112)
@@ -63,6 +65,50 @@ function tintCopy(img, color) {
   g.globalCompositeOperation = "source-atop";
   g.fillStyle = color;
   g.fillRect(0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
+// Motor Emas (P3): a gold copy of a loaded bike sprite, made once (kopi.js goldPixel). Alpha
+// stays, so the outline and the shading stay. The sprites are same-origin: readable.
+export function goldCopy(img) {
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const g = canvas.getContext("2d");
+  g.drawImage(img, 0, 0);
+  const data = g.getImageData(0, 0, canvas.width, canvas.height);
+  for (let i = 0; i < data.data.length; i += 4) if (data.data[i + 3]) goldPixel(data.data, i);
+  g.putImageData(data, 0, 0);
+  return canvas;
+}
+
+// Kopi Rahasia cup (P3): 10 x 10 pixel art baked once, drawn at KOPI_SIZE (3x like the props).
+// o ink, c coffee, w mug, s steam.
+const CUP_ART = [
+  "..s..s....",
+  "...s..s...",
+  "..s..s....",
+  "oooooooo..",
+  "occcccco..",
+  "owwwwwwooo",
+  "owwwwwwo.o",
+  "owwwwwwooo",
+  "owwwwwwo..",
+  ".oooooo...",
+];
+const CUP_INK = { o: SIGN_INK, c: "#6b3a1e", w: "#fbf3e4", s: "#ffffff" };
+
+function bakeCup() {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = CUP_ART.length;
+  const g = canvas.getContext("2d");
+  CUP_ART.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      if (!CUP_INK[row[x]]) continue;
+      g.fillStyle = CUP_INK[row[x]];
+      g.fillRect(x, y, 1, 1);
+    }
+  });
   return canvas;
 }
 
@@ -187,6 +233,7 @@ export class World {
     this.loadObjectSprites();
     // Decoration props (V4): sized and grounded at draw time, so layout() has nothing to re-bake.
     this.loadProps();
+    this.cupSprite = bakeCup(); // Kopi Rahasia (P3)
     // grass texture (used for the top grass strip)
     this.grassTexture = null;
     this.loadGrassTexture();
@@ -677,6 +724,27 @@ export class World {
     ctx.restore();
   }
 
+  // Kopi Rahasia (P3): the cups not found yet (got = ids found), faded by kopiShown (night,
+  // rain), after the ground strip and before the stations (#3 stands under the warung's eave).
+  // y from the ground at draw time, like the props; culled with the same 200 px margin.
+  renderKopi(cameraX, effects, got) {
+    const ctx = this.ctx;
+    const ground = this.groundY();
+    const nightA = effects.currentTimeState ? effects.currentTimeState.a : 0;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (let i = 0; i < KOPI.length; i++) {
+      const cup = KOPI[i];
+      const sx = Math.floor(cup.x - cameraX - KOPI_SIZE / 2);
+      if (sx + KOPI_SIZE < -200 || sx > this.canvas.width + 200 || got.includes(cup.id)) continue;
+      const shown = kopiShown(cup, nightA, effects.rainIntensity);
+      if (shown <= 0) continue;
+      ctx.globalAlpha = shown;
+      ctx.drawImage(this.cupSprite, sx, ground - cup.lift - KOPI_SIZE, KOPI_SIZE, KOPI_SIZE);
+    }
+    ctx.restore();
+  }
+
   loadObjectSprites() {
     this.objects.forEach((obj) => {
       const img = new Image();
@@ -783,7 +851,8 @@ export class World {
     this.trees.sort((a, b) => a.x - b.x);
   }
 
-  render(cameraX, windSway, effects) {
+  // kopi: the ids of the cups found (game.kopi), or null to hide the cups (a minigame course).
+  render(cameraX, windSway, effects, kopi = null) {
     // Biome crossfade (V2, R5): stepped by real time here, so it takes 1 s at any refresh
     // rate; a biome still loading is not faded in (the old one stays).
     stepBiomeFade(this.biomeFade, this.biomeWanted, this._biomeReady, performance.now());
@@ -811,6 +880,9 @@ export class World {
 
     // Render ground
     this.renderGround(cameraX);
+
+    // Kopi Rahasia (P3): on the grass and the Bab 1 fence rail, behind the stations.
+    if (kopi) this.renderKopi(cameraX, effects, kopi);
 
     // Render interactive objects
     this.objects.forEach((obj) => {

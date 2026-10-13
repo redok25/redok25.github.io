@@ -1,14 +1,19 @@
 // Simple AudioManager singleton
 // Provides basic BGM playback and lightweight stubs for SFX used by game code.
+import { JOR } from "./helpers.js";
+import { save, getAudio } from "./save.js";
+
   const bgm = new Audio();
   bgm.loop = true;
   bgm.preload = "auto";
+  const ENGINE_SRC = "assets/audio/moving.mp3";
+  const savedAudio = getAudio(save); // P8: volume and mute survive a reload
 
   export const AudioManager = {
     _bgm: bgm,
     _currentBgm: null,
-    _isMuted: false,
-    _prevVolume: 0.6,
+    _isMuted: savedAudio.muted,
+    _prevVolume: savedAudio.volume, // the master volume 0..1 (0 is a real value)
     _fadeHandle: null,
 
     playBgm(nameOrPath) {
@@ -25,7 +30,7 @@
         this._bgm.src = src;
         this._bgm.loop = true;
         // start playback at 0 volume then fade to desired volume for smoothness
-        const targetVol = this._prevVolume || 0.6;
+        const targetVol = this._prevVolume;
         try {
           this._bgm.muted = !!this._isMuted;
           // if muted, don't bother fading — just set volume and play
@@ -76,7 +81,6 @@
     _engineSource: null,
     _engineGain: null,
     _engineLoading: false,
-    _isStopping: false,
 
     _initWebAudio() {
         if (!this._audioCtx) {
@@ -89,13 +93,15 @@
     _engineLoopStart: 0,
     _engineLoopEnd: 0,
 
-    _loadEngineBuffer(path) {
+    // Fetch + decode the engine loop once. splash.js calls this at the Start click (P8), so
+    // the opening ride is not silent; playEngine() calls it again only after a failed fetch.
+    _loadEngineBuffer() {
          if (this._engineBuffer || this._engineLoading) return;
-         this._engineLoading = true;
          const ctx = this._initWebAudio();
          if (!ctx) return;
+         this._engineLoading = true;
 
-         fetch(path)
+         fetch(ENGINE_SRC)
             .then(res => res.arrayBuffer())
             .then(buf => ctx.decodeAudioData(buf))
             .then(decoded => {
@@ -144,127 +150,69 @@
         }
     },
 
-    playEngine(path = "assets/audio/moving.mp3") {
+    // Engine voice (P8). Called on every sim step while the bike moves, with
+    // ratio = speed / maxSpeed (0..1). Starts a voice when none runs, then steers its gain
+    // and pitch toward this speed. stopEngine() lets go of a voice, so a voice is never reused
+    // after its stop was scheduled: a re-throttle starts a fresh one while the old tail fades.
+    playEngine(ratio) {
       try {
         const ctx = this._initWebAudio();
-        if (!ctx) return; 
-        
-        // Reset stopping flag because we are playing now
-        this._isStopping = false;
-
+        if (!ctx) return;
         if (!this._engineBuffer) {
-            this._loadEngineBuffer(path);
-            return; 
+          this._loadEngineBuffer(); // normally preloaded at Start
+          return;
         }
+        if (ctx.state === "suspended") ctx.resume().catch(() => {});
 
-        if (ctx.state === 'suspended') {
-            ctx.resume();
-        }
-
-        if (this._engineSource) {
-            const now = ctx.currentTime;
-            this._engineGain.gain.cancelScheduledValues(now);
-            this._engineGain.gain.setValueAtTime(this._engineGain.gain.value, now);
-            
-            const targetVol = (this._prevVolume || 0.6) * 0.8;
-            // Snappier volume recovery (0.1s)
-            this._engineGain.gain.linearRampToValueAtTime(targetVol, now + 0.1);
-            return;
-        }
-
-        this._engineSource = ctx.createBufferSource();
-        this._engineSource.buffer = this._engineBuffer;
-        this._engineSource.loop = true;
-        
-        // Loop points
-        if (this._engineLoopEnd > 0) {
-            this._engineSource.loopStart = this._engineLoopStart;
-            this._engineSource.loopEnd = this._engineLoopEnd;
-        }
-
-        this._engineGain = ctx.createGain();
-        this._engineGain.gain.value = 0; 
-
-        this._engineSource.connect(this._engineGain);
-        this._engineGain.connect(ctx.destination);
-
-        // Start from 0 to capture the natural attack of the sound (Fixes 'start glitch')
-        // The loop will still respect loopStart/loopEnd for subsequent repeats
-        this._engineSource.start(0, 0);
-
-        // Very fast fade in (0.05s) just to de-click
+        const gain = JOR.engineGain(ratio, this.level());
+        const rate = JOR.engineRate(ratio);
         const now = ctx.currentTime;
-        const targetVol = (this._prevVolume || 0.6) * 0.8;
-        if (!this._isMuted) {
-             this._engineGain.gain.setValueAtTime(0, now);
-             this._engineGain.gain.linearRampToValueAtTime(targetVol, now + 0.05);
-        } else {
-             this._engineGain.gain.value = 0;
+        if (this._engineSource) {
+          // tau 0.1 s: per-step targets glide instead of stepping
+          this._engineGain.gain.setTargetAtTime(gain, now, 0.1);
+          this._engineSource.playbackRate.setTargetAtTime(rate, now, 0.1);
+          return;
         }
 
-        this._engineSource.onended = () => {
-             this._engineSource = null;
-             this._engineGain = null;
-             this._isStopping = false;
-        };
-
+        const src = ctx.createBufferSource();
+        src.buffer = this._engineBuffer;
+        src.loop = true;
+        if (this._engineLoopEnd > 0) {
+          src.loopStart = this._engineLoopStart;
+          src.loopEnd = this._engineLoopEnd;
+        }
+        src.playbackRate.value = rate; // starts at this speed's pitch, no glide up from 1.0
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, now); // silent before it is connected; 0.05 s de-click fade-in
+        g.gain.linearRampToValueAtTime(gain, now + 0.05);
+        src.connect(g).connect(ctx.destination);
+        // Start from 0 to capture the natural attack of the sound (Fixes 'start glitch');
+        // the loop still respects loopStart/loopEnd for later repeats.
+        src.start(0, 0);
+        this._engineSource = src;
+        this._engineGain = g;
       } catch (e) {
-          console.error("AudioManager.playEngine error", e);
+        console.error("AudioManager.playEngine error", e);
       }
     },
 
-    // Modulate volume based on speed (simulates engine effort)
-    // ratio: 0.0 (stopped) to 1.0 (max speed)
-    setEngineVolumeBySpeed(ratio) {
-        try {
-            if (!this._engineGain) return;
-            if (this._isStopping) return;
-
-            const now = this._audioCtx.currentTime;
-            const baseVol = (this._prevVolume || 0.6) * 0.8;
-            
-            // Quadratic curve: Volume drops faster than speed
-            // This simulates "letting off the gas": Engine quiets down (idles) while bike still has momentum
-            // Ratio^1.5 or Ratio^2 feels good. Let's try Ratio^1.5 for a balance.
-            const curve = Math.pow(ratio, 1.5);
-            
-            // Map 0..1 to 0.1 .. 1.0
-            const dynamicVol = baseVol * (0.1 + (curve * 0.9)); 
-
-            // Smooth update (0.1s ramp)
-            this._engineGain.gain.setTargetAtTime(dynamicVol, now, 0.1);
-            
-        } catch(e) {}
-    },
-
+    // Fade the voice out and let it go; its own scheduled stop() ends it.
     stopEngine() {
-        try {
-            if (!this._engineSource || !this._engineGain) return;
-            if (this._isStopping) return;
-
-            this._isStopping = true;
-            
-            const ctx = this._initWebAudio();
-            const now = ctx.currentTime;
-            
-            this._engineGain.gain.cancelScheduledValues(now);
-            
-            // Get current volume to determine how "heavy" the stop should be
-            const currentVol = this._engineGain.gain.value;
-            this._engineGain.gain.setValueAtTime(currentVol, now);
-            
-            // Adaptive Fade:
-            // High RPM (High Vol) -> Longer drift (0.5s)
-            // Low RPM (Low Vol) -> Quick cut (0.15s)
-            // This fixes the "floating" feel at low speeds while keeping high speed smoothness
-            const duration = 0.15 + (currentVol * 0.4); 
-            
-            this._engineGain.gain.linearRampToValueAtTime(0, now + duration);
-            
-            const src = this._engineSource;
-            src.stop(now + duration + 0.05); 
-            
-        } catch(e) {}
+      try {
+        const src = this._engineSource;
+        const g = this._engineGain;
+        if (!src) return;
+        this._engineSource = null;
+        this._engineGain = null;
+        const now = this._audioCtx.currentTime;
+        // Adaptive fade: a loud (fast) engine drifts out over up to 0.55 s, a quiet one in 0.15 s.
+        const vol = g.gain.value;
+        const duration = 0.15 + vol * 0.4;
+        g.gain.cancelScheduledValues(now);
+        g.gain.setValueAtTime(vol, now);
+        g.gain.linearRampToValueAtTime(0, now + duration);
+        src.stop(now + duration + 0.05);
+      } catch (e) {}
     },
     // Convenience: allow playing a file path directly
     playFile(path) {
@@ -281,15 +229,7 @@
           this._fadeHandle = null;
         }
         this._bgm.volume = vol;
-        
-        // Update engine volume if it's playing (Web Audio)
-        if (this._engineGain && this._audioCtx) {
-             const now = this._audioCtx.currentTime;
-             this._engineGain.gain.cancelScheduledValues(now);
-             const target = Math.max(0, vol * 0.8);
-             this._engineGain.gain.setValueAtTime(target, now);
-        }
-
+        // A running engine picks the new level up on its next step (playEngine).
       } catch (e) {}
     },
 
@@ -337,12 +277,13 @@
     // Play a short click SFX for UI interactions. Respects mute and current volume.
     playClick() {
       try {
-        if (this._isMuted) return;
-        
+        const level = this.level();
+        if (!(level > 0)) return; // muted or volume 0
+
         // Clone node allows overlapping clicks (rapid fire)
         // If we just used this._clickAudio.play(), rapid clicks would just restart or fail
         const s = this._clickAudio.cloneNode();
-        s.volume = Math.max(0, Math.min(1, this._prevVolume || 0.6));
+        s.volume = level;
         s.play().catch(() => {});
       } catch (e) {}
     },
@@ -379,27 +320,36 @@
     isMuted() {
       return !!this._isMuted;
     },
+    // The level every voice is scaled by (P8): 0 while muted, else the volume (0 included).
+    level() {
+      return this._isMuted ? 0 : this._prevVolume;
+    },
+    // Remember volume and mute across visits (P8). Called by mute/unmute and the slider's
+    // "change" (never per "input" tick: save.set rewrites the whole record).
+    _persist() {
+      save.set("audio", { volume: this._prevVolume, muted: this._isMuted });
+    },
     mute() {
       try {
         this._isMuted = true;
         this._bgm.muted = true;
+        // Silence the running engine now (cancel also drops a fresh voice's fade-in ramp);
+        // its per-step target is 0 from here on (level()).
         if (this._engineGain) {
-             this._engineGain.gain.value = 0;
+          const now = this._audioCtx.currentTime;
+          this._engineGain.gain.cancelScheduledValues(now);
+          this._engineGain.gain.setValueAtTime(0, now);
         }
+        this._persist();
       } catch (e) {}
     },
     unmute() {
       try {
         this._isMuted = false;
         this._bgm.muted = false;
-        // restore volume if needed
-        if (typeof this._prevVolume === "number") {
-           this._bgm.volume = this._prevVolume;
-           if (this._engineGain) {
-                // Restore engine volume
-                this._engineGain.gain.value = Math.max(0, this._prevVolume * 0.8);
-           }
-        }
+        this._bgm.volume = this._prevVolume;
+        // A running engine fades back in on its next step, at the level its speed asks for.
+        this._persist();
       } catch (e) {}
     },
     toggleMute() {
@@ -435,7 +385,7 @@
           muteBtn.setAttribute("aria-pressed", muted ? "true" : "false");
         }
         if (volEl) {
-          const v = Math.round((AudioManager._prevVolume || 0.6) * 100);
+          const v = Math.round(AudioManager._prevVolume * 100);
           volEl.value = v;
         }
       };
@@ -468,6 +418,13 @@
           // if was muted, unmute when user moves slider
           if (AudioManager.isMuted()) AudioManager.unmute();
           updateUI();
+        });
+        // Persist once the value settles (drag released, or one arrow press).
+        volEl.addEventListener("change", () => AudioManager._persist());
+        // The panel focuses the slider on open: an arrow still held from the ride must not
+        // sweep the volume (R29). Deliberate presses and drags still work.
+        volEl.addEventListener("keydown", (e) => {
+          if (e.repeat) e.preventDefault();
         });
       }
 

@@ -6,6 +6,7 @@ import { JOR } from "./helpers.js";
 import { app } from "./state.js";
 import { onAction } from "./actions.js";
 import { save } from "./save.js";
+import { AudioManager } from "./audio.js";
 
 class VisitorCounter {
   constructor() {
@@ -84,6 +85,9 @@ class VisitorCounter {
   }
 
   playDiscoverySound() {
+    // Follows the game's mute and volume (P8): 0.05 was its level at the default volume 0.6.
+    const peak = 0.08 * AudioManager.level();
+    if (!(peak > 0)) return;
     try {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const oscillator1 = audioContext.createOscillator();
@@ -99,8 +103,8 @@ class VisitorCounter {
       oscillator1.type = "sine";
       oscillator2.type = "sine";
 
-      gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+      gainNode.gain.setValueAtTime(peak, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(peak / 5, audioContext.currentTime + 0.4);
 
       oscillator1.start(audioContext.currentTime);
       oscillator2.start(audioContext.currentTime + 0.1);

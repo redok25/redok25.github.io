@@ -9,7 +9,7 @@
 import { JOR } from "./helpers.js";
 
 export const SAVE_KEY = "jor.save.v1";
-const DEFAULTS = { v: 1, visits: null, weatherOptIn: false, stamps: [] };
+const DEFAULTS = { v: 1, visits: null, weatherOptIn: false, stamps: [], audio: null };
 
 export function createSave(store) {
   let data = load();
@@ -60,4 +60,16 @@ export function addStamp(s, id) {
   if (stamps.includes(id)) return false;
   s.set("stamps", [...stamps, id]);
   return true;
+}
+
+// Audio settings (P8): { volume 0..1, muted }. Untrusted like every stored value: a volume
+// that is not a finite number falls back to the default, others are clamped to 0..1, and 0
+// stays 0 (a real choice, not "unset"). Only a literal true mutes. A write stores a new object.
+export function getAudio(s) {
+  const raw = s.get("audio");
+  const volume = raw && typeof raw === "object" ? raw.volume : null;
+  return {
+    volume: Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 0.6,
+    muted: !!raw && raw.muted === true,
+  };
 }

@@ -171,6 +171,23 @@ export function makeJOR(root) {
     return { steps, acc: Math.max(acc, 0) };
   }
 
+  // Engine sound (P8). ratio = speed / maxSpeed; values outside 0..1 (and NaN) are clamped.
+  // Pitch follows speed linearly: 0.8 at a crawl, 1.4 at top speed (a wheelie needs top
+  // speed, so it always sits at 1.4). Gain keeps the pre-P8 curve: ratio^1.5, so letting off
+  // the gas drops the engine toward a 10% idle floor, scaled by the master level (0 = muted).
+  const ENGINE_RATE_IDLE = 0.8;
+  const ENGINE_RATE_SPAN = 0.6; // idle + span = 1.4 exactly
+  const ENGINE_GAIN = 0.8; // the engine sits a little under the master level, as before
+  const unit = (x) => (x > 0 ? Math.min(x, 1) : 0);
+
+  function engineRate(ratio) {
+    return ENGINE_RATE_IDLE + ENGINE_RATE_SPAN * unit(ratio);
+  }
+
+  function engineGain(ratio, level) {
+    return unit(level) * ENGINE_GAIN * (0.1 + 0.9 * Math.pow(unit(ratio), 1.5));
+  }
+
   function createStore(storage) {
     const memory = {};
     return {
@@ -242,6 +259,8 @@ export function makeJOR(root) {
     createWordBuffer,
     STEP_MS,
     fixedSteps,
+    engineRate,
+    engineGain,
     createStore,
     store: createStore(storage),
   };

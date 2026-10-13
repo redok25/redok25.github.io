@@ -253,3 +253,19 @@ test("contactLinks: the first Quick View link per channel, null when missing", (
     github: "https://github.com/x",
   });
 });
+
+test("engine sound (P8): pitch 0.8-1.4 follows speed; gain is 0 at any speed when muted", () => {
+  const near = (a, b) => Math.abs(a - b) < 1e-9;
+  assert.equal(JOR.engineRate(0), 0.8);
+  assert.equal(JOR.engineRate(0.5), 1.1);
+  assert.equal(JOR.engineRate(1), 1.4); // top speed, so every wheelie
+  assert.equal(JOR.engineRate(3), 1.4);
+  assert.equal(JOR.engineRate(-1), 0.8);
+  assert.equal(JOR.engineRate(NaN), 0.8);
+  assert.ok(near(JOR.engineRate(0.591), 1.1546)); // opening ride: 6 * 0.985 of maxSpeed 10
+  assert.ok(near(JOR.engineGain(1, 0.6), 0.48)); // unchanged from before P8 at the default volume
+  assert.ok(near(JOR.engineGain(0, 0.6), 0.048)); // 10% idle floor
+  assert.ok(JOR.engineGain(0.4, 0.6) < JOR.engineGain(0.6, 0.6));
+  for (const ratio of [0, 0.3, 1]) assert.equal(JOR.engineGain(ratio, 0), 0); // muted or volume 0
+  assert.equal(JOR.engineGain(NaN, NaN), 0);
+});

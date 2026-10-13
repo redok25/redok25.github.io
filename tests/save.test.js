@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { makeJOR } from "../js/helpers.js";
-import { createSave, SAVE_KEY, getStamps, addStamp } from "../js/save.js";
+import { createSave, SAVE_KEY, getStamps, addStamp, getAudio } from "../js/save.js";
 
 const memoryStorage = (init = {}) => {
   const data = { ...init };
@@ -80,4 +80,21 @@ test("stamps: an untrusted stored value never throws and never leaks across save
   addStamp(a, "skills");
   // DEFAULTS.stamps is shared by every load: a second fresh save must still start empty.
   assert.deepEqual(getStamps(createSave(storeOf(memoryStorage()))), []);
+});
+
+test("audio (P8): defaults, persisted, 0 stays 0, untrusted values normalised", () => {
+  const storage = memoryStorage();
+  const s = createSave(storeOf(storage));
+  assert.deepEqual(getAudio(s), { volume: 0.6, muted: false });
+  s.set("audio", { volume: 0, muted: true });
+  assert.deepEqual(getAudio(createSave(storeOf(storage))), { volume: 0, muted: true });
+  const stored = (audio) =>
+    getAudio(createSave(storeOf(memoryStorage({ [SAVE_KEY]: JSON.stringify({ v: 1, audio }) }))));
+  assert.deepEqual(stored("loud"), { volume: 0.6, muted: false });
+  assert.deepEqual(stored(null), { volume: 0.6, muted: false });
+  assert.deepEqual(stored([0.2]), { volume: 0.6, muted: false });
+  assert.deepEqual(stored({ volume: "0.3", muted: "true" }), { volume: 0.6, muted: false });
+  assert.deepEqual(stored({ volume: 7 }), { volume: 1, muted: false });
+  assert.deepEqual(stored({ volume: -1, muted: true }), { volume: 0, muted: true });
+  assert.deepEqual(stored({ volume: 0.35 }), { volume: 0.35, muted: false });
 });

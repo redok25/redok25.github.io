@@ -64,6 +64,8 @@ import { app } from "./state.js";
       try {
         const ctx = AudioManager._initWebAudio();
         if (ctx && ctx.state === "suspended") ctx.resume().catch(() => {});
+        // Fetch + decode the engine loop now (P8), while the ride waits for the player sprites.
+        AudioManager._loadEngineBuffer();
       } catch (e) {
         // no Web Audio: the game stays silent, nothing else changes
       }

@@ -190,16 +190,8 @@ export class Player {
       this.wheelAngle +=
         this.velocityX * this.wheelSpinMultiplier * dtFactorSplash;
 
-      // Ensure engine sound plays during splash
-      try {
-         if (AudioManager && AudioManager.playEngine) {
-             AudioManager.playEngine();
-         }
-         if (AudioManager && AudioManager.setEngineVolumeBySpeed) {
-             const ratio = Math.min(1, Math.abs(this.velocityX) / this.maxSpeed);
-             AudioManager.setEngineVolumeBySpeed(ratio);
-         }
-      } catch(e) {}
+      // Engine sound during the scripted ride: pitch and level follow its speed (P8).
+      AudioManager.playEngine(Math.min(1, Math.abs(this.velocityX) / this.maxSpeed));
 
       return; // skip normal input handling while scripted move runs
     }
@@ -242,24 +234,11 @@ export class Player {
       }
     }
 
-    // Audio Engine Handling
-    try {
-        const speed = Math.abs(this.velocityX);
-        if (speed > 0.1) { // lowered threshold slightly
-             if (AudioManager && AudioManager.playEngine) {
-                 AudioManager.playEngine();
-             }
-             // Dynamic volume based on speed (smoother stop)
-             if (AudioManager && AudioManager.setEngineVolumeBySpeed) {
-                 const ratio = Math.min(1, speed / this.maxSpeed);
-                 AudioManager.setEngineVolumeBySpeed(ratio);
-             }
-        } else {
-             if (AudioManager && AudioManager.stopEngine) {
-                 AudioManager.stopEngine();
-             }
-        }
-    } catch(e) {}
+    // Engine sound: pitch and level follow speed while moving (P8), fade out once stopped.
+    // The ratio is taken before the speed clamp below, so Math.min caps it.
+    const speed = Math.abs(this.velocityX);
+    if (speed > 0.1) AudioManager.playEngine(Math.min(1, speed / this.maxSpeed));
+    else AudioManager.stopEngine();
 
     // Clamp speed
     if (this.velocityX > this.maxSpeed) this.velocityX = this.maxSpeed;

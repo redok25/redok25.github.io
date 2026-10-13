@@ -124,6 +124,7 @@ export class MinigameManager {
       if (e.repeat) e.preventDefault();
     };
     if (this.btnStart) this.btnStart.addEventListener("keydown", ignoreRepeat);
+    if (this.btnCancel) this.btnCancel.addEventListener("keydown", ignoreRepeat);
     if (this.btnResultClose) this.btnResultClose.addEventListener("keydown", ignoreRepeat);
     if (this.btnResultReplay) this.btnResultReplay.addEventListener("keydown", ignoreRepeat);
 
@@ -349,7 +350,7 @@ export class MinigameManager {
     const t = (n) => ({ time: formatSteps(n) });
     line(this.resultTime, steps ? JOR.fillTokens(COPY.minigame.time[type] || "", t(steps)) : "");
     line(this.resultBest, isNewBest ? COPY.minigame.newBest : best ? JOR.fillTokens(COPY.minigame.best, t(best)) : "");
-    if (this.resultBest) this.resultBest.classList.toggle("is-new", isNewBest);
+    if (this.resultBest) this.resultBest.classList.toggle("is-new", !!isNewBest);
 
     this.playConfetti(success); // P7: DOM confetti, the "mg-result" pause freezes the canvas
     this.resultModal.classList.remove("hidden");
@@ -553,7 +554,7 @@ class RedLightGreenLight extends Minigame {
   update(dt) {
     // P6: count the step when the light the rider saw for this step's input was not RED
     // (state before this step's switch). ponytail: red length is luck and never counts; the
-    // number of red cycles still does (~0.5 s each at perfect play) until T4 seeds the lights.
+    // number of red cycles still does (~0.5 s each at perfect play) until Phase 5 seeds the lights.
     if (this.state !== "RED") this.steps++;
     this.timer += dt;
 

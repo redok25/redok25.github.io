@@ -183,6 +183,9 @@ import { save, getAudio } from "./save.js";
         }
         src.playbackRate.value = rate; // starts at this speed's pitch, no glide up from 1.0
         const g = ctx.createGain();
+        // Through the setter too: a stop in this same task reads .value, which scheduled
+        // events do not change until the audio thread renders (else it fades from 1.0).
+        g.gain.value = 0;
         g.gain.setValueAtTime(0, now); // silent before it is connected; 0.05 s de-click fade-in
         g.gain.linearRampToValueAtTime(gain, now + 0.05);
         src.connect(g).connect(ctx.destination);

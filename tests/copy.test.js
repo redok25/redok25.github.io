@@ -94,3 +94,16 @@ test("copy 3b: journal copy uses only its tokens, no typed digits, and fits a 37
   assert.deepEqual(Object.keys(COPY.journal.courses), BEST_IDS);
   assert.equal(JOR.fillTokens(COPY.journal.count, { got: 0, total: 15 }), "0/15");
 });
+
+test("copy 3b: NPC memory and rain lines, {visitCount} only, short for a phone bubble (W7)", () => {
+  assert.deepEqual(Object.keys(COPY.npc), ["first", "returning", "sameDay", "rain"]);
+  const lines = [COPY.npc.first, COPY.npc.returning, COPY.npc.sameDay, ...COPY.npc.rain];
+  assert.ok(lines.length <= 8, "D6: at most 8 new NPC templates");
+  for (const s of lines) {
+    for (const [, t] of s.matchAll(/\{(\w+)\}/g)) assert.equal(t, "visitCount", s);
+    assert.ok(!/\d/.test(s.replace(/\{\w+\}/g, "")), s);
+    assert.ok(JOR.fillTokens(s, { visitCount: 10000 }).length <= 40, s);
+  }
+  assert.match(JOR.fillTokens(COPY.npc.returning, { visitCount: 2 }), /^Kunjungan ke-2!/);
+  assert.match(COPY.npc.sameDay, /balik lagi/);
+});

@@ -4,7 +4,7 @@
 // JOR.contentTokens, D498), never typed in. "**x**" marks bold; it is rendered as a
 // <strong> node, never through innerHTML. Game graph only; no DOM, so node tests import it.
 // Phase 2b keys: stations, billboard, strip, credits, console. Phase 3a: minigame.
-// Phase 3b: kopi, achievements, journal.
+// Phase 3b: kopi, achievements, journal, npc.
 // ===================================
 export const COPY = {
   // Chapter title cards (V5): "label · title" over the subtitle. Index = chapter id.
@@ -126,5 +126,18 @@ export const COPY = {
       drag_race: "Balap Drag",
     },
     achievements: "Pencapaian",
+  },
+  // Regular NPCs (W7, D537). The first NPC met each load says one memory line: a first
+  // visit, a new day ({visitCount} = days visited, from the save, never typed), or a reload
+  // on the same day. Rain lines greet the bike while it rains.
+  npc: {
+    first: "Wah, muka baru! Selamat jalan-jalan ya.",
+    returning: "Kunjungan ke-{visitCount}! Makin betah nih?",
+    sameDay: "Lho, balik lagi? Tadi kan udah mampir.",
+    rain: [
+      "Hujan nih, rem pelan-pelan ya.",
+      "Duh, lupa bawa payung lagi.",
+      "Hujan gini enaknya ngopi di warung.",
+    ],
   },
 };

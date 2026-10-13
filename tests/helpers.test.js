@@ -90,12 +90,15 @@ test("recordVisit: one count per day, returning after any earlier load", () => {
   assert.deepEqual(first, {
     record: { count: 1, first: "2026-10-12T10:00:00", last: "2026-10-12T10:00:00" },
     returning: false,
+    sameDay: false,
   });
   const sameDay = JOR.recordVisit(first.record, "2026-10-12T18:00:00");
   assert.equal(sameDay.record.count, 1);
   assert.equal(sameDay.returning, true);
+  assert.equal(sameDay.sameDay, true);
   const nextDay = JOR.recordVisit(sameDay.record, "2026-10-13T09:00:00");
   assert.equal(nextDay.record.count, 2);
+  assert.equal(nextDay.sameDay, false);
   assert.equal(nextDay.record.first, "2026-10-12T10:00:00");
   assert.equal(nextDay.record.last, "2026-10-13T09:00:00");
 });
@@ -268,4 +271,20 @@ test("engine sound (P8): pitch 0.8-1.4 follows speed; gain is 0 at any speed whe
   assert.ok(JOR.engineGain(0.4, 0.6) < JOR.engineGain(0.6, 0.6));
   for (const ratio of [0, 0.3, 1]) assert.equal(JOR.engineGain(ratio, 0), 0); // muted or volume 0
   assert.equal(JOR.engineGain(NaN, NaN), 0);
+});
+
+test("recordVisit: an untrusted stored record never breaks the count (W7)", () => {
+  const today = "2026-10-13T09:00:00";
+  for (const junk of ["x", 5, [], true, {}, { first: 1, last: 2 }, { first: "", last: "" }]) {
+    assert.deepEqual(JOR.recordVisit(junk, today), {
+      record: { count: 1, first: today, last: today },
+      returning: false,
+      sameDay: false,
+    });
+  }
+  const prev = (count) => ({ count, first: "2026-10-01T10:00:00", last: "2026-10-12T10:00:00" });
+  for (const bad of ["5", -3, 0, 2.5, NaN, null, 1e300]) assert.equal(JOR.recordVisit(prev(bad), today).record.count, 2);
+  assert.equal(JOR.recordVisit(prev(4), today).record.count, 5);
+  assert.equal(JOR.recordVisit(prev(123456), today).record.count, 10000, "capped");
+  assert.equal(JOR.recordVisit({ ...prev(3), last: "garbage" }, today).record.count, 4);
 });

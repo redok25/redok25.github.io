@@ -112,17 +112,21 @@ export function makeJOR(root) {
     return out;
   }
 
-  // One count per calendar day, like the old counter; "returning" = any earlier load.
+  // One count per local calendar day (D537): "returning" = any earlier load, "sameDay" = an
+  // earlier load today. The stored record is untrusted (any JSON): first/last must be
+  // non-empty strings, and a count that is not a whole number >= 1 restarts at 1 (capped).
   function recordVisit(prev, nowIso) {
-    if (!prev || !prev.first || !prev.last) {
-      return { record: { count: 1, first: nowIso, last: nowIso }, returning: false };
+    const text = (s) => typeof s === "string" && s !== "";
+    if (!prev || !text(prev.first) || !text(prev.last)) {
+      return { record: { count: 1, first: nowIso, last: nowIso }, returning: false, sameDay: false };
     }
-    const count = prev.count || 1;
+    const count = Number.isSafeInteger(prev.count) && prev.count > 0 ? Math.min(prev.count, 9999) : 1;
     const sameDay =
       new Date(prev.last).toDateString() === new Date(nowIso).toDateString();
     return {
       record: { count: sameDay ? count : count + 1, first: prev.first, last: nowIso },
       returning: true,
+      sameDay,
     };
   }
 

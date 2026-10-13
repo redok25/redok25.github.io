@@ -62,6 +62,9 @@ export class InteractionManager {
     this.promptElement = document.getElementById("interaction-prompt");
     this.tooltipElement = document.getElementById("interaction-tooltip");
     this.tooltipLabel = document.getElementById("tooltip-label-text");
+    // W7: E chats with a regular NPC too, but on touch the NPC itself is the tap target, so its
+    // prompt stays hidden there and the phone "Tujuan:" pill keeps its place (ui.css).
+    this.npcPrompt = !matchMedia("(pointer: coarse)").matches;
 
     this.setupKeyListener();
 
@@ -135,10 +138,10 @@ export class InteractionManager {
     }
   }
 
-  // The prompt is for E targets; a regular NPC chats on a tap of the NPC itself.
+  // The prompt is for E targets; on touch a regular NPC is tapped instead (W7).
   updatePrompt() {
     if (!this.promptElement) return;
-    const show = !!this.currentNearbyObject && this.currentKind !== "npc";
+    const show = !!this.currentNearbyObject && (this.currentKind !== "npc" || this.npcPrompt);
     this.promptElement.classList.toggle("hidden", !show);
   }
 
@@ -181,7 +184,6 @@ export class InteractionManager {
   tryInteract() {
     const game = app.game;
     if (!game || game.paused || this.isInert() || !this.currentNearbyObject) return;
-    if (this.currentKind === "npc") return; // regular NPCs chat on a tap of the NPC itself
     this.activate(this.currentNearbyObject, this.currentKind);
   }
 
@@ -216,7 +218,7 @@ export class InteractionManager {
     } else if (kind === "special") {
       app.game.minigames.startMinigame(obj.minigameId);
     } else if (kind === "npc") {
-      obj.triggerChat();
+      obj.triggerChat(app.game.effects); // rain and snow keep "cerah" lines quiet (W7)
     }
   }
 

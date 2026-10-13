@@ -712,10 +712,11 @@ class Game {
       this.credits.check(this.player.x + this.player.width / 2);
     }
 
-    // Update NPCs
-    if (this.world.npcs) {
-      this.world.npcs.forEach((npc) => npc.update(deltaTime));
-    }
+    // Regular NPCs (W7) look at the bike and react to a wheelie, but not during the opening
+    // ride or a minigame course (R20): there the bike goes in as NaN. No allocation per step.
+    const npcs = this.world.npcs;
+    const bikeX = this.interactions.isInert() ? NaN : this.player.x + this.player.width / 2;
+    for (let i = 0; i < npcs.length; i++) npcs[i].update(deltaTime, bikeX, this.player.wheelieActive, this.effects);
 
     // Update Special NPCs
     if (this.world.specialNPCs) {
@@ -792,6 +793,10 @@ class Game {
 
     // Ambient snow (V8), on top like rain
     this.effects.renderSnow(this.cameraX);
+
+    // NPC bubbles and "!" (W7): over the bike, the night tint and the rain; under the ▼.
+    const npcs = this.world.npcs;
+    for (let i = 0; i < npcs.length; i++) npcs[i].renderOverlay(this.ctx, this.cameraX);
 
     // Render interaction indicators (UI stays on top and bright)
     this.interactions.render(this.ctx, this.cameraX);

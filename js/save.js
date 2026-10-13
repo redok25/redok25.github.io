@@ -9,7 +9,7 @@
 import { JOR } from "./helpers.js";
 
 export const SAVE_KEY = "jor.save.v1";
-const DEFAULTS = { v: 1, visits: null, weatherOptIn: false, stamps: [], audio: null };
+const DEFAULTS = { v: 1, visits: null, weatherOptIn: false, stamps: [], bests: {}, audio: null };
 
 export function createSave(store) {
   let data = load();
@@ -72,4 +72,42 @@ export function getAudio(s) {
     volume: Number.isFinite(volume) ? Math.min(1, Math.max(0, volume)) : 0.6,
     muted: !!raw && raw.muted === true,
   };
+}
+
+// Minigame personal bests (P6): sim steps per course id, lower is better. Wheelie: course
+// start to the end of the 5 s hold; Drag: GO to the finish; RLGL: steps outside red lights.
+// Untrusted on read like stamps; a write builds a new object (DEFAULTS.bests is shared).
+const BEST_IDS = ["wheelie_challenge", "red_light_green_light", "drag_race"];
+const MAX_BEST_STEPS = 1e7; // ~46 h: keeps a junk stored number off the result card
+
+const validSteps = (n) => Number.isInteger(n) && n > 0 && n < MAX_BEST_STEPS;
+
+export function getBest(s, id) {
+  const all = s.get("bests");
+  if (!BEST_IDS.includes(id) || !all || typeof all !== "object") return null;
+  return validSteps(all[id]) ? all[id] : null;
+}
+
+// Judges one finished run. steps = a win's time, null for a loss (nothing to time). Only a
+// strictly lower time is written. Returns { steps, best, prevBest, isNewBest }: prevBest is
+// the record before this run (null on the first win, which counts as a new record).
+export function recordBest(s, id, steps) {
+  const prevBest = getBest(s, id);
+  const run = BEST_IDS.includes(id) && validSteps(steps) ? steps : null;
+  if (run === null || (prevBest !== null && run >= prevBest)) {
+    return { steps: run, best: prevBest, prevBest, isNewBest: false };
+  }
+  const bests = {};
+  for (const k of BEST_IDS) {
+    const b = getBest(s, k);
+    if (b !== null) bests[k] = b;
+  }
+  bests[id] = run;
+  s.set("bests", bests);
+  return { steps: run, best: run, prevBest, isNewBest: true };
+}
+
+// Sim steps as seconds for the player: 320 -> "5,33" (Indonesian decimal comma).
+export function formatSteps(steps) {
+  return ((steps * JOR.STEP_MS) / 1000).toFixed(2).replace(".", ",");
 }

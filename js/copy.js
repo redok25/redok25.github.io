@@ -3,7 +3,7 @@
 // 375 px phone. Numbers are {tokens} filled from Quick View markup (JOR.fillTokens +
 // JOR.contentTokens, D498), never typed in. "**x**" marks bold; it is rendered as a
 // <strong> node, never through innerHTML. Game graph only; no DOM, so node tests import it.
-// Phase 2b keys: stations, billboard, strip, credits, console.
+// Phase 2b keys: stations, billboard, strip, credits, console. Phase 3a: minigame.
 // ===================================
 export const COPY = {
   // Chapter title cards (V5): "label · title" over the subtitle. Index = chapter id.
@@ -58,5 +58,16 @@ export const COPY = {
     timeBad: "Pilihannya: pagi, siang, sore, malam, auto.",
     timeOk: "Waktu: {mode}.",
     weatherOk: "Hujan: {state}.",
+  },
+  // Minigame result card (P6). {time} = seconds with a decimal comma ("5,33"), filled by the
+  // game. RLGL times only the steps outside red lights: their length is luck, not skill.
+  minigame: {
+    time: {
+      wheelie_challenge: "Waktu dari awal: {time} detik",
+      red_light_green_light: "Waktu tanpa lampu merah: {time} detik",
+      drag_race: "Waktu: {time} detik",
+    },
+    best: "Rekor: {time} detik",
+    newBest: "REKOR BARU!",
   },
 };

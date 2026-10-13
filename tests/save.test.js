@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { makeJOR } from "../js/helpers.js";
-import { createSave, SAVE_KEY, getStamps, addStamp, getAudio } from "../js/save.js";
+import { createSave, SAVE_KEY, getStamps, addStamp, getBest, recordBest, formatSteps, getAudio } from "../js/save.js";
 
 const memoryStorage = (init = {}) => {
   const data = { ...init };
@@ -97,4 +97,45 @@ test("audio (P8): defaults, persisted, 0 stays 0, untrusted values normalised", 
   assert.deepEqual(stored({ volume: 7 }), { volume: 1, muted: false });
   assert.deepEqual(stored({ volume: -1, muted: true }), { volume: 0, muted: true });
   assert.deepEqual(stored({ volume: 0.35 }), { volume: 0.35, muted: false });
+});
+
+test("bests (P6): a lower time is a record, a tie or a loss is not, and it persists", () => {
+  const storage = memoryStorage();
+  const s = createSave(storeOf(storage));
+  assert.equal(getBest(s, "drag_race"), null);
+  assert.deepEqual(recordBest(s, "drag_race", null), { steps: null, best: null, prevBest: null, isNewBest: false });
+  assert.deepEqual(JSON.parse(storage.data[SAVE_KEY]).bests, {}); // a loss writes nothing
+  assert.deepEqual(recordBest(s, "drag_race", 320), { steps: 320, best: 320, prevBest: null, isNewBest: true });
+  assert.deepEqual(recordBest(s, "drag_race", 330), { steps: 330, best: 320, prevBest: 320, isNewBest: false });
+  assert.deepEqual(recordBest(s, "drag_race", 320), { steps: 320, best: 320, prevBest: 320, isNewBest: false });
+  assert.deepEqual(recordBest(s, "drag_race", 311), { steps: 311, best: 311, prevBest: 320, isNewBest: true });
+  assert.deepEqual(recordBest(s, "nope", 10), { steps: null, best: null, prevBest: null, isNewBest: false });
+  assert.equal(getBest(s, "wheelie_challenge"), null);
+  assert.equal(getBest(createSave(storeOf(storage)), "drag_race"), 311);
+  assert.deepEqual(JSON.parse(storage.data[SAVE_KEY]).bests, { drag_race: 311 });
+});
+
+test("bests (P6): untrusted stored values never throw, never show, and are dropped on write", () => {
+  const withBests = (bests) => createSave(storeOf(memoryStorage({ [SAVE_KEY]: JSON.stringify({ v: 1, bests }) })));
+  for (const junk of ["x", null, 7, [309], { drag_race: "309" }, { drag_race: 309.5 }, { drag_race: 0 }, { drag_race: -5 }, { drag_race: 1e9 }]) {
+    const s = withBests(junk);
+    assert.equal(getBest(s, "drag_race"), null, JSON.stringify(junk));
+    assert.equal(recordBest(s, "drag_race", 400).isNewBest, true, JSON.stringify(junk));
+  }
+  const s = withBests({ wheelie_challenge: 330, red_light_green_light: "x", evil: 1 });
+  recordBest(s, "drag_race", 315);
+  assert.deepEqual(s.get("bests"), { wheelie_challenge: 330, drag_race: 315 });
+  // A Phase 2b record has no bests key at all.
+  const old = createSave(storeOf(memoryStorage({ [SAVE_KEY]: JSON.stringify({ v: 1, visits: null, weatherOptIn: false, stamps: [] }) })));
+  assert.equal(getBest(old, "wheelie_challenge"), null);
+  assert.equal(recordBest(old, "wheelie_challenge", 320).isNewBest, true);
+  // DEFAULTS.bests is shared by every load: a fresh save must still start empty.
+  assert.equal(getBest(createSave(storeOf(memoryStorage())), "wheelie_challenge"), null);
+});
+
+test("formatSteps (P6): sim steps as seconds with a decimal comma", () => {
+  assert.equal(formatSteps(60), "1,00");
+  assert.equal(formatSteps(309), "5,15");
+  assert.equal(formatSteps(320), "5,33");
+  assert.equal(formatSteps(548), "9,13");
 });

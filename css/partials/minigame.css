@@ -248,3 +248,29 @@
     transform: translateY(0);
   }
 }
+
+/* Minigame result card (P6): this run's time, the course record and the two buttons. */
+.result-line {
+  font-size: 1.1rem;
+  margin: 0 0 6px;
+}
+
+.result-line.is-new {
+  color: #ffe135; /* the VICTORY gold */
+}
+
+.result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+/* Landscape phones (85vh is ~319 px at 667x375): the trophy repeats the title; dropping it
+   keeps the time, the record and both buttons on screen without scrolling. */
+@media (max-height: 500px) {
+  #result-icon {
+    display: none;
+  }
+}

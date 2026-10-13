@@ -57,3 +57,13 @@ test("copy 2b: credits stats fill to the Quick View numbers; every station has a
   }
   assert.ok(Array.isArray(COPY.console.help) && COPY.console.help.length === 3);
 });
+
+test("copy 3a: result lines only use {time}, no typed digits, and fit a 375 px card (P6)", () => {
+  assert.deepEqual(Object.keys(COPY.minigame.time), ["wheelie_challenge", "red_light_green_light", "drag_race"]);
+  for (const s of [...Object.values(COPY.minigame.time), COPY.minigame.best, COPY.minigame.newBest]) {
+    for (const [, t] of s.matchAll(/\{(\w+)\}/g)) assert.equal(t, "time", s);
+    assert.ok(!/\d/.test(s.replace(/\{\w+\}/g, "")), s);
+    assert.ok(JOR.fillTokens(s, { time: "99,99" }).length <= 36, s);
+  }
+  assert.equal(JOR.fillTokens(COPY.minigame.best, { time: "5,15" }), "Rekor: 5,15 detik");
+});

@@ -54,12 +54,13 @@
       check("3 s distance equal at 30/60/144 Hz", spread <= 10 && Math.min(...distances) > 1000, distances.map(Math.round).join(" / ") + " px");
 
       // (b) Drag Race: 250 ms reaction wins, 400 ms loses (reaction counted from the GO step).
+      let raceSteps = null; // the steps the last race reported (P6: a win's time since GO)
       function race(reactionMs) {
         const p = new Player(2771, 500);
         let outcome = null;
         const manager = {
           showMessage() {}, updateScore() {}, updateTimer() {},
-          stopMinigame(success) { outcome = success; },
+          stopMinigame(success, message, steps = null) { outcome = success; raceSteps = steps; },
         };
         const game = { player: p, canvas: { width: 1920 }, cameraX: 0 };
         const r = new DragRace(game, manager);
@@ -76,6 +77,10 @@
       }
       check("Drag: 250 ms reaction wins", race(250) === true, String(race(250)));
       check("Drag: 400 ms reaction loses", race(400) === false, String(race(400)));
+      race(250);
+      check("Drag: a 250 ms win reports 324 steps since GO (P6)", raceSteps === 324, String(raceSteps));
+      race(400);
+      check("Drag: a loss reports no steps (P6)", raceSteps === null, String(raceSteps));
 
       // (c) layout(): a world laid out at one height and re-laid at another puts everything on the ground.
       {

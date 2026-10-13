@@ -4,6 +4,8 @@
 import { AudioManager } from "./audio.js";
 import { JOR } from "./helpers.js";
 import { fadeTeleport } from "./travel.js";
+import { COPY } from "./copy.js";
+import { save, recordBest, formatSteps } from "./save.js";
 
 // Return to the NPC (W6, R15): the bike's centre lands this far left of the NPC's home
 // centre, facing it. 40 px keeps the NPC the strict best E target and keeps every NPC's
@@ -103,6 +105,9 @@ export class MinigameManager {
     this.resultIcon = document.getElementById("result-icon");
     this.resultMessage = document.getElementById("result-message");
     this.btnResultClose = document.getElementById("btn-result-close");
+    this.btnResultReplay = document.getElementById("btn-result-replay");
+    this.resultTime = document.getElementById("result-time");
+    this.resultBest = document.getElementById("result-best");
 
     // Exit Button
     this.btnExitMinigame = document.getElementById("btn-exit-minigame");
@@ -112,12 +117,14 @@ export class MinigameManager {
 
   setupModalListeners() {
     // A key still held from the ride (Space for a wheelie, a held Enter) must not press the
-    // button that just took focus: auto-repeat keydowns are ignored on both (R29).
+    // button that just took focus or is one Tab away: auto-repeat keydowns are ignored on
+    // every button of the start and result modals (R29, P6).
     const ignoreRepeat = (e) => {
       if (e.repeat) e.preventDefault();
     };
     if (this.btnStart) this.btnStart.addEventListener("keydown", ignoreRepeat);
     if (this.btnResultClose) this.btnResultClose.addEventListener("keydown", ignoreRepeat);
+    if (this.btnResultReplay) this.btnResultReplay.addEventListener("keydown", ignoreRepeat);
 
     // A hidden .modal keeps its buttons visible for its 0.3 s fade: every handler ignores a
     // second activation (stray Enter, double click) once its modal is hidden (R29).
@@ -145,17 +152,36 @@ export class MinigameManager {
       this.pendingMinigame = null;
     });
 
+    // The result card takes one activation (R29): false once it is hidden (a stray Enter, a
+    // double click, or OK and "Main Lagi?" pressed together during its 0.3 s fade).
+    const dismissResult = () => {
+      if (!this.resultModal || this.resultModal.classList.contains("hidden")) return false;
+      this.resultModal.classList.add("hidden");
+      if (this.resultModal.contains(document.activeElement)) document.activeElement.blur();
+      return true;
+    };
+
     if (this.btnResultClose) {
       this.btnResultClose.addEventListener("click", () => {
-        if (!this.resultModal || this.resultModal.classList.contains("hidden")) return;
-        this.resultModal.classList.add("hidden");
-        this.btnResultClose.blur();
+        if (!dismissResult()) return;
         // Back to the NPC (W6, R7). The travel owner is taken BEFORE the result's owner goes,
         // so no step runs at the finish line (it would show that chapter's title card).
         const { x, npc } = this.returnSpot(this.lastType);
         fadeTeleport(this.game, { x, onBlack: () => npc && npc.goHome() });
         JOR.releasePause(this.game, "mg-result");
         if (AudioManager && AudioManager.stopEngine) AudioManager.stopEngine();
+      });
+    }
+
+    // "Main Lagi?" (P6): the same course again through the start path (fade to the ride end,
+    // intro, course) without the start modal. fadeTeleport takes "travel" synchronously, so
+    // "mg-result" can go at once; playIntro takes "minigame" in the task that drops "travel".
+    // The fade cannot be refused here: every other travel waits while "mg-result" is held.
+    if (this.btnResultReplay) {
+      this.btnResultReplay.addEventListener("click", () => {
+        if (!dismissResult()) return;
+        this.actuallyStartMinigame(this.lastType);
+        JOR.releasePause(this.game, "mg-result");
       });
     }
 
@@ -259,7 +285,8 @@ export class MinigameManager {
     this.lastType = type;
     const p = this.game.player;
     // Courses keep their lengths from the ride end (R7). The chapter (Bab 1) syncs at the
-    // black frame; the "minigame" owner from the modal stays held through the intro.
+    // black frame. The caller's owner ("minigame" from the start modal, or "mg-result" from
+    // "Main Lagi?") covers this call; "travel" then holds until playIntro takes "minigame".
     const started = fadeTeleport(this.game, {
       x: p.minX || 200,
       onDone: () =>
@@ -285,19 +312,24 @@ export class MinigameManager {
     if (!started) JOR.releasePause(this.game, "minigame");
   }
 
-  stopMinigame(success = false, message = "") {
-    if (!this.activeMinigame) return;
+  // The one place a finished run is judged (P6). A course passes its steps only on a win;
+  // the exit button never comes here, so a quit records nothing. The outcome
+  // { type, success, steps, best, prevBest, isNewBest } fills the result card and is also
+  // returned.
+  stopMinigame(success = false, message = "", steps = null) {
+    if (!this.activeMinigame) return null;
 
     console.log(`Minigame ended. Success: ${success}`);
     this.activeMinigame.end();
     this.activeMinigame = null;
     this.hideHUD();
 
-    // Show Result Modal instead of toast
-    this.showResultModal(success, message);
+    const result = { type: this.lastType, success, ...recordBest(save, this.lastType, success ? steps : null) };
+    this.showResultModal(result, message);
+    return result;
   }
 
-  showResultModal(success, message) {
+  showResultModal({ type, success, steps, best, isNewBest }, message) {
     if (!this.resultModal) return;
 
     this.resultTitle.textContent = success ? "🎉 VICTORY! 🎉" : "💀 GAME OVER";
@@ -306,11 +338,22 @@ export class MinigameManager {
     this.resultIcon.textContent = success ? "🏆" : "❌";
     this.resultMessage.textContent = message;
 
-    this.btnResultClose.textContent = "OK";
+    // P6: this run's time (a win only) and the course record; a new record says so instead.
+    // An empty line is hidden and keeps no stale text (aria-describedby reads these).
+    const line = (el, text) => {
+      if (!el) return;
+      el.textContent = text;
+      el.classList.toggle("hidden", !text);
+    };
+    const t = (n) => ({ time: formatSteps(n) });
+    line(this.resultTime, steps ? JOR.fillTokens(COPY.minigame.time[type] || "", t(steps)) : "");
+    line(this.resultBest, isNewBest ? COPY.minigame.newBest : best ? JOR.fillTokens(COPY.minigame.best, t(best)) : "");
+    if (this.resultBest) this.resultBest.classList.toggle("is-new", isNewBest);
 
     this.resultModal.classList.remove("hidden");
     JOR.holdPause(this.game, "mg-result"); // Pause game while result shows
-    this.btnResultClose.focus(); // Enter or Space closes it without a mouse (R29)
+    // OK keeps the focus (R29): Enter or Space goes back to the NPC; "Main Lagi?" is one Tab away.
+    this.btnResultClose.focus();
 
     // Stop engine sound during result modal
     if (AudioManager && AudioManager.stopEngine) {
@@ -420,7 +463,7 @@ class WheelieChallenge extends Minigame {
     super(game, manager);
     this.duration = 0;
     this.isWheelieing = false;
-    this.bestScore = 0;
+    this.steps = 0; // sim steps since start (P6): the run's time; a pause never counts
     this.targetTime = 5.0; // 5 seconds target
   }
 
@@ -434,6 +477,7 @@ class WheelieChallenge extends Minigame {
   }
 
   update(dt) {
+    this.steps++;
     const player = this.game.player;
 
     if (player.wheelieActive && Math.abs(player.velocityX) > 1) {
@@ -444,7 +488,7 @@ class WheelieChallenge extends Minigame {
       this.manager.updateScore(`Time: ${this.duration.toFixed(1)}s`);
 
       if (this.duration >= this.targetTime) {
-        this.manager.stopMinigame(true, "🏆 HEBAT! Anda Penjengat Handal! 🏆");
+        this.manager.stopMinigame(true, "🏆 HEBAT! Anda Penjengat Handal! 🏆", this.steps);
       }
     } else {
       if (this.isWheelieing) {
@@ -470,6 +514,7 @@ class RedLightGreenLight extends Minigame {
     this.nextSwitch = 3000;
     this.targetX = game.player.x + 3500; // Finish line 3500px away (harder)
     this.startX = game.player.x;
+    this.steps = 0; // sim steps outside RED since start (P6): the run's time
   }
 
   start() {
@@ -479,6 +524,10 @@ class RedLightGreenLight extends Minigame {
   }
 
   update(dt) {
+    // P6: count the step when the light the rider saw for this step's input was not RED
+    // (state before this step's switch). ponytail: red length is luck and never counts; the
+    // number of red cycles still does (~0.5 s each at perfect play) until T4 seeds the lights.
+    if (this.state !== "RED") this.steps++;
     this.timer += dt;
 
     // Logic switch lampu
@@ -512,7 +561,7 @@ class RedLightGreenLight extends Minigame {
 
     // Check win condition
     if (this.game.player.x >= this.targetX) {
-      this.manager.stopMinigame(true, "🎉 SELAMAT! Anda Berhasil Lolos!");
+      this.manager.stopMinigame(true, "🎉 SELAMAT! Anda Berhasil Lolos!", this.steps);
     }
 
     // Update UI
@@ -569,6 +618,7 @@ export class DragRace extends Minigame {
     this.countdown = 3;
     this.countTimer = 0;
     this.startX = null;
+    this.steps = 0; // sim steps since GO (P6): the race time
   }
 
   start() {
@@ -602,6 +652,7 @@ export class DragRace extends Minigame {
       this.manager.updateScore("Tunggu...");
       this.manager.updateTimer(`${this.countdown}...`);
     } else if (this.state === "RACING") {
+      this.steps++;
       // Move NPC
       this.npcX += this.npcSpeed; // one fixed step
 
@@ -609,7 +660,7 @@ export class DragRace extends Minigame {
 
       // Checks
       if (this.game.player.x >= finishX) {
-        this.manager.stopMinigame(true, "🏆 MENANG! Anda Raja Jalanan!");
+        this.manager.stopMinigame(true, "🏆 MENANG! Anda Raja Jalanan!", this.steps);
       } else if (this.npcX >= finishX) {
         this.manager.stopMinigame(false, "😢 KALAH! Disalip Rival!");
       }

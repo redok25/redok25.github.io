@@ -854,7 +854,8 @@ export class World {
     this.trees.sort((a, b) => a.x - b.x);
   }
 
-  // kopi: the ids of the cups found (game.kopi), or null to hide the cups (a minigame course).
+  // kopi: the ids of the cups found (game.kopi), or null to hide the cups (the opening ride or a
+  // minigame course).
   render(cameraX, windSway, effects, kopi = null) {
     // Biome crossfade (V2, R5): stepped by real time here, so it takes 1 s at any refresh
     // rate; a biome still loading is not faded in (the old one stays).

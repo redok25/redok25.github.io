@@ -11,6 +11,7 @@ import { save, recordBest, formatSteps } from "./save.js";
 // centre, facing it. 40 px keeps the NPC the strict best E target and keeps every NPC's
 // return inside its own R3 chapter (RLGL 3910 in Bab 2, Drag 5060 in Bab 3).
 const RETURN_GAP = 40;
+const CONFETTI_PIECES = 24; // P7; CSS hides every other one under reduced motion
 
 // Minigame metadata for modals
 const MINIGAME_INFO = {
@@ -350,6 +351,7 @@ export class MinigameManager {
     line(this.resultBest, isNewBest ? COPY.minigame.newBest : best ? JOR.fillTokens(COPY.minigame.best, t(best)) : "");
     if (this.resultBest) this.resultBest.classList.toggle("is-new", isNewBest);
 
+    this.playConfetti(success); // P7: DOM confetti, the "mg-result" pause freezes the canvas
     this.resultModal.classList.remove("hidden");
     JOR.holdPause(this.game, "mg-result"); // Pause game while result shows
     // OK keeps the focus (R29): Enter or Space goes back to the NPC; "Main Lagi?" is one Tab away.
@@ -359,6 +361,31 @@ export class MinigameManager {
     if (AudioManager && AudioManager.stopEngine) {
       AudioManager.stopEngine();
     }
+  }
+
+  // P7: VICTORY confetti. DOM + CSS, because the "mg-result" pause freezes the canvas under
+  // the 0.8 backdrop. Built once inside the result modal, before its panel (so it falls
+  // behind the text and never takes a click), and replayed per win; a loss clears it.
+  playConfetti(on) {
+    let box = this._confetti;
+    if (!box) {
+      box = this._confetti = document.createElement("div");
+      box.className = "confetti";
+      box.setAttribute("aria-hidden", "true");
+      for (let i = 0; i < CONFETTI_PIECES; i++) {
+        const bit = document.createElement("i");
+        bit.style.setProperty("--x", `${(((i + Math.random()) * 100) / CONFETTI_PIECES).toFixed(1)}%`);
+        bit.style.setProperty("--dx", `${Math.round(Math.random() * 120 - 60)}px`);
+        bit.style.setProperty("--d", `${Math.round(Math.random() * 600)}ms`);
+        bit.style.setProperty("--t", `${1600 + Math.round(Math.random() * 900)}ms`);
+        box.append(bit);
+      }
+      this.resultModal.prepend(box);
+    }
+    box.classList.remove("is-on");
+    if (!on) return;
+    void box.offsetWidth; // restart the one-shot animation
+    box.classList.add("is-on");
   }
 
   // Where a course hands the bike back (W6, R15): left of the NPC that offers it. Cheat or

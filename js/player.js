@@ -92,6 +92,8 @@ export class Player {
     this.wheelieMaxRotation = 0.35; // max tilt angle (~20 degrees)
     this.wheelieTransitionSpeed = 0.15; // how fast to transition in/out
     this.wheelieMinSpeed = this.maxSpeed; // minimum velocity to perform wheelie
+    // P7: true on a step whose input pushes against the motion (a reversal brake).
+    this.braking = false;
 
     // Internal flag to differentiate an opening 'splash' (which should lock
     // backtracking when complete) from ad-hoc scripted moves (like offscreen
@@ -125,6 +127,8 @@ export class Player {
     const isMovingRight = keys["ArrowRight"] || keys["KeyD"];
     const isMovingLeft = keys["ArrowLeft"] || keys["KeyA"];
     const oldAnim = this.currentAnimation;
+    // P7: cleared first, so a scripted move (which returns early below) never keeps it.
+    this.braking = false;
 
     // If we're in a scripted 'splash' move, ignore player keys
     if (this.splashMoving) {
@@ -204,6 +208,7 @@ export class Player {
 
       // If current velocity is opposite the desired direction, apply stronger braking
       if (this.velocityX * desiredDir < 0) {
+        this.braking = true; // sparks + skid (effects.juice)
         this.velocityX += desiredDir * this.brake;
       } else {
         // Normal acceleration toward desired direction
@@ -331,6 +336,12 @@ export class Player {
     // Set animation to transition into movement
     this.currentAnimation = "init_move";
     this.animationTimer = 0;
+  }
+
+  // World x of wheel i (0 = rear, 1 = front) as drawn: mirrored when facing left (P7 juice).
+  wheelX(i) {
+    const o = (this.wheelOffsetsByState[this.currentAnimation] || this.wheelOffsetsByState.idle)[i];
+    return this.x + (this.facingRight ? o.x : this.width - o.x);
   }
 
   render(ctx, cameraX) {

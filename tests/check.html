@@ -97,6 +97,25 @@
         check("layout() re-bakes NPC and tree y", g === 375 - 80 && npcOk && treeOk, `groundY ${g}`);
       }
 
+      // (d) P7: `braking` only on a step that pushes against the motion, cleared on every
+      // step (a scripted move included); wheelX mirrors with the sprite.
+      {
+        const p = new Player(2771, 500);
+        for (let i = 0; i < 40; i++) p.update(JOR.STEP_MS, { KeyD: true }); // "move" sprite, v 10
+        const cruise = p.braking;
+        p.update(JOR.STEP_MS, { KeyA: true });
+        const brake = p.braking;
+        const front = p.wheelX(1) - p.x; // facing left now: 200 - 166
+        p.update(JOR.STEP_MS, {});
+        const coast = p.braking;
+        p.update(JOR.STEP_MS, { KeyA: true }); // braking again, then the offscreen "Kembali" move
+        p.moveTo(p.x + 400);
+        p.update(JOR.STEP_MS, {});
+        const scripted = p.braking;
+        const ok = !cruise && brake && front === 34 && !coast && !scripted;
+        check("P7 braking flag + wheelX", ok, `${cruise}/${brake}/${front}/${coast}/${scripted}`);
+      }
+
       document.title = results.every(Boolean) ? "ALL PASS" : "FAIL";
       console.log(document.title);
     </script>

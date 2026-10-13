@@ -2,11 +2,46 @@
 // EFFECTS.JS - Visual Effects System
 // ===================================
 
-const MAX_PARTICLES = 300;
+export const MAX_PARTICLES = 300;
 const MAX_RAIN = 400;
 const MAX_SNOW = 200;
 export const LEAF_AUTUMN = "#d9822b"; // Bab 3 leaves (V2)
-const PARTICLE_COLORS = ["#8b7355", "#4b692f", LEAF_AUTUMN]; // dust, leaf, autumn leaf
+const DUST = "#8b7355";
+const SMOKE = "#d6d6d6";
+const SPARK = "#ffd34d";
+const SKID = "#2b2622";
+// renderParticles draws only these, one pass per colour.
+export const PARTICLE_COLORS = [DUST, "#4b692f", LEAF_AUTUMN, SMOKE, SPARK, SKID];
+
+// P7 juice stops at JUICE_CAP, so dust and leaves always keep MAX_PARTICLES - JUICE_CAP
+// = 60 slots (cruise dust is ~180, juice at its busiest ~70).
+export const JUICE_CAP = 240;
+// Juice kinds as [min, max]. Velocities are px per step; vx points along the `dir` given
+// to emit (+ = that way). Opacity starts at life / maxLife, so smoke starts half-faded.
+export const JUICE = {
+  smoke: { color: SMOKE, size: [3, 5], vx: [-0.8, -0.3], vy: [-0.6, -0.2], life: [600, 900], maxLife: 1500 },
+  spark: { color: SPARK, size: [2, 3], vx: [-3.5, -1.5], vy: [-2.5, -0.5], life: [120, 260], maxLife: 260 },
+  skid: { color: SKID, size: [2, 2], vx: [0, 0], vy: [0, 0], life: [1500, 1500], maxLife: 1500 },
+  land: { color: DUST, size: [2, 4], vx: [-1.5, 1.5], vy: [-1.8, -0.4], life: [400, 800], maxLife: 800 },
+  leaf: { color: LEAF_AUTUMN, size: [3, 5], vx: [1.5, 3.5], vy: [-1.5, -0.5], life: [700, 1100], maxLife: 1100 },
+};
+const rand = (r) => r[0] + Math.random() * (r[1] - r[0]);
+const SMOKE_CHANCE = 0.1; // per step while the engine runs (6/s)...
+const SMOKE_CHANCE_TOP = 0.15; // ...plus this much at top speed (15/s, ~11 puffs alive)
+export const SKID_MIN_SPEED = 3; // px/step after a reversal-brake step: a "hard" brake
+export const SPARKS_PER_STEP = 2;
+export const SKID_DOT_GAP = 2; // px of slide per 2 px skid dot: a solid streak
+export const LAND_DUST = 10;
+const LAND_SPREAD = 24; // px, centred on the front wheel
+const WAKE_MIN_SPEED = 4; // px/step
+const WAKE_CHANCE = 0.2; // per step at top speed (12/s, ~11 leaves alive)
+const TYRE_Y = 196; // tyre contact below player.y: wheel centre 174 + radius 22
+// The landing thump by steps left: up 2 px, back, up 1 px, back (100 ms). Values come in
+// pairs so a 30 Hz display (2 steps per frame) still sees the jolt. The scene only moves
+// up: at most 2 rows bare at the bottom (dark soil, the page background shows there).
+const SHAKE = [0, -1, -1, 0, 0, -2, -2];
+export const SHAKE_STEPS = SHAKE.length - 1;
+export const shakeOffset = (stepsLeft) => SHAKE[stepsLeft] || 0;
 
 export class EffectsManager {
   // accept world reference so clouds can be placed in world space and parallax relative to camera
@@ -15,6 +50,10 @@ export class EffectsManager {
     this.ctx = ctx;
     this.world = world;
     this.particles = [];
+    this._pool = []; // dead particles, reused by _spawn (no allocation per step)
+    this._halve = {}; // per colour: skip every other spawn under reduced motion
+    this.shakeSteps = 0; // landing thump steps left (P7)
+    this._rm = matchMedia("(prefers-reduced-motion: reduce)");
     this.clouds = [];
     this.windOffset = 0;
     
@@ -116,7 +155,13 @@ export class EffectsManager {
     });
   }
 
+  // Live: a change in the OS setting applies from the next spawn on.
+  get reducedMotion() {
+    return !!(this._rm && this._rm.matches);
+  }
+
   update(deltaTime, cameraX = 0) {
+    if (this.shakeSteps > 0) this.shakeSteps--;
     this.windOffset += deltaTime * 0.001;
     this.updateRain(deltaTime, cameraX);
     this.updateSnow(deltaTime, cameraX);
@@ -218,7 +263,11 @@ export class EffectsManager {
       }
     });
 
-    // Swap-remove: no new array per step.
+    this.stepParticles(deltaTime);
+  }
+
+  // Swap-remove into the pool: no new array and, once warm, no new particle per step.
+  stepParticles(deltaTime) {
     const parts = this.particles;
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i];
@@ -226,11 +275,85 @@ export class EffectsManager {
       if (p.life <= 0) {
         parts[i] = parts[parts.length - 1];
         parts.pop();
+        this._pool.push(p);
         continue;
       }
       p.x += p.vx * deltaTime * 0.06;
       p.y += p.vy * deltaTime * 0.06;
       p.opacity = p.life / p.maxLife;
+    }
+  }
+
+  // One particle, recycled from the pool and written in place (one shape for every kind).
+  // False at the cap, and on every other spawn of a colour under reduced motion (P7: half
+  // the particles; per colour, so one kind never eats another kind's turns).
+  _spawn(cap, x, y, vx, vy, size, color, life, maxLife) {
+    if (this.particles.length >= cap) return false;
+    if (this.reducedMotion) {
+      const skip = (this._halve[color] = !this._halve[color]);
+      if (skip) return false;
+    }
+    const p = this._pool.pop() || {};
+    p.x = x;
+    p.y = y;
+    p.vx = vx;
+    p.vy = vy;
+    p.size = size;
+    p.color = color;
+    p.opacity = life / maxLife;
+    p.life = life;
+    p.maxLife = maxLife;
+    this.particles.push(p);
+    return true;
+  }
+
+  // P7 juice: n particles of one JUICE kind from x .. x + spreadX at y, vx along dir (+1/-1).
+  emit(kind, x, y, dir, n = 1, spreadX = 0) {
+    const k = JUICE[kind];
+    for (let i = 0; i < n; i++) {
+      const px = x + ((i + Math.random()) / n) * spreadX; // stratified: gaps stay under spreadX / n
+      this._spawn(JUICE_CAP, px, y, dir * rand(k.vx), rand(k.vy), rand(k.size), k.color, rand(k.life), k.maxLife);
+    }
+  }
+
+  // P7, once per sim step after the bike moved (game.update, so never while paused). It is
+  // the bike's own feedback, so it also runs in the opening ride and in minigame courses.
+  //   rot0: wheelieRotation before this step. A landing is the drop to 0 inside the step;
+  //         a teleport zeroes it outside update, so a teleport never lands.
+  //   autumn: the current chapter's biome is autumn (Bab 3): leaves ride the wake.
+  juice(p, rot0, autumn) {
+    const v = p.velocityX;
+    const speed = Math.abs(v);
+    const ratio = Math.min(1, speed / p.maxSpeed);
+    const tyreY = p.y + TYRE_Y;
+    // Exhaust smoke while the engine runs (the engine sound's 0.1 threshold), from the pipe's
+    // narrow end at the back of the sprite, drifting backwards and up.
+    if (speed > 0.1 && Math.random() < SMOKE_CHANCE + SMOKE_CHANCE_TOP * ratio) {
+      const ex = (p.exhaustOffsetsByState[p.currentAnimation] || p.exhaustOffsetsByState.idle)[0];
+      const tipX = p.facingRight ? ex.x - ex.w / 2 : p.width - ex.x + ex.w / 2;
+      this.emit("smoke", p.x + tipX, p.y + ex.y - 2, p.facingRight ? 1 : -1);
+    }
+    if (speed >= SKID_MIN_SPEED) {
+      // The wheel at the back of the MOTION: a reversal brake flips the sprite at once, so
+      // the facing "rear" wheel would be the leading one.
+      const a = p.wheelX(0);
+      const b = p.wheelX(1);
+      const dir = v > 0 ? 1 : -1;
+      const trailX = dir > 0 ? Math.min(a, b) : Math.max(a, b);
+      if (p.braking) {
+        this.emit("spark", trailX, tyreY - 2, dir, SPARKS_PER_STEP);
+        // Dots over the stretch the tyre slid this step: trailX - v .. trailX.
+        this.emit("skid", trailX - v, tyreY - 1, dir, Math.ceil(speed / SKID_DOT_GAP), v);
+      }
+      if (autumn && speed >= WAKE_MIN_SPEED && Math.random() < WAKE_CHANCE * ratio) {
+        this.emit("leaf", trailX, tyreY - 8, dir);
+      }
+    }
+    // Wheelie landing: the rotation reached 0 inside this step. Dust under the front wheel and
+    // the 2 px thump (none under reduced motion).
+    if (rot0 > 0 && p.wheelieRotation === 0) {
+      this.emit("land", p.wheelX(1) - LAND_SPREAD / 2, tyreY - 2, 1, LAND_DUST, LAND_SPREAD);
+      if (!this.reducedMotion) this.shakeSteps = SHAKE_STEPS;
     }
   }
 
@@ -284,12 +407,15 @@ export class EffectsManager {
   renderParticles(cameraX) {
     const ctx = this.ctx;
     const alpha = ctx.globalAlpha;
+    const w = this.canvas.width;
     for (const color of PARTICLE_COLORS) {
       ctx.fillStyle = color;
       for (const p of this.particles) {
         if (p.color !== color) continue;
+        const sx = p.x - cameraX;
+        if (sx < -8 || sx > w) continue; // offscreen: a skid left behind, a teleport
         ctx.globalAlpha = p.opacity;
-        ctx.fillRect(p.x - cameraX, p.y, p.size, p.size);
+        ctx.fillRect(sx, p.y, p.size, p.size);
       }
     }
     ctx.globalAlpha = alpha;
@@ -312,18 +438,17 @@ export class EffectsManager {
     const baseY = y;
 
     for (let i = 0; i < count; i++) {
-      if (this.particles.length >= MAX_PARTICLES) break;
-      this.particles.push({
-        x: baseX + Math.random() * spreadX - spreadX / 2,
-        y: baseY + Math.random() * spreadY,
-        vx: (Math.random() - 0.5) * 2,
-        vy: -Math.random() * 2,
-        size: 2 + Math.random() * 2,
-        color: "#8b7355",
-        opacity: 1,
-        life: 500 + Math.random() * 500,
-        maxLife: 1000,
-      });
+      this._spawn(
+        MAX_PARTICLES,
+        baseX + Math.random() * spreadX - spreadX / 2,
+        baseY + Math.random() * spreadY,
+        (Math.random() - 0.5) * 2,
+        -Math.random() * 2,
+        2 + Math.random() * 2,
+        DUST,
+        500 + Math.random() * 500,
+        1000
+      );
     }
   }
 
@@ -350,18 +475,17 @@ export class EffectsManager {
     const baseY = y;
 
     for (let i = 0; i < count; i++) {
-      if (this.particles.length >= MAX_PARTICLES) break;
-      this.particles.push({
-        x: baseX + Math.random() * spreadX - spreadX / 2,
-        y: baseY + Math.random() * spreadY,
-        vx: (Math.random() - 0.5) * 1,
-        vy: Math.random() * 1 + 0.5,
-        size: 3 + Math.random() * 2,
-        color: opts.color || "#4b692f",
-        opacity: 1,
-        life: 2000 + Math.random() * 1000,
-        maxLife: 3000,
-      });
+      this._spawn(
+        MAX_PARTICLES,
+        baseX + Math.random() * spreadX - spreadX / 2,
+        baseY + Math.random() * spreadY,
+        (Math.random() - 0.5) * 1,
+        Math.random() * 1 + 0.5,
+        3 + Math.random() * 2,
+        opts.color || "#4b692f",
+        2000 + Math.random() * 1000,
+        3000
+      );
     }
   }
 

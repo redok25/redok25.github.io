@@ -4,7 +4,7 @@
 import { JOR } from "./helpers.js";
 import { Player } from "./player.js";
 import { World } from "./world.js";
-import { EffectsManager, LEAF_AUTUMN } from "./effects.js";
+import { EffectsManager, LEAF_AUTUMN, shakeOffset } from "./effects.js";
 import { InteractionManager } from "./interactions.js";
 import { MinigameManager } from "./minigames.js";
 import { Camera } from "./camera.js";
@@ -225,7 +225,7 @@ class Game {
     });
   }
 
-  // Clear held keys and stop the bike + engine sound.
+  // Clear held keys and stop the bike + engine sound (and a landing thump, P7).
   releaseInput() {
     this.keys = {};
     if (this.player) {
@@ -234,6 +234,7 @@ class Game {
       this.player.animationTimer = 0;
       this.player.wheelieActive = false;
     }
+    if (this.effects) this.effects.shakeSteps = 0;
     try {
       if (AudioManager && AudioManager.stopEngine) {
         AudioManager.stopEngine();
@@ -497,6 +498,7 @@ class Game {
     // is ignored while scripted movement or modal interaction runs.
     const keysForPlayer =
       this._splashCameraActive || this.offscreenModalActive ? {} : this.keys;
+    const rot0 = this.player.wheelieRotation; // P7: a landing is this step's drop to 0
     this.player.update(deltaTime, keysForPlayer);
 
     // Camera: normal follow, or a tighter follow (0.4) while the scripted opening ride runs.
@@ -567,6 +569,11 @@ class Game {
       }
     }
 
+    // P7 juice: exhaust smoke, hard-brake sparks + skid, the wheelie landing (dust + thump)
+    // and leaves in the wake in Bab 3. Spawned here in update, so never while paused.
+    const autumn = CHAPTERS[this.journey.current].biome === "autumn";
+    this.effects.juice(this.player, rot0, autumn);
+
     // Ambient leaf spawn near nearby trees (probabilistic, scaled by proximity)
     if (
       this.world &&
@@ -584,7 +591,7 @@ class Game {
       const maxPerTick =
         typeof cfg.maxPerTick === "number" ? cfg.maxPerTick : 1;
       // Bab 3 (autumn) drops orange leaves (V2); everywhere else they stay green.
-      const leafColor = CHAPTERS[this.journey.current].biome === "autumn" ? LEAF_AUTUMN : undefined;
+      const leafColor = autumn ? LEAF_AUTUMN : undefined;
 
       for (let i = 0; i < this.world.trees.length; i++) {
         const tree = this.world.trees[i];
@@ -671,6 +678,13 @@ class Game {
     // Clear canvas
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+    // P7 landing thump: a render-time offset (camera state, input and the DOM never move).
+    // Everything up to the minigame overlays shifts together, so the ▼ marker, the Drag
+    // rival and the finish lines stay on the road; the Bengkel panel stays put. None while
+    // paused: a pause never freezes the scene mid-jolt.
+    const shakeY = this.paused ? 0 : shakeOffset(this.effects.shakeSteps);
+    this.ctx.setTransform(1, 0, 0, 1, 0, shakeY);
+
     // Render world with parallax. Pass `effects` so clouds can be drawn
     // between background layers (behind the nearest bg layer).
     const windSway = this.effects.getWindSway();
@@ -698,6 +712,7 @@ class Game {
 
     // Render minigames (overlays)
     if (this.minigames) this.minigames.render(this.ctx);
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0); // the Bengkel panel stays put
 
     // Mode Bengkel perf panel (toggled with backtick or ?bengkel)
     if (this.bengkel.on) this.bengkel.render(this.ctx);

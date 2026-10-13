@@ -274,3 +274,53 @@
     display: none;
   }
 }
+
+/* P7: VICTORY confetti (js/minigames.js playConfetti). Inside #minigame-result-modal, before
+   its panel: over the backdrop, behind the text, never clickable. One fall per win. */
+.confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti i {
+  position: absolute;
+  top: -16px;
+  left: var(--x);
+  width: 8px;
+  height: 12px;
+  background: #ffe135;
+  opacity: 0;
+}
+
+/* Three colours on a period of 3, so hiding every other piece keeps all three. */
+.confetti i:nth-child(3n + 2) {
+  background: #38b764;
+}
+
+.confetti i:nth-child(3n + 3) {
+  background: #f77622;
+}
+
+.confetti.is-on i {
+  animation: confetti-fall var(--t) linear var(--d) both;
+}
+
+@keyframes confetti-fall {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  to {
+    opacity: 1;
+    transform: translate(var(--dx), 110vh) rotate(540deg);
+  }
+}
+
+/* Reduced motion: half the pieces (P7 row); the fall itself stays one short burst. */
+@media (prefers-reduced-motion: reduce) {
+  .confetti i:nth-child(even) {
+    display: none;
+  }
+}

@@ -97,9 +97,8 @@ export class Credits {
     // (Quick View, the journal) or a legacy modal over the scene owns its own Esc.
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape" || e.repeat) return;
-      if (this.epilog.running) {
-        if (!JOR.isUiBlocking(document)) this.skip();
-      } else if (this.isOpen() && !document.querySelector("dialog[open]")) this.close();
+      if (this.epilog.running) this.skip();
+      else if (this.isOpen() && !document.querySelector("dialog[open]")) this.close();
     });
   }
 
@@ -124,9 +123,10 @@ export class Credits {
     }
   }
 
-  // Esc or "Lewati": straight to the card.
+  // Esc or "Lewati": straight to the card, unless a dialog or legacy modal is up (Lewati sits
+  // at z 10003, above them, so the click must be refused here, not only the key).
   skip() {
-    if (this.epilog.running) this.finish(true);
+    if (this.epilog.running && !JOR.isUiBlocking(document)) this.finish(true);
   }
 
   finish(skipped) {

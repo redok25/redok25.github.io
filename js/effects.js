@@ -563,6 +563,7 @@ export class EffectsManager {
 
   // Time of Day System
   setTimeOfDay(mode) {
+    if (mode && !Object.hasOwn(TIME_TARGETS, mode)) return; // a typo from the console must not freeze the loop
     this.forcedTime = mode; // null, 'morning', 'noon', 'afternoon', 'night'
     console.log(`Time set to: ${mode || 'Auto'}`);
     // We rely on updateTimeOfDay to smooth the transition, or we could force it here.

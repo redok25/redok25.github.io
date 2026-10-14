@@ -106,7 +106,7 @@ test("V10 tier: two 2 s windows in a row at a mean over 12 ms trip it; 11 ms, a 
   assert.equal(run(300, STEP, 25, 1), 240); // trips on the frame that completes the second 2 s window
   assert.equal(run(600, STEP, 11, 1), 0);
   assert.equal(run(300, 1000 / 30, 11, 2), 0); // 30 Hz cap: interval 33 ms, work fine
-  assert.equal(run(600, STEP, 100, 0, true), 0); // paused frames never count
+  assert.equal(run(600, STEP, 100, 1, true), 0); // paused frames never count
   const t = createTier();
   assert.equal(tierStep(t, STEP, 200, 1, false), false); // one 200 ms spike...
   let tripped = false;

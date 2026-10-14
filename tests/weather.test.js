@@ -110,8 +110,9 @@ test("W9 tracks: segments by distance, a jump or a dry step breaks the line, 200
   assert.ok(t.x0[before + 1] === 3040 && t.x1[before + 1] === 3050);
   // The ring: the 201st segment takes the oldest slot, and nothing is reallocated.
   for (let x = 3050; x < 3050 + 64 * 400; x += 8) t.step(x, true);
-  assert.ok(t.next >= 0 && t.next < TRACK_SLOTS);
-  assert.deepEqual([t.x0, t.x1, t.at], arrays);
+  assert.ok(t.x0 === arrays[0] && t.x1 === arrays[1] && t.at === arrays[2], "nothing is reallocated");
+  assert.equal(t.x0.length, TRACK_SLOTS);
+  assert.ok(t.x0[0] > 3050, "the oldest slot was overwritten by a newer segment");
 });
 
 test("W9 tracks: fade over 1200 sim steps (20 s), frozen while no step runs", () => {

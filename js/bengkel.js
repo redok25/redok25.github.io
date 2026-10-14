@@ -71,7 +71,8 @@ export class Bengkel {
     const fps = intervalSum > 0 ? (1000 * count) / intervalSum : 0;
     const p95 = this.p95();
     // y = 70: the always-on Quick View button (DOM, fixed top-left, z-index above the canvas) ends near y 64.
-    const x = 10, y = 70, w = 300, h = 168, graphH = 40, graphY = y + 118;
+    // w 340: the lighting row is ~45 chars (~324 px on phones); 10 + 340 still fits 375 portrait.
+    const x = 10, y = 70, w = 340, h = 168, graphH = 40, graphY = y + 118;
 
     ctx.save();
     ctx.globalAlpha = 1;

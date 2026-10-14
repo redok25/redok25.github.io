@@ -70,6 +70,9 @@ export class EffectsManager {
     this._halve = {}; // per colour: skip every other spawn under reduced motion
     this.shakeSteps = 0; // landing thump steps left (P7)
     this._rm = matchMedia("(prefers-reduced-motion: reduce)");
+    // V10 quality tier: latched by Bengkel.record for the page load. Halves particles, rain
+    // and snow; game.render skips the lighting pass for the flat night tint.
+    this.low = false;
     this.clouds = [];
     this.windOffset = 0;
     
@@ -339,11 +342,11 @@ export class EffectsManager {
   }
 
   // One particle, recycled from the pool and written in place (one shape for every kind).
-  // False at the cap, and on every other spawn of a colour under reduced motion (P7: half
-  // the particles; per colour, so one kind never eats another kind's turns).
+  // False at the cap, and on every other spawn of a colour under reduced motion or the low
+  // tier (P7, V10: half the particles; per colour, so one kind never eats another's turns).
   _spawn(cap, x, y, vx, vy, size, color, life, maxLife) {
     if (this.particles.length >= cap) return false;
-    if (this.reducedMotion) {
+    if (this.low || this.reducedMotion) {
       const skip = (this._halve[color] = !this._halve[color]);
       if (skip) return false;
     }

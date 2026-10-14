@@ -6,6 +6,7 @@
 // FPS comes from the rAF interval and is shown separately.
 // ===================================
 import { unlock } from "./achievements.js";
+import { LIGHT_CAP, createTier, tierStep } from "./lighting.js";
 
 const SAMPLES = 120;
 const BUDGET_MS = 1000 / 60;
@@ -22,6 +23,7 @@ export class Bengkel {
     this.interval = new Float32Array(SAMPLES);
     this.steps = new Uint8Array(SAMPLES);
     this.n = 0;
+    this.tier = createTier(); // V10: the 2 s work window (lighting.js tierStep)
   }
 
   toggle() {
@@ -36,6 +38,7 @@ export class Bengkel {
     this.steps[i] = steps;
     this.n++;
     const g = this.game;
+    if (!g.effects.low && tierStep(this.tier, intervalMs, workMs, steps, g.paused)) g.effects.low = true;
     if (this.pendingCheat && !g.paused && !g._splashCameraActive && g.player.lockBacktrack) {
       const name = this.pendingCheat;
       this.pendingCheat = null;
@@ -88,6 +91,8 @@ export class Bengkel {
     );
     ctx.fillText(`x ${Math.round(g.player.x)}  cam ${Math.round(g.cameraX)}  v ${g.player.velocityX.toFixed(2)}`, x + 8, y + 62);
     ctx.fillText(`owners ${[...(g._pauseOwners || [])].join(",") || "-"}`, x + 8, y + 80);
+    const L = g.lighting;
+    ctx.fillText(`cahaya ${L.lights}/${LIGHT_CAP}  draw ${L.draws}  kunang ${L.flies}  tier ${fx.low ? "hemat" : "normal"}`, x + 8, y + 98);
 
     // Sparkline of work ms, oldest to newest; the line marks the 16.7 ms budget (at 2x budget = top).
     const scaleY = graphH / (BUDGET_MS * 2);

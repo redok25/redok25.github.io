@@ -5,6 +5,7 @@ import { JOR } from "./helpers.js";
 import { Player } from "./player.js";
 import { World, goldCopy } from "./world.js";
 import { EffectsManager, LEAF_AUTUMN, shakeOffset } from "./effects.js";
+import { Lighting } from "./lighting.js";
 import { InteractionManager } from "./interactions.js";
 import { MinigameManager } from "./minigames.js";
 import { Camera } from "./camera.js";
@@ -65,6 +66,7 @@ class Game {
     this.world = new World(this.canvas, this.ctx);
     // pass world to effects so clouds can be world-space and parallax correctly
     this.effects = new EffectsManager(this.canvas, this.ctx, this.world);
+    this.lighting = new Lighting(); // V7 night lighting, drawn at the time-tint slot of render()
     // Make clouds fixed to the screen (do not follow camera)
     this.effects.setCloudFollowMode("parallax");
     this.interactions = new InteractionManager(this.player, this.world);
@@ -634,6 +636,7 @@ class Game {
 
     // Update effects (pass cameraX so clouds can wrap relative to viewport)
     this.effects.update(deltaTime, this.cameraX);
+    this.lighting.step(deltaTime); // firefly drift and torch flicker run on sim time
 
     // Create dust particles when moving: spawn for both rear and front wheels
     if (Math.abs(this.player.velocityX) > 1) {
@@ -802,10 +805,9 @@ class Game {
     // Render particles (dust, leaves)
     this.effects.renderParticles(this.cameraX);
 
-    // Time Overlay (Day/Night cycle)
-    if (this.effects.renderTimeOverlay) {
-      this.effects.renderTimeOverlay();
-    }
+    // Night (V7): above a = 0.25 the lighting pass (darkness map + light pools) replaces the
+    // flat tint; the tint stays for morning and afternoon, and for the night on the low tier.
+    if (!this.lighting.render(this)) this.effects.renderTimeOverlay();
 
     // Rain (on top of everything)
     this.effects.renderRain(this.cameraX);

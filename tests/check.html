@@ -21,6 +21,7 @@
       import { Player } from "./js/player.js";
       import { DragRace } from "./js/minigames.js";
       import { World } from "./js/world.js";
+      import { Lighting, DARK_NIGHT, NIGHT_INK } from "./js/lighting.js";
 
       const out = document.getElementById("out");
       const results = [];
@@ -114,6 +115,42 @@
         const scripted = p.braking;
         const ok = !cruise && brake && front === 34 && !coast && !scripted;
         check("P7 braking flag + wheelX", ok, `${cruise}/${brake}/${front}/${coast}/${scripted}`);
+      }
+
+      // (e) V7 lighting: a night frame is a chunky darkness map (every 4 x 4 block one colour)
+      // with a hole at the headlight; noon draws nothing and leaves the canvas as it was.
+      {
+        const canvas = document.createElement("canvas");
+        canvas.width = 375;
+        canvas.height = 667;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        const ts = { r: 10, g: 10, b: 30, a: 0.5 };
+        const game = {
+          canvas, ctx, cameraX: 876, player: new Player(1001, 667 - 230), kopi: [], minigames: { activeMinigame: null },
+          effects: { currentTimeState: ts, low: false, reducedMotion: true },
+          world: { groundY: () => 667 - 80, props: [], objects: [], gauges: [] },
+        };
+        const L = new Lighting();
+        const paint = () => { ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, 375, 667); };
+        paint();
+        const drew = L.render(game);
+        const px = ctx.getImageData(0, 0, 375, 667).data;
+        let chunky = true;
+        for (let y = 0; y < 664 && chunky; y++) {
+          for (let x = 0; x < 372; x++) {
+            const i = (y * 375 + x) * 4, j = ((y & ~3) * 375 + (x & ~3)) * 4;
+            if (px[i] !== px[j] || px[i + 1] !== px[j + 1] || px[i + 2] !== px[j + 2]) { chunky = false; break; }
+          }
+        }
+        const at = (x, y) => px[(y * 375 + x) * 4];
+        const far = at(10, 10), lens = at(1001 - 876 + 155, 437 + 124);
+        const expectFar = Math.round(255 * (1 - DARK_NIGHT) + NIGHT_INK[0] * DARK_NIGHT);
+        ts.a = 0;
+        paint();
+        const off = L.render(game);
+        const untouched = ctx.getImageData(0, 0, 375, 667).data.every((v) => v === 255);
+        const ok = drew && chunky && Math.abs(far - expectFar) <= 2 && lens > far + 60 && !off && L.draws === 0 && untouched;
+        check("V7 lighting: chunky night map, lit headlight, noon draws nothing", ok, `${drew}/${chunky}/${far}~${expectFar}/${lens}/${off}/${L.draws}/${untouched}`);
       }
 
       document.title = results.every(Boolean) ? "ALL PASS" : "FAIL";

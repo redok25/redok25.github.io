@@ -51,14 +51,15 @@ export const COPY = {
     help: [
       "redok.goto(n)      lompat ke Bab n (1-4)",
       "redok.time(mode)   pagi | siang | sore | malam | auto",
-      "redok.weather(on)  hujan nyala (true) atau reda (false)",
+      "redok.weather(k)   hujan | salju | kabut | cerah",
     ],
     gotoBad: "Bab-nya 1 sampai 4 aja ya.",
     gotoBusy: "Lagi sibuk (minigame, modal, atau lagi jalan). Coba lagi bentar.",
     gotoOk: "Meluncur ke {label} · {title}...",
     timeBad: "Pilihannya: pagi, siang, sore, malam, auto.",
     timeOk: "Waktu: {mode}.",
-    weatherOk: "Hujan: {state}.",
+    weatherBad: "Pilihannya: hujan, salju, kabut, cerah.",
+    weatherOk: "Cuaca: {kind}.",
   },
   // Minigame result card (P6). {time} = seconds with a decimal comma ("5,33"), filled by the
   // game. RLGL times only the steps outside red lights: their length is luck, not skill.

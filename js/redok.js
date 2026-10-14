@@ -1,6 +1,6 @@
 // ===================================
 // REDOK.JS - Console API (T2, R30): window.redok for curious devs. A thin layer over the
-// calls the UI already uses (fast travel, time of day, rain), with friendly answers.
+// calls the UI already uses (fast travel, time of day, weather), with friendly answers.
 // ===================================
 import { JOR } from "./helpers.js";
 import { COPY } from "./copy.js";
@@ -17,6 +17,18 @@ const TIMES = {
   noon: "noon",
   afternoon: "afternoon",
   night: "night",
+};
+
+// Console words -> weather kinds (V8, R9). true/false are the old rain on/off.
+const WEATHERS = {
+  hujan: "rain",
+  salju: "snow",
+  kabut: "fog",
+  cerah: "clear",
+  rain: "rain",
+  snow: "snow",
+  fog: "fog",
+  clear: "clear",
 };
 
 export function createRedok(game) {
@@ -36,9 +48,12 @@ export function createRedok(game) {
       game.effects.setTimeOfDay(TIMES[key]);
       return JOR.fillTokens(COPY.console.timeOk, { mode: key });
     },
-    weather(on = true) {
-      game.effects.toggleRain(!!on);
-      return JOR.fillTokens(COPY.console.weatherOk, { state: on ? "nyala" : "reda" });
+    // A cheat-level override (R10): beats real weather until the reset cheat; never an achievement.
+    weather(kind = "hujan") {
+      const key = kind === true ? "hujan" : kind === false ? "cerah" : String(kind).toLowerCase();
+      if (!Object.hasOwn(WEATHERS, key)) return COPY.console.weatherBad;
+      game.effects.cheatWeather = WEATHERS[key];
+      return JOR.fillTokens(COPY.console.weatherOk, { kind: key });
     },
   });
 }

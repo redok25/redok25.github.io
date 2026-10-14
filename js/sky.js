@@ -85,7 +85,8 @@ export function renderSky(ctx, sky, fade, fx) {
     ctx.globalAlpha = 1;
     return; // before the first sim step (splash, the layout() render): no sun yet
   }
-  const clear = 1 - fx.rainIntensity; // rain clouds hide the stars, the sun and the moon
+  // Rain, snow weather and thick fog hide the stars, the sun and the moon.
+  const clear = 1 - Math.max(fx.rainIntensity, fx.snowCover, fx.fogAmount);
   if (n > 0) {
     ctx.globalAlpha = n;
     if (clear < 1) {

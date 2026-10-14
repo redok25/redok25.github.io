@@ -401,7 +401,7 @@ export class NPC {
   // A tap or E (W7): the next line from this NPC's own bag. fx = the effects manager.
   triggerChat(fx = null) {
     const talk = this.lines.talk;
-    const wet = !!fx && (fx.rainActive || fx.ambientSnow > 0);
+    const wet = !!fx && (fx.rainActive || fx.ambientSnow > 0 || fx.weatherKind === "snow");
     const i = drawLine(this.bag, talk, this.lastLine, wet);
     if (i < 0) return;
     this.lastLine = i;

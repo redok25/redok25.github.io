@@ -53,7 +53,7 @@ test("copy 2b: credits stats fill to the Quick View numbers; every station has a
   assert.equal(filled, "15 proyek · 2021 → 2025");
   assert.deepEqual(Object.keys(COPY.stations), JOR.QV_SECTIONS);
   assert.deepEqual(Object.keys(COPY.credits.contacts), ["email", "whatsapp", "linkedin", "github"]);
-  for (const k of ["banner", "gotoBad", "gotoBusy", "gotoOk", "timeBad", "timeOk", "weatherOk"]) {
+  for (const k of ["banner", "gotoBad", "gotoBusy", "gotoOk", "timeBad", "timeOk", "weatherBad", "weatherOk"]) {
     assert.equal(typeof COPY.console[k], "string", k);
   }
   assert.ok(Array.isArray(COPY.console.help) && COPY.console.help.length === 3);

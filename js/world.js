@@ -8,9 +8,25 @@ import { COPY } from "./copy.js";
 import { JOR } from "./helpers.js";
 import { KOPI, KOPI_SIZE, kopiShown, goldPixel } from "./kopi.js";
 import { makeSky, renderSky } from "./sky.js";
+import { TRACK_SLOTS } from "./weather.js";
 
 const NPC_HEIGHT = 87; // NPC draw height (npc.js / special-npc.js default)
 const BIOMES = ["normal", "autumn", "winter"];
+// Weather on the ground (V8, W9). The snow wash covers grass and soil at 0.85, the road at
+// ROAD_SNOW; tracks lie on the tyre contact line (player.y + 196 = road top + 46).
+const SNOW_GROUND = "rgb(236, 242, 248)";
+const ROAD_SNOW = 0.65;
+const TRACK_Y = 46; // the 3 px track covers road top + 46..48, under the tyre's lowest pixel
+const TRACK_H = 3;
+const TRACK_SNOW = "#4a525c"; // a groove: the road showing through the snow
+const TRACK_WET = "#101014"; // a dark wet mark on #444
+const TRACK_ALPHA = 0.9;
+// Fog (V8): a cool grey veil over the backdrop (thick fog, or snow weather's haze) and a
+// lighter one over the road plane; zero fills when both amounts are 0.
+const FOG = "rgb(206, 212, 220)";
+const FOG_FAR = 0.6;
+const FOG_NEAR = 0.2;
+const SNOW_HAZE = 0.25;
 // Autumn trees (V2): an orange wash over each tree sprite's opaque pixels.
 const AUTUMN_TREE_TINT = "rgba(214, 110, 30, 0.55)";
 // Decoration props (V4; sprites restored from commit 3c215ff, license D512): passive scenery
@@ -853,34 +869,42 @@ export class World {
 
   // kopi: the ids of the cups found (game.kopi), or null to hide the cups (the opening ride or a
   // minigame course).
-  render(cameraX, windSway, effects, kopi = null) {
+  render(cameraX, effects, kopi = null) {
     // Biome crossfade (V2, R5): stepped by real time here, so it takes 1 s at any refresh
     // rate; a biome still loading is not faded in (the old one stays).
     stepBiomeFade(this.biomeFade, this.biomeWanted, this._biomeReady, performance.now());
     this.renderBackgroundLayers(cameraX, effects);
+    // V8: thick fog (or falling snow) veils the backdrop; the road plane stays clearer.
+    const haze = Math.max(FOG_FAR * effects.fogAmount, SNOW_HAZE * effects.snowCover);
+    if (haze > 0) this.veil(haze);
 
     // Trees sit in world space (parallax 1.0, F14). During a crossfade the incoming biome's
     // tree is drawn over the outgoing one at the fade alpha (autumn = pre-tinted copies).
+    // W8: each tree sways at its own x (effects.getWindSway).
     const fade = this.biomeFade;
     const treesFrom = this.treeSet(fade.from);
     const treesTo = fade.to !== null ? this.treeSet(fade.to) : treesFrom;
-    this.trees.forEach((tree) => {
+    for (let t = 0; t < this.trees.length; t++) {
+      const tree = this.trees[t];
       const screenX = Math.floor(tree.x - cameraX);
       if (screenX > -200 && screenX < this.canvas.width + 200) {
         const i = tree.spriteIndex;
         const sprite = treesFrom[i] || this.treeSprites[i];
         const overlay = treesTo !== treesFrom ? treesTo[i] || this.treeSprites[i] : null;
-        this.renderTree(screenX, tree.y, tree.width, tree.height, sprite, windSway, overlay, fade.t);
+        this.renderTree(screenX, tree.y, tree.width, tree.height, sprite, effects.getWindSway(tree.x), overlay, fade.t);
       }
-    });
+    }
 
     // Decoration props (V4): in front of the trees, behind the ground strip and the stations.
     this.renderProps(cameraX);
     // Skill gauges (W2): in the props plane, the grass strip covers their feet.
     this.renderGauges(cameraX);
 
-    // Render ground
-    this.renderGround(cameraX);
+    // Render ground: white in Bab 4 (the winter crossfade) and under snow weather (V8), with
+    // the tyre tracks on the road (W9).
+    const snow = Math.max(biomeWeight(this.biomeFade, "winter"), effects.snowCover);
+    this.renderGround(cameraX, snow);
+    this.renderTracks(cameraX, effects, snow);
 
     // Kopi Rahasia (P3): on the grass and the Bab 1 fence rail, behind the stations.
     if (kopi) this.renderKopi(cameraX, effects, kopi);
@@ -920,8 +944,9 @@ export class World {
       specialNpc.render(this.ctx, cameraX)
     );
 
-    // Render fog overlay (lighter now)
+    // Render fog overlay (lighter now); thick fog adds a near veil (V8), not on the low tier
     this.renderFog();
+    if (effects.fogAmount > 0 && !effects.low) this.veil(FOG_NEAR * effects.fogAmount);
   }
 
   // Cover-scale one layer and tile it horizontally with its parallax offset.
@@ -999,7 +1024,7 @@ export class World {
     this.ctx.restore();
   }
 
-  renderGround(cameraX) {
+  renderGround(cameraX, snow) {
     // Compute Y positions from bottom-offsets so layout is resilient to resize.
     const bottomOffset =
       this.terrainConfig && typeof this.terrainConfig.bottomOffset === "number"
@@ -1030,14 +1055,51 @@ export class World {
     this.renderRoad(cameraX, roadY);
     this.renderGrass(cameraX, grassY);
 
-    // Winter ground (V8): a snow-white wash over the grass strip and the soil, weighted by
-    // the crossfade so it arrives with the winter backdrop. The road stays dark (ridden clear).
-    const snow = biomeWeight(this.biomeFade, "winter");
+    // Snowy ground (V8): a snow-white wash over the grass strip and the soil, weighted by the
+    // winter crossfade or the snow weather; a lighter one on the road so the tyre grooves
+    // read (R12). Alpha, not a colour string per frame.
     if (snow > 0) {
-      this.ctx.fillStyle = `rgba(236, 242, 248, ${(0.85 * snow).toFixed(3)})`;
-      this.ctx.fillRect(0, grassY, this.canvas.width, this.terrainConfig.grassHeight);
-      this.ctx.fillRect(0, bottomY, this.canvas.width, bottomHeight);
+      const ctx = this.ctx;
+      ctx.fillStyle = SNOW_GROUND;
+      ctx.globalAlpha = 0.85 * snow;
+      ctx.fillRect(0, grassY, this.canvas.width, this.terrainConfig.grassHeight);
+      ctx.fillRect(0, bottomY, this.canvas.width, bottomHeight);
+      ctx.globalAlpha = ROAD_SNOW * snow;
+      ctx.fillRect(0, roadY, this.canvas.width, this.terrainConfig.roadHeight);
+      ctx.globalAlpha = 1;
     }
+  }
+
+  // Tyre tracks (W9, R12) at the tyre contact line (road top + 46): grey grooves where snow
+  // lies, dark wet marks while it rains, nothing on a dry road. One fillRect per segment on
+  // screen; the ring (effects.tracks) holds world x only, so a rotation never strands them.
+  renderTracks(cameraX, effects, snow) {
+    const k = snow > 0 ? snow : effects.rainIntensity;
+    if (k <= 0) return;
+    const tr = effects.tracks;
+    const ctx = this.ctx;
+    const y = this.groundY() + TRACK_Y;
+    const w = this.canvas.width;
+    ctx.fillStyle = snow > 0 ? TRACK_SNOW : TRACK_WET;
+    for (let i = 0; i < TRACK_SLOTS; i++) {
+      const a = tr.alpha(i);
+      if (a <= 0) continue;
+      const x0 = Math.round(tr.x0[i] - cameraX);
+      const x1 = Math.round(tr.x1[i] - cameraX);
+      if (x1 <= 0 || x0 >= w) continue;
+      ctx.globalAlpha = a * k * TRACK_ALPHA;
+      ctx.fillRect(x0, y, x1 - x0, TRACK_H);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // One full-screen fog wash (V8).
+  veil(alpha) {
+    const ctx = this.ctx;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = FOG;
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.globalAlpha = 1;
   }
 
   renderTerra(cameraX, bottomY, bottomHeight) {

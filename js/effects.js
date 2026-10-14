@@ -2,10 +2,12 @@
 // EFFECTS.JS - Visual Effects System
 // ===================================
 import { SUN_X } from "./sky.js";
+import { NO_WIND, Tracks, weatherKind, snowTarget, approach } from "./weather.js";
 
 export const MAX_PARTICLES = 300;
 const MAX_RAIN = 400;
 const MAX_SNOW = 200;
+const RAIN_SLANT = 0.025; // s: a drop's length / its fall speed (~27 px / ~1000 px/s)
 export const LEAF_AUTUMN = "#d9822b"; // Bab 3 leaves (V2)
 const DUST = "#8b7355";
 const SMOKE = "#d6d6d6";
@@ -71,16 +73,28 @@ export class EffectsManager {
     this.clouds = [];
     this.windOffset = 0;
     
+    // Weather (V8, R10): cheatWeather (cheat word, redok, ?bengkel=) beats realWeather (the
+    // opt-in Open-Meteo lookup), each null | "rain" | "snow" | "fog" | "clear". rainActive
+    // (a getter) stays "rain is falling now" for the NPC rain lines and the rain cup.
+    this.cheatWeather = null;
+    this.realWeather = null;
+    this.wind = NO_WIND; // W8: windFrom() of the real wind, or today's look
+    this.swayAmp = NO_WIND.swayAmp; // W8, set per step: the wind's, capped under reduced motion
+    this.fogAmount = 0; // 0..1, eased: thick fog (WMO 45/48)
+    this.snowCover = 0; // 0..1, eased: white ground outside Bab 4 under snow weather
+    this.tracks = new Tracks(); // tyre tracks (W9)
+
     // Rain properties
-    this.rainActive = false;
     this.rainParticles = [];
+    this._rainPool = []; // fallen drops, reused by spawnRainDrop
     this.rainIntensity = 0; // 0 to 1 for smooth fade in/out
 
     // Ambient snow (V8): a rain-path variant. ambientSnow is the chapter's intensity
-    // (game.enterChapter: Bab 4 = 0.3); active rain (cheat or real weather) wins over it.
+    // (game.enterChapter: Bab 4 = 0.3); snowTarget() puts the weather on top of it.
     this.ambientSnow = 0;
     this.snowIntensity = 0;
     this.snowFlakes = [];
+    this._flakePool = [];
 
     // Time of Day
     this.forcedTime = null; // 'morning', 'noon', 'afternoon', 'night', or null (auto)
@@ -177,17 +191,40 @@ export class EffectsManager {
     return !!(this._rm && this._rm.matches);
   }
 
+  // The weather now (R10): what the cheat or the real lookup set, null = only the chapter's.
+  get weatherKind() {
+    return weatherKind(this.cheatWeather, this.realWeather);
+  }
+
+  get rainActive() {
+    return this.weatherKind === "rain";
+  }
+
+  // Snow intensity the weather and the chapter want (updateSnow eases to it; a teleport snaps).
+  snowWanted() {
+    return snowTarget(this.weatherKind, this.ambientSnow);
+  }
+
   update(deltaTime, cameraX = 0) {
     if (this.shakeSteps > 0) this.shakeSteps--;
-    this.windOffset += deltaTime * 0.001;
+    // W8 sway: reduced motion never sways harder or faster than before real wind existed.
+    const w = this.wind;
+    const calm = this.reducedMotion;
+    this.swayAmp = calm ? Math.min(w.swayAmp, NO_WIND.swayAmp) : w.swayAmp;
+    this.windOffset += deltaTime * 0.001 * (calm ? Math.min(w.swayRate, NO_WIND.swayRate) : w.swayRate);
+    const kind = this.weatherKind;
+    this.fogAmount = approach(this.fogAmount, kind === "fog" ? 1 : 0, deltaTime * 0.0005); // 2 s
+    this.snowCover = approach(this.snowCover, kind === "snow" ? 1 : 0, deltaTime * 0.0003); // ~3 s
     this.updateRain(deltaTime, cameraX);
     this.updateSnow(deltaTime, cameraX);
     this.updateTimeOfDay(deltaTime);
 
-    // Update clouds
-    this.clouds.forEach((cloud) => {
+    // Update clouds (indexed: no closure per step). W8: real wind sets the drift (cloudK).
+    const cloudK = w.cloudK;
+    for (let c = 0; c < this.clouds.length; c++) {
+      const cloud = this.clouds[c];
       // time-based movement: speed is pixels/second, deltaTime is ms
-      cloud.x += cloud.speed * (deltaTime * 0.001);
+      cloud.x += cloud.speed * cloudK * (deltaTime * 0.001);
 
       // Compute screen X based on cloud parallax so wrapping is relative to viewport
       const screenX = cloud.x - cameraX * cloud.parallax;
@@ -278,7 +315,7 @@ export class EffectsManager {
         );
         if (cloud.opacity >= 1) cloud.fadeInSpeed = 0;
       }
-    });
+    }
 
     this.stepParticles(deltaTime);
   }
@@ -506,18 +543,19 @@ export class EffectsManager {
     }
   }
 
-  getWindSway() {
-    return Math.sin(this.windOffset) * 3;
+  // Tree sway at world x (W8): real wind sets the amplitude and the speed, and its gusts roll
+  // downwind (a phase by x); without it every tree sways in step, as before.
+  getWindSway(x = 0) {
+    return Math.sin(this.windOffset + this.wind.gust * x) * this.swayAmp;
   }
 
-  // Easter Egg: Rain
-  toggleRain(enable = null) {
-    if (enable !== null) {
-        this.rainActive = enable;
-    } else {
-        this.rainActive = !this.rainActive;
-    }
-    console.log(`Rain status: ${this.rainActive}`);
+  // W9, once per sim step after juice: the trailing wheel of the motion (the leading one is up
+  // in a wheelie) marks lying snow or a wet road.
+  trackStep(p) {
+    const a = p.wheelX(0);
+    const b = p.wheelX(1);
+    const x = p.velocityX < 0 ? Math.max(a, b) : Math.min(a, b);
+    this.tracks.step(x, this.ambientSnow > 0 || this.snowCover > 0 || this.rainIntensity > 0);
   }
 
   // Time of Day System
@@ -584,106 +622,102 @@ export class EffectsManager {
   }
 
   updateRain(deltaTime, cameraX) {
-    // Smoothly transition intensity
-    const targetIntensity = this.rainActive ? 1 : 0;
-    if (this.rainIntensity < targetIntensity) {
-        this.rainIntensity = Math.min(targetIntensity, this.rainIntensity + deltaTime * 0.001); // 1 sec to fade in
-    } else if (this.rainIntensity > targetIntensity) {
-        this.rainIntensity = Math.max(targetIntensity, this.rainIntensity - deltaTime * 0.001); // 1 sec to fade out
-    }
+    const s = deltaTime * 0.001;
+    this.rainIntensity = approach(this.rainIntensity, this.rainActive ? 1 : 0, s); // 1 s fade
 
     // Spawn new rain drops if intensity > 0
+    const vx = this.wind.rainVx; // W8: px/s along the road (-200 = today's light wind to the left)
     if (this.rainIntensity > 0.01) {
       // Spawn rate based on screen width and intensity
-      const spawnCount = Math.floor(5 * this.rainIntensity); 
+      const spawnCount = Math.floor(5 * this.rainIntensity);
       // Always spawn at least 1 occasionally if low intensity
       if (spawnCount === 0 && Math.random() < this.rainIntensity) {
-           this.spawnRainDrop(cameraX);
+        this.spawnRainDrop(cameraX, vx);
       } else {
-          for (let i = 0; i < spawnCount; i++) {
-            this.spawnRainDrop(cameraX);
-          }
+        for (let i = 0; i < spawnCount; i++) this.spawnRainDrop(cameraX, vx);
       }
     }
 
     // Update existing rain drops
-    // Swap-remove, same as particles.
+    // Swap-remove into the pool, same as particles.
     const drops = this.rainParticles;
     for (let i = drops.length - 1; i >= 0; i--) {
       const drop = drops[i];
-      drop.y += drop.vy * (deltaTime * 0.001);
-      drop.x -= 200 * (deltaTime * 0.001); // Slight wind to left
+      drop.y += drop.vy * s;
+      drop.x += vx * s;
       // Remove if far below screen
       if (drop.y >= this.canvas.height + 100) {
         drops[i] = drops[drops.length - 1];
         drops.pop();
+        this._rainPool.push(drop);
       }
     }
   }
 
-  spawnRainDrop(cameraX) {
-      if (this.rainParticles.length >= MAX_RAIN) return;
-      this.rainParticles.push({
-        x: cameraX + Math.random() * (this.canvas.width + 200), // Spawn wider to cover wind drift
-        y: -50 - Math.random() * 50, // Start above screen
-        vy: 800 + Math.random() * 400, // Fall speed (px/sec)
-        length: 20 + Math.random() * 15,
-        opacity: (0.6 + Math.random() * 0.4) * this.rainIntensity
-    });
+  // One drop, recycled from the pool. It spawns over the view plus the stretch the wind
+  // carries it while it falls (~1 s), on the upwind side. Low tier (V10): half the cap.
+  spawnRainDrop(cameraX, vx) {
+    if (this.rainParticles.length >= (this.low ? MAX_RAIN / 2 : MAX_RAIN)) return;
+    const m = Math.abs(vx);
+    const drop = this._rainPool.pop() || {};
+    drop.x = cameraX - (vx > 0 ? m : 0) + Math.random() * (this.canvas.width + m);
+    drop.y = -50 - Math.random() * 50; // Start above screen
+    drop.vy = 800 + Math.random() * 400; // Fall speed (px/sec)
+    drop.length = 20 + Math.random() * 15;
+    this.rainParticles.push(drop);
   }
 
   renderRain(cameraX) {
     if (this.rainParticles.length === 0 && this.rainIntensity <= 0.01) return;
-
-    this.ctx.save();
-    
-    // Rain Filter / Overlay
-    // Darken the screen slightly with a blueish tint, scaled by intensity
+    const ctx = this.ctx;
+    ctx.save();
+    // A blueish tint, scaled by intensity (alpha, not a colour string per frame)
     if (this.rainIntensity > 0) {
-        const alpha = 0.3 * this.rainIntensity;
-        this.ctx.fillStyle = `rgba(20, 25, 40, ${alpha})`;
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      ctx.globalAlpha = 0.3 * this.rainIntensity;
+      ctx.fillStyle = "rgb(20, 25, 40)";
+      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+      ctx.globalAlpha = 1;
     }
-
-    this.ctx.strokeStyle = "rgba(174, 194, 224, 0.6)";
-    this.ctx.lineWidth = 1;
-    this.ctx.beginPath();
-    
-    this.rainParticles.forEach(drop => {
-        const screenX = drop.x - cameraX;
-        
-        // Optimization: only draw if on screen
-        if (screenX > -50 && screenX < this.canvas.width + 50) {
-            this.ctx.moveTo(screenX, drop.y);
-            this.ctx.lineTo(screenX - 5, drop.y + drop.length); // Angled slightly
-        }
-    });
-    
-    this.ctx.stroke();
-    this.ctx.restore();
+    ctx.strokeStyle = "rgba(174, 194, 224, 0.6)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    // Slanted with the wind: a drop moves rainVx * 0.025 px sideways over its length (-5 today).
+    const slant = Math.round(this.wind.rainVx * RAIN_SLANT);
+    const w = this.canvas.width;
+    const drops = this.rainParticles;
+    for (let i = 0; i < drops.length; i++) {
+      const drop = drops[i];
+      const screenX = drop.x - cameraX;
+      if (screenX > -50 && screenX < w + 50) {
+        ctx.moveTo(screenX, drop.y);
+        ctx.lineTo(screenX + slant, drop.y + drop.length);
+      }
+    }
+    ctx.stroke();
+    ctx.restore();
   }
 
   // Snow (V8): a pool of flakes sized by intensity and screen area (~130 at 1440x900 and
   // ~26 at 375x667 for 0.3). Flakes are spread over the whole sky and fade in, so the
   // snowfall arrives with the 1 s biome crossfade instead of trickling down from the top.
   updateSnow(deltaTime, cameraX) {
-    const target = this.rainActive ? 0 : this.ambientSnow;
-    const ease = deltaTime * 0.0003; // 0.3 per second
-    if (this.snowIntensity < target) this.snowIntensity = Math.min(target, this.snowIntensity + ease);
-    else if (this.snowIntensity > target) this.snowIntensity = Math.max(target, this.snowIntensity - ease);
+    this.snowIntensity = approach(this.snowIntensity, this.snowWanted(), deltaTime * 0.0003); // 0.3 per second
 
     const flakes = this.snowFlakes;
     const w = this.canvas.width;
     const ground = Math.max(0, this.canvas.height - 80); // flakes land on the road top; >= 0 on a tiny viewport
-    const count = Math.min(MAX_SNOW, Math.round((this.snowIntensity * (w + 40) * ground) / 2800));
-    if (flakes.length > count) flakes.length = count;
+    const cap = this.low ? MAX_SNOW / 2 : MAX_SNOW; // V10 low tier: half
+    const count = Math.min(cap, Math.round((this.snowIntensity * (w + 40) * ground) / 2800));
+    while (flakes.length > count) this._flakePool.push(flakes.pop());
     while (flakes.length < count) flakes.push(this.newFlake(cameraX, Math.random() * ground));
 
     const s = deltaTime * 0.001;
     const span = w + 40;
-    for (const f of flakes) {
+    const vx = this.wind.snowVx; // W8: -20 = today's light wind to the left
+    for (let i = 0; i < flakes.length; i++) {
+      const f = flakes[i];
       f.y += f.vy * s;
-      f.x += (Math.sin(f.phase + f.y * 0.02) * 15 - 20) * s; // flutter + a light wind to the left
+      f.x += (Math.sin(f.phase + f.y * 0.02) * 15 + vx) * s; // flutter + the wind
       f.a = Math.min(1, f.a + s * 2); // fade in over 0.5 s
       if (f.y >= ground) {
         // Landed: back to the top somewhere in view, faded out.
@@ -696,15 +730,16 @@ export class EffectsManager {
     }
   }
 
+  // A flake from the pool (a new object only while the pool is short).
   newFlake(cameraX, y) {
-    return {
-      x: cameraX - 20 + Math.random() * (this.canvas.width + 40),
-      y,
-      vy: 40 + Math.random() * 50, // px per second
-      size: Math.random() < 0.3 ? 3 : 2,
-      phase: Math.random() * Math.PI * 2,
-      a: 0,
-    };
+    const f = this._flakePool.pop() || {};
+    f.x = cameraX - 20 + Math.random() * (this.canvas.width + 40);
+    f.y = y;
+    f.vy = 40 + Math.random() * 50; // px per second
+    f.size = Math.random() < 0.3 ? 3 : 2;
+    f.phase = Math.random() * Math.PI * 2;
+    f.a = 0;
+    return f;
   }
 
   // Drawn after rain: one fillRect per flake (<= 200), alpha per flake for the fade-in.

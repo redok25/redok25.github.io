@@ -23,6 +23,7 @@ import { Journal } from "./journal.js";
 import { createRedok } from "./redok.js";
 import { COPY } from "./copy.js";
 import { unlock, queueToast, catchUpAchievements, flushAchievementToasts } from "./achievements.js";
+import { wmoKind, windFrom, weatherUrl, WEATHER_FETCH, NO_WIND } from "./weather.js";
 
 class Game {
   constructor() {
@@ -186,10 +187,13 @@ class Game {
       showCustomAlert(text, { type });
       unlock("cuaca"); // P5 Peretas Cuaca: a typed or ?bengkel= sky cheat (never redok or real weather)
     };
+    const reality = timeCheat(null, "Kembali ke realita!", "info");
     const cheats = {
+      // Toggles what the visitor sees: rain on, or clear over any rain (cheat or real, R10).
       rain: () => {
-        this.effects.toggleRain();
-        showCustomAlert(this.effects.rainActive ? "Hujan telah datang!" : "Hujan telah hilang!", {
+        const fx = this.effects;
+        fx.cheatWeather = fx.rainActive ? "clear" : "rain";
+        showCustomAlert(fx.rainActive ? "Hujan telah datang!" : "Hujan telah hilang!", {
           type: "success",
           duration: 3000,
         });
@@ -199,7 +203,11 @@ class Game {
       afternoon: timeCheat("afternoon", "Selamat sore!"),
       noon: timeCheat("noon", "Selamat siang!"),
       night: timeCheat("night", "Selamat malam!"),
-      reset: timeCheat(null, "Kembali ke realita!", "info"),
+      // Back to reality: the clock's time and the real (or the chapter's) weather.
+      reset: () => {
+        this.effects.cheatWeather = null;
+        reality();
+      },
       wheeliegame: () => this.minigames.startMinigame("wheelie_challenge"),
       lightgame: () => this.minigames.startMinigame("red_light_green_light"),
       racegame: () => this.minigames.startMinigame("drag_race"),
@@ -316,16 +324,22 @@ class Game {
       this.weatherToggle.blur();
       save.set("weatherOptIn", this.weatherToggle.checked);
       if (this.weatherToggle.checked) this.checkRealWeather();
-      else {
-        this.weatherReq++;
-        this.effects.toggleRain(false);
-      }
+      else this.stopRealWeather();
     });
+  }
+
+  // Revoked (or denied): the real rain, snow, fog and wind go at once and late answers are
+  // dropped (R10). A cheat or redok weather stays.
+  stopRealWeather() {
+    this.weatherReq++;
+    this.effects.realWeather = null;
+    this.effects.wind = NO_WIND;
   }
 
   disableRealWeather(message) {
     if (this.weatherToggle) this.weatherToggle.checked = false;
     save.set("weatherOptIn", false);
+    this.stopRealWeather();
     if (typeof showCustomAlert === "function") showCustomAlert(message, { type: "info" });
   }
 
@@ -340,34 +354,35 @@ class Game {
       (position) => {
         if (req === this.weatherReq) this.fetchWeather(position.coords.latitude, position.coords.longitude, req);
       },
-      () => {
-        if (req === this.weatherReq) this.disableRealWeather("Izin lokasi diperlukan untuk fitur cuaca otomatis!");
+      (err) => {
+        if (req !== this.weatherReq) return;
+        // Only a denial (code 1, PERMISSION_DENIED) revokes the opt-in (R13); no fix or a
+        // timeout is a blip, and the next load tries again.
+        if (err && err.code === 1) this.disableRealWeather("Izin lokasi diperlukan untuk fitur cuaca otomatis!");
+        else showCustomAlert("Cuaca asli gagal dimuat, coba lagi nanti.", { type: "info" });
       }
     );
   }
 
   fetchWeather(lat, lon, req) {
-    // Rounded coordinates: the weather API never gets the exact location.
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${JOR.roundCoord(lat)}&longitude=${JOR.roundCoord(lon)}&current_weather=true`;
-
-    fetch(url)
+    // weatherUrl rounds the coordinates (the API never gets the exact location); no Referer.
+    fetch(weatherUrl(lat, lon), WEATHER_FETCH)
       .then((response) => {
         if (!response.ok) throw new Error("HTTP " + response.status);
         return response.json();
       })
       .then((data) => {
         if (req !== this.weatherReq) return;
-        if (!data.current_weather) throw new Error("no current_weather");
-        // WMO codes: drizzle/rain/showers 51-82, thunderstorm 95-99
-        const rainCodes = [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99];
-        const raining = rainCodes.includes(data.current_weather.weathercode);
-        this.effects.toggleRain(raining);
-        if (raining && typeof showCustomAlert === "function") {
-          showCustomAlert("Hujan telah datang!", { type: "success" });
-        }
+        const now = data && data.current_weather;
+        if (!now) throw new Error("no current_weather");
+        const kind = wmoKind(now.weathercode); // V8: rain, snow, fog or clear
+        this.effects.realWeather = kind;
+        this.effects.wind = windFrom(now.windspeed, now.winddirection); // W8
+        if (kind === "rain" && this.effects.rainActive) showCustomAlert("Hujan telah datang!", { type: "success" });
       })
       .catch(() => {
-        if (req === this.weatherReq) this.disableRealWeather("Cuaca asli gagal dimuat, coba lagi nanti.");
+        // A network or API blip keeps the opt-in (R13): the next load tries again.
+        if (req === this.weatherReq) showCustomAlert("Cuaca asli gagal dimuat, coba lagi nanti.", { type: "info" });
       });
   }
 
@@ -495,7 +510,8 @@ class Game {
     this.journey.jumpTo(centerX);
     this.enterChapter(this.journey.current);
     this.world.snapBiome(this.world.biomeWanted);
-    this.effects.snowIntensity = this.effects.rainActive ? 0 : this.effects.ambientSnow;
+    this.effects.snowIntensity = this.effects.snowWanted();
+    this.effects.tracks.cut(); // W9: a teleport never draws a track across the jump
   }
 
   // Fast travel, redok.goto and the credits replay (R22). The "blur" owner alone does not
@@ -657,6 +673,7 @@ class Game {
     // and leaves in the wake in Bab 3. Spawned here in update, so never while paused.
     const autumn = CHAPTERS[this.journey.current].biome === "autumn";
     this.effects.juice(this.player, rot0, autumn);
+    this.effects.trackStep(this.player); // W9 tyre tracks in snow or rain
 
     // Ambient leaf spawn near nearby trees (probabilistic, scaled by proximity)
     if (
@@ -774,11 +791,10 @@ class Game {
     const shakeY = this.paused ? 0 : shakeOffset(this.effects.shakeSteps);
     this.ctx.setTransform(1, 0, 0, 1, 0, shakeY);
 
-    // Render world with parallax. Pass `effects` so clouds can be drawn
-    // between background layers (behind the nearest bg layer).
-    const windSway = this.effects.getWindSway();
+    // Render world with parallax. Pass `effects` so clouds can be drawn between background
+    // layers and each tree sways at its own x (W8).
     // The opening ride and a course hide the cups (they are inert there, R28).
-    this.world.render(this.cameraX, windSway, this.effects, this.player.lockBacktrack && !this.minigames.activeMinigame ? this.kopi : null);
+    this.world.render(this.cameraX, this.effects, this.player.lockBacktrack && !this.minigames.activeMinigame ? this.kopi : null);
 
     // Render player (before overlays so it gets tinted)
     this.player.render(this.ctx, this.cameraX);

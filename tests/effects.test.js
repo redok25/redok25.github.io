@@ -5,8 +5,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   EffectsManager, JUICE, JUICE_CAP, MAX_PARTICLES, PARTICLE_COLORS, LAND_DUST,
-  SPARKS_PER_STEP, SKID_DOT_GAP, SHAKE_STEPS, shakeOffset,
+  SPARKS_PER_STEP, SKID_DOT_GAP, SHAKE_STEPS, shakeOffset, hourBucket, TIME_TARGETS,
 } from "../js/effects.js";
+import { SUN_X } from "../js/sky.js";
 
 const DUST = "#8b7355";
 
@@ -152,4 +153,77 @@ test("P7 shake: 2 px at most, up only, gone after SHAKE_STEPS, seen at 30 Hz too
   // Two steps per frame, either phase: the jolt still shows.
   assert.ok(seq.filter((_, i) => i % 2 === 0).some(Boolean));
   assert.ok(seq.filter((_, i) => i % 2 === 1).some(Boolean));
+});
+
+// Time of day (V3, R15): a bare manager with the time fields only.
+const STEP = 1000 / 60;
+const timeFx = (forcedTime = null) =>
+  Object.assign(Object.create(EffectsManager.prototype), { forcedTime, timeMode: null, clockMode: null, _clockMs: 0, sunX: SUN_X.noon, sunUp: 1 });
+
+// Runs fn with a Date whose clock says `hour`; returns how many Dates were made.
+function atHour(hour, fn) {
+  const RealDate = globalThis.Date;
+  let made = 0;
+  globalThis.Date = class {
+    constructor() { made++; }
+    getHours() { return hour; }
+  };
+  try {
+    fn();
+  } finally {
+    globalThis.Date = RealDate;
+  }
+  return made;
+}
+
+test("time of day: clock buckets and their targets (a is the kopi contract)", () => {
+  const hours = [0, 4, 5, 9, 10, 14, 15, 18, 19, 23];
+  assert.deepEqual(hours.map(hourBucket), ["night", "night", "morning", "morning", "noon", "noon", "afternoon", "afternoon", "night", "night"]);
+  assert.deepEqual(Object.keys(TIME_TARGETS).map((m) => TIME_TARGETS[m][3]), [0.1, 0, 0.15, 0.5]);
+});
+
+test("time of day: the clock is read once a second, not every step; the bucket is stored", () => {
+  const f = timeFx();
+  const made = atHour(21, () => {
+    for (let i = 0; i < 110; i++) f.updateTimeOfDay(STEP);
+  });
+  assert.equal(made, 2); // 1.8 s of steps: read on step 1 and a second later
+  assert.equal(f.timeMode, "night");
+  assert.equal(f.currentTimeState.a, 0.5); // the first step snaps
+  assert.deepEqual([f.sunX, f.sunUp], [SUN_X.morning, 0]); // a night start: set, where it will rise
+  f.forcedTime = "noon";
+  assert.equal(atHour(21, () => f.updateTimeOfDay(STEP)), 0);
+  assert.equal(f.timeMode, "noon");
+});
+
+test("sun: glides between day spots, sets in place, jumps while hidden; snapTime lands in place", () => {
+  const f = timeFx("noon");
+  atHour(12, () => {
+    f.updateTimeOfDay(STEP);
+    assert.equal(f.sunX, SUN_X.noon);
+    f.forcedTime = "afternoon";
+    f.updateTimeOfDay(STEP);
+    assert.ok(f.sunX > SUN_X.noon && f.sunX < SUN_X.afternoon, "gliding");
+    for (let i = 0; i < 300; i++) f.updateTimeOfDay(STEP);
+    assert.ok(Math.abs(f.sunX - SUN_X.afternoon) < 1e-3);
+    f.forcedTime = "night";
+    for (let i = 0; i < 300; i++) f.updateTimeOfDay(STEP);
+    assert.ok(Math.abs(f.sunX - SUN_X.afternoon) < 1e-3 && f.sunUp < 1e-3, "sets where it stood");
+    f.forcedTime = "morning";
+    f.updateTimeOfDay(STEP);
+    assert.equal(f.sunX, SUN_X.morning, "still behind the hills: jumps, then rises there");
+    for (let i = 1; i < 120; i++) f.updateTimeOfDay(STEP);
+    assert.ok(f.sunUp > 0.98 && f.sunX === SUN_X.morning, "risen in 2 s");
+    const s = f.currentTimeState;
+    f.forcedTime = "afternoon";
+    f.snapTime();
+    assert.equal(f.currentTimeState, s);
+    const [r, g, b, a] = TIME_TARGETS.afternoon;
+    assert.deepEqual([s.r, s.g, s.b, s.a, f.sunX, f.sunUp], [r, g, b, a, SUN_X.afternoon, 1]); // exact: assigned, not eased
+    f.forcedTime = "night";
+    f.snapTime();
+    f.forcedTime = "morning";
+    f.snapTime(); // the epilog skip: eased with k = 1, 0.5 -> 0.1 gave 0.09999999999999998
+    assert.equal(s.a, TIME_TARGETS.morning[3]);
+  });
 });

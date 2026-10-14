@@ -1,6 +1,7 @@
 // ===================================
 // EFFECTS.JS - Visual Effects System
 // ===================================
+import { SUN_X } from "./sky.js";
 
 export const MAX_PARTICLES = 300;
 const MAX_RAIN = 400;
@@ -43,6 +44,19 @@ const SHAKE = [0, -1, -1, 0, 0, -2, -2];
 export const SHAKE_STEPS = SHAKE.length - 1;
 export const shakeOffset = (stepsLeft) => SHAKE[stepsLeft] || 0;
 
+// Time of day. Clock buckets (local hour) and their tint targets [r, g, b, a]. `a` is a
+// contract: kopi (kopi.js NIGHT_FROM), the sky and the night lighting read it.
+export const hourBucket = (h) => (h >= 5 && h < 10 ? "morning" : h >= 10 && h < 15 ? "noon" : h >= 15 && h < 19 ? "afternoon" : "night");
+export const TIME_TARGETS = {
+  morning: [255, 200, 100, 0.1], // warm yellow
+  noon: [255, 255, 255, 0], // clear
+  afternoon: [255, 160, 80, 0.15], // golden
+  night: [10, 10, 30, 0.5], // dark blue
+};
+const TIME_RATE = 0.002; // per ms: 1/30 per step, ~95 % of the way in 1.5 s
+const CLOCK_MS = 1000;
+const SUN_HIDDEN = 0.1; // sunUp under this: the sun is behind the hills, it can jump
+
 export class EffectsManager {
   // accept world reference so clouds can be placed in world space and parallax relative to camera
   constructor(canvas, ctx, world) {
@@ -70,8 +84,11 @@ export class EffectsManager {
 
     // Time of Day
     this.forcedTime = null; // 'morning', 'noon', 'afternoon', 'night', or null (auto)
-    this.timeOverlay = { color: 'rgba(0,0,0,0)', opacity: 0 };
-    this.timeTransition = 0; // for smoothing switches if needed
+    this.timeMode = null; // the bucket in use (forcedTime or the clock's), set every step
+    this.clockMode = null; // the clock's bucket, re-read once a second
+    this._clockMs = 0; // ms until the clock is read again
+    this.sunX = SUN_X.noon; // sun centre as a fraction of the width (sky.js draws it)
+    this.sunUp = 1; // 1 = at its spot, 0 = set below the hills
 
     // Cloud follow mode: 'parallax' = default slow parallax; 'screen' = fixed to screen; 'world' = moves exactly with world/camera
     this.cloudFollowMode = "parallax";
@@ -510,53 +527,51 @@ export class EffectsManager {
     // We rely on updateTimeOfDay to smooth the transition, or we could force it here.
   }
 
+  // Per sim step: ease the tint toward the bucket's target and move the sun (V3).
   updateTimeOfDay(deltaTime) {
-    let mode = this.forcedTime;
-    
-    // If auto, determine based on hour
-    if (!mode) {
-        const hour = new Date().getHours();
-        if (hour >= 5 && hour < 10) mode = 'morning';
-        else if (hour >= 10 && hour < 15) mode = 'noon';
-        else if (hour >= 15 && hour < 19) mode = 'afternoon';
-        else mode = 'night';
+    // The clock allocates a Date, so it is read once a second of sim time, not every step (R15).
+    if ((this._clockMs -= deltaTime) <= 0) {
+      this._clockMs = CLOCK_MS;
+      this.clockMode = hourBucket(new Date().getHours());
     }
-
-    // Target overlay properties based on mode
-    let targetColor = [0, 0, 0]; // r, g, b
-    let targetAlpha = 0;
-
-    switch (mode) {
-        case 'morning':
-            targetColor = [255, 200, 100]; // Warm Yellow
-            targetAlpha = 0.1;
-            break;
-        case 'noon':
-            targetColor = [255, 255, 255]; // Clear
-            targetAlpha = 0;
-            break;
-        case 'afternoon':
-            targetColor = [255, 160, 80]; // Softer Golden Sunset
-            targetAlpha = 0.15;
-            break;
-        case 'night':
-            targetColor = [10, 10, 30]; // Dark Blue/Black
-            targetAlpha = 0.5;
-            break;
+    const mode = this.forcedTime || this.clockMode;
+    this.timeMode = mode;
+    const t = TIME_TARGETS[mode];
+    const sunX = SUN_X[mode]; // none at night: the sun sets where it stands
+    const up = sunX === undefined ? 0 : 1;
+    const s = this.currentTimeState;
+    if (!s) {
+      // The first step snaps; a night start puts the sun where it will rise.
+      this.currentTimeState = { r: t[0], g: t[1], b: t[2], a: t[3] };
+      this.sunX = sunX ?? SUN_X.morning;
+      this.sunUp = up;
+      return;
     }
+    const k = Math.min(1, deltaTime * TIME_RATE);
+    s.r += (t[0] - s.r) * k;
+    s.g += (t[1] - s.g) * k;
+    s.b += (t[2] - s.b) * k;
+    s.a += (t[3] - s.a) * k;
+    // The sun rises and sets at the tint's pace (~2 s) and glides between day spots. Coming
+    // out of the night it is still behind the hills, so it jumps to the new spot first.
+    this.sunUp += (up - this.sunUp) * k;
+    if (sunX !== undefined) this.sunX = this.sunUp < SUN_HIDDEN ? sunX : this.sunX + (sunX - this.sunX) * k;
+  }
 
-    // Simple lerp for smooth transition could be added, but for now let's just set it
-    // Or implemented a basic transition state. Let's use current state.
-    // To do proper color interpolation we need to store current r,g,b,a.
-    if (!this.currentTimeState) {
-        this.currentTimeState = { r: targetColor[0], g: targetColor[1], b: targetColor[2], a: targetAlpha };
-    } else {
-        const speed = deltaTime * 0.002; // Slow transition
-        this.currentTimeState.r += (targetColor[0] - this.currentTimeState.r) * speed;
-        this.currentTimeState.g += (targetColor[1] - this.currentTimeState.g) * speed;
-        this.currentTimeState.b += (targetColor[2] - this.currentTimeState.b) * speed;
-        this.currentTimeState.a += (targetAlpha - this.currentTimeState.a) * speed;
-    }
+  // Straight to the current target, tint and sun, no lerp (the epilog skip, R1). In place:
+  // readers keep their reference to currentTimeState. Assigned, not eased with k = 1:
+  // x + (t - x) can miss t by an ulp (0.5 -> 0.1 gives 0.09999999999999998).
+  snapTime() {
+    this.updateTimeOfDay(0); // the bucket in use (and the first state, if there is none yet)
+    const t = TIME_TARGETS[this.timeMode];
+    const s = this.currentTimeState;
+    s.r = t[0];
+    s.g = t[1];
+    s.b = t[2];
+    s.a = t[3];
+    const sunX = SUN_X[this.timeMode]; // none at night: the sun is set where it stands
+    this.sunUp = sunX === undefined ? 0 : 1;
+    if (sunX !== undefined) this.sunX = sunX;
   }
 
   renderTimeOverlay() {

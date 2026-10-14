@@ -7,11 +7,10 @@ import { CHAPTERS, createBiomeFade, stepBiomeFade, biomeWeight } from "./journey
 import { COPY } from "./copy.js";
 import { JOR } from "./helpers.js";
 import { KOPI, KOPI_SIZE, kopiShown, goldPixel } from "./kopi.js";
+import { makeSky, renderSky } from "./sky.js";
 
 const NPC_HEIGHT = 87; // NPC draw height (npc.js / special-npc.js default)
 const BIOMES = ["normal", "autumn", "winter"];
-// winter/5.png is byte-identical to normal/5.png: the winter sky is a cold gradient (sky slot).
-const WINTER_SKY = ["#a7b8c8", "#eef3f7"];
 // Autumn trees (V2): an orange wash over each tree sprite's opaque pixels.
 const AUTUMN_TREE_TINT = "rgba(214, 110, 30, 0.55)";
 // Decoration props (V4; sprites restored from commit 3c215ff, license D512): passive scenery
@@ -317,7 +316,7 @@ export class World {
     this.billboards.forEach((b) => (b.y = ground - BILLBOARD_SINK - b.height));
     this.gauges.forEach((g) => (g.y = ground - PROP_SINK - g.height));
     this._fog = null;
-    this._sky = null; // the winter sky gradient spans the canvas height
+    this._sky = null; // the sky slot's bitmaps are sized to the canvas (sky.js)
   }
 
   // Bottom-align a loaded object sprite on the ground (unless alignToGround === false).
@@ -437,14 +436,12 @@ export class World {
   }
 
   loadBackgroundLayers() {
-    const layerFiles = ["5.png", "4.png", "3.png", "2.png", "1.png"]; // far (sky) -> near
+    // Far -> near. Behind them is the sky slot (V3, sky.js): a gradient, not 5.png.
+    const layerFiles = ["4.png", "3.png", "2.png", "1.png"];
     this.biomes = {};
     for (const biome of BIOMES) {
       this.biomes[biome] = layerFiles.map((file, index) => {
-        const speed = (index + 1) * 0.1; // parallax factor
-        if (biome === "winter" && index === 0) {
-          return { sky: WINTER_SKY, speed, loaded: true, name: "winter/sky" };
-        }
+        const speed = (index + 2) * 0.1; // parallax factor (5.png was 0.1)
         const img = new Image();
         const src = `assets/sprites/platformer/background/${biome}/${file}`;
         const layer = { image: img, speed, loaded: false, name: `${biome}/${file}`, src };
@@ -939,7 +936,7 @@ export class World {
     for (let t = 0; t < tiles; t++) this.ctx.drawImage(img, startX + t * drawW, 0, drawW, drawH);
   }
 
-  // Parallax layers far to near, clouds between the sky and the rest. During a biome
+  // The sky slot, the clouds, then the parallax layers far to near. During a biome
   // crossfade each layer is drawn twice: outgoing at 1, incoming over it at alpha t. The
   // biome sets share identical binary alpha masks, so this per-layer blend is exact and
   // nothing pops when the fade ends (R5, no compose buffer).
@@ -952,6 +949,9 @@ export class World {
     const ctx = this.ctx;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
+    // The sky slot (V3): biome sky, night sky, sun and moon (sky.js), the clouds over it.
+    renderSky(ctx, this.skyCache(), fade, effects);
+    if (effects) effects.renderClouds(cameraX);
     for (let i = 0; i < from.length; i++) {
       this.drawLayer(from[i], cameraX);
       if (to) {
@@ -959,26 +959,18 @@ export class World {
         this.drawLayer(to[i], cameraX);
         ctx.globalAlpha = 1;
       }
-      if (i === 0 && effects) effects.renderClouds(cameraX);
     }
     ctx.restore();
   }
 
-  // One layer: a tiled parallax image, or the winter sky gradient (the sky slot).
-  // ponytail: one cached gradient (winter is the only gradient sky); key it by biome when a second appears.
+  // The sky slot's bitmaps, sized to the canvas; layout() drops them.
+  skyCache() {
+    return this._sky || (this._sky = makeSky(this.canvas.width, this.canvas.height));
+  }
+
+  // One tiled parallax layer, once its image is in.
   drawLayer(layer, cameraX) {
-    if (layer.sky) {
-      if (!this._sky) {
-        const g = this.ctx.createLinearGradient(0, 0, 0, this.canvas.height);
-        g.addColorStop(0, layer.sky[0]);
-        g.addColorStop(1, layer.sky[1]);
-        this._sky = g;
-      }
-      this.ctx.fillStyle = this._sky;
-      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    } else if (layer.loaded && layer.image.naturalWidth) {
-      this.drawTiledLayer(layer.image, layer.speed, cameraX);
-    }
+    if (layer.loaded && layer.image.naturalWidth) this.drawTiledLayer(layer.image, layer.speed, cameraX);
   }
 
   // Tree sprites per biome: autumn draws the pre-tinted copies (V2), the others the originals.

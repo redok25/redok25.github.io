@@ -827,16 +827,14 @@ class Game {
 
     // Render minigames (overlays)
     if (this.minigames) this.minigames.render(this.ctx);
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0); // the Bengkel panel stays put
-
-    // Mode Bengkel perf panel (toggled with backtick or ?bengkel)
-    if (this.bengkel.on) this.bengkel.render(this.ctx);
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0); // the Bengkel panel (drawn by gameLoop) stays put
   }
 
   gameLoop(currentTime) {
     const t0 = performance.now();
     const dt = currentTime - this.lastTime;
     this.lastTime = currentTime;
+    let work;
     try {
       let steps = 0;
       if (this.paused) {
@@ -859,13 +857,19 @@ class Game {
       }
       this.stepsLastFrame = steps;
       // Quick View covers the game: skip drawing it underneath.
-      if (!JOR.isPauseHeld(this, "quickview")) this.renderInterpolated();
+      if (!JOR.isPauseHeld(this, "quickview")) {
+        this.renderInterpolated();
+        work = performance.now() - t0;
+        // Mode Bengkel panel (backtick or ?bengkel), after the timed block: its own cost never
+        // feeds the quality tier or the p95 it shows, so a phone check reads the visitor's number.
+        if (this.bengkel.on) this.bengkel.render(this.ctx);
+      }
     } catch (e) {
       // Keep the loop alive; log the first failure only.
       if (!this._loopErrorLogged) console.error("Game loop error:", e);
       this._loopErrorLogged = true;
     }
-    this.bengkel.record(dt, performance.now() - t0, this.stepsLastFrame || 0);
+    this.bengkel.record(dt, work ?? performance.now() - t0, this.stepsLastFrame || 0);
     requestAnimationFrame((time) => this.gameLoop(time));
   }
 

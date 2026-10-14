@@ -26,6 +26,8 @@ import { COPY } from "./copy.js";
 import { unlock, queueToast, catchUpAchievements, flushAchievementToasts } from "./achievements.js";
 import { wmoKind, windFrom, weatherUrl, WEATHER_FETCH, NO_WIND } from "./weather.js";
 
+const NO_KEYS = Object.freeze({}); // player input while it is ignored (no object per step)
+
 class Game {
   constructor() {
     this.canvas = document.getElementById("gameCanvas");
@@ -230,9 +232,9 @@ class Game {
     window.addEventListener("keydown", (e) => {
       if (JOR.shouldIgnoreGameKey(e, document)) return;
       const word = nextWord(e.key);
-      // Cheats sleep while paused (splash, modals, transitions), during the opening ride and
-      // during a minigame course (R28).
-      if (word && !this.paused && !this._splashCameraActive && !this.minigames.activeMinigame) cheats[word]();
+      // Cheats sleep while paused (splash, modals, transitions), during the opening ride,
+      // during a minigame course (R28) and during the epilog (V9).
+      if (word && !this.paused && !this._splashCameraActive && !this.minigames.activeMinigame && !this.credits.epilog.running) cheats[word]();
     });
 
     // A press during the opening ride also skips it, so the ride is over by the time the
@@ -520,7 +522,7 @@ class Game {
   // block: DevTools focus blurs the page, and redok.goto must work from the console.
   canTravel() {
     const p = this.player;
-    if (!p.lockBacktrack || p.splashMoving || this._traveling) return false;
+    if (!p.lockBacktrack || p.splashMoving || this._traveling || this.credits.epilog.running) return false;
     if (this.offscreenModalActive || this.minigames.activeMinigame) return false;
     const owners = this._pauseOwners;
     return !owners || owners.size === (owners.has("blur") ? 1 : 0);
@@ -592,15 +594,15 @@ class Game {
 
   update(deltaTime) {
     if (this.paused) return;
-    // Update player. When a scripted splash/camera scene is active or the
-    // offscreen modal is visible, pass an empty keys object so player input
-    // is ignored while scripted movement or modal interaction runs.
+    // Update player. The opening ride, the offscreen modal's scripted return and the epilog
+    // (V9) ignore player input: keys and touch both write this.keys, so it is cut off here.
     const keysForPlayer =
-      this._splashCameraActive || this.offscreenModalActive ? {} : this.keys;
+      this._splashCameraActive || this.offscreenModalActive || this.credits.epilog.running ? NO_KEYS : this.keys;
     const rot0 = this.player.wheelieRotation; // P7: a landing is this step's drop to 0
     this.player.update(deltaTime, keysForPlayer);
 
-    // Camera: normal follow, or a tighter follow (0.4) while the scripted opening ride runs.
+    // Camera: normal follow, or a tighter follow (0.4) while the scripted opening ride runs. The
+    // epilog keeps it: the bike stands still, so the view settles and holds (R1, no override).
     this.camera.follow(this._splashCameraActive ? 0.4 : this.cameraSmoothing);
 
     // Chapters (V1, R4 amended): fed after the camera with the bike's center. The biome
@@ -730,9 +732,10 @@ class Game {
     // Kopi Rahasia (P3): only the rider's own riding finds a cup: not the opening ride, not a
     // course (R28), not the offscreen "Kembali" return (it can slide back over a cup).
     if (this.player.lockBacktrack && !this.offscreenModalActive && !this.minigames.activeMinigame) this.checkKopi();
-    // Credits (R9): the end of the road, once per load, after the ride, never during a course.
+    // Credits (R9) and the epilog before them (V9): the end of the road, once per load, after
+    // the ride, never during a course. The epilog advances one step per call.
     if (this.player.lockBacktrack && !this.minigames.activeMinigame) {
-      this.credits.check(this.player.x + this.player.width / 2);
+      this.credits.update(this.player.x + this.player.width / 2);
     }
 
     // Regular NPCs (W7) look at the bike and react to a wheelie, but not during the opening

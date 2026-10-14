@@ -89,7 +89,8 @@ export class Journal {
     d.addEventListener("close", () => JOR.releasePause(game, OWNER));
   }
 
-  // Outside a course (R28), and never under another dialog or modal, a pause or the ride.
+  // Outside a course (R28), and never under another dialog or modal, a pause, the ride or the
+  // epilog (V9).
   canOpen() {
     const g = this.game;
     return (
@@ -97,6 +98,7 @@ export class Journal {
       !g.paused &&
       !g._splashCameraActive &&
       !g.minigames.activeMinigame &&
+      !g.credits.epilog.running &&
       !JOR.isUiBlocking(document)
     );
   }

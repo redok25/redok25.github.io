@@ -37,6 +37,7 @@ export class Cinema {
     this.cardSub = document.getElementById("title-card-sub");
     this.beatEl = document.getElementById("story-beat");
     this._titleTimer = null;
+    this._hold = false; // the epilog (V9) keeps the bars up
     this._beat = 0;
     // The subtitle panel can appear before the first ride frame: give it beat 1 now.
     if (this.beatEl) setRich(this.beatEl, COPY.prologue[0]);
@@ -44,6 +45,13 @@ export class Cinema {
 
   setLetterbox(on) {
     if (this.letterbox) this.letterbox.classList.toggle("is-on", on);
+  }
+
+  // The epilog's bars (R1): while held, a title card's timer cannot drop them. Reduced motion
+  // hides the bars in CSS (splash.css), so there is nothing to branch on here.
+  hold(on) {
+    this._hold = on;
+    this.setLetterbox(on);
   }
 
   // "Bab N · Judul" over a fact line whose numbers come from Quick View markup (D498).
@@ -62,7 +70,7 @@ export class Cinema {
     clearTimeout(this._titleTimer);
     this._titleTimer = setTimeout(() => {
       this.card.classList.remove("is-on");
-      this.setLetterbox(false);
+      this.setLetterbox(this._hold);
     }, TITLE_MS);
   }
 

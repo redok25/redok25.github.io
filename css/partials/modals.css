@@ -254,3 +254,12 @@
   color: #f77622;
   font-weight: bold;
 }
+
+/* Reduced motion (Phase 4 R17): the glitch screen keeps its look, without the jitter or the
+   2 Hz blink. */
+@media (prefers-reduced-motion: reduce) {
+  .disaster-content h2,
+  .blink-text {
+    animation: none;
+  }
+}

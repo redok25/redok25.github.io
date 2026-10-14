@@ -84,10 +84,11 @@ export class InteractionManager {
     });
   }
 
-  // No targets before the opening ride ends, during it, or during a minigame course (R20).
+  // No targets before the opening ride ends, during it, during a minigame course (R20) or
+  // during the epilog (V9).
   isInert() {
     const game = app.game;
-    return !game || !this.player.lockBacktrack || !!game.minigames.activeMinigame;
+    return !game || !this.player.lockBacktrack || !!game.minigames.activeMinigame || game.credits.epilog.running;
   }
 
   // One list, one kind: keeps the best candidate in fields (no array or closure per step).

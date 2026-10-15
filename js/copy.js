@@ -4,7 +4,7 @@
 // JOR.contentTokens, D498), never typed in. "**x**" marks bold; it is rendered as a
 // <strong> node, never through innerHTML. Game graph only; no DOM, so node tests import it.
 // Phase 2b keys: stations, billboard, strip, credits, console. Phase 3a: minigame.
-// Phase 3b: kopi, achievements, journal, npc.
+// Phase 3b: kopi, achievements, journal, npc. Phase 5: bengkel.
 // ===================================
 export const COPY = {
   // Chapter title cards (V5): "label · title" over the subtitle. Index = chapter id.
@@ -49,6 +49,7 @@ export const COPY = {
     replay: "Ulangi perjalanan",
     quickView: "Quick View",
     close: "Tutup",
+    bengkel: "🔧 Penasaran dapur mesinnya? Buka Mode Bengkel", // R8: a link to ?bengkel (phones too)
   },
   // Console API (T2): window.redok, for devs, so code words are fine here.
   console: {
@@ -82,12 +83,40 @@ export const COPY = {
   kopi: {
     found: "☕ Kopi rahasia ketemu! {found}/{total}",
     emas: "✨ Semua kopi ketemu! Motormu sekarang Motor Emas.",
+    // R10: once, for a visitor who had every cup before a new one was added.
+    newCup: "☕ Ada kopi rahasia baru. Motor Emas balik kalau ketemu!",
     hints: {
       pagar: "Malam-malam, ada kopi nangkring di pagar Asal-Usul.",
       wheelie: "Ada kopi melayang di Bengkel Skill. Angkat roda depan!",
       warung: "Pas hujan, ada kopi neduh di emperan warung.",
       ujung: "Jalan belum habis waktu kartu terakhir muncul.",
+      bengkel: "Ada kopi yang cuma kelihatan di kotak tabrak Mode Bengkel.",
     },
+  },
+  // Mode Bengkel v2 (T1, R1-R6). A dev view a visitor can open, so Indonesian (D511); units
+  // (fps, ms, p95, px, km/j, x) are not words. Labels: the DOM aside (textContent). rows: the
+  // canvas panel's new lines, filled while the panel is open; lightOff stands in for an empty
+  // light buffer; weather names the kinds as redok.weather does; legend: the hitbox colours.
+  bengkel: {
+    title: "Mode Bengkel",
+    layers: "Sembunyikan layer",
+    hitbox: "Kotak tabrak",
+    light: "Peta cahaya",
+    slow: "Gerak lambat",
+    compact: "Ringkas", // the panel's first row only (on by default on phones)
+    source: "Lihat source",
+    close: "Tutup",
+    save: "Data save (JSON)",
+    lightOff: "Peta cahaya kosong: belum malam / mode hemat",
+    rows: {
+      split: "p95 sim {sim} · gambar {draw} ms · laju {scale}x",
+      count: "salju {snow} · npc {npc} · minigame {special}",
+      place: "{chapter} · x {x} · kamera {cam} · v {v}",
+      weather: "cuaca {kind} · kode {code} · angin {wind}",
+      wind: "{kmh} km/j {from}°",
+    },
+    weather: { rain: "hujan", snow: "salju", fog: "kabut", clear: "cerah" },
+    legend: ["kotak", "jarak E", "noleh", "kaget", "skill", "kopi"],
   },
   // Achievements (P5). Key = save id (save.js ACHIEVEMENT_IDS, same order: the journal's).
   // name: the toast and the journal; desc: the journal's hint. Plain text (toasts use

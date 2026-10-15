@@ -180,3 +180,21 @@ test("secrets (P4): the cheat table's words plus the visitor egg, each counted o
   assert.equal(addId(s, "secrets", "hujan", SECRETS), false);
   assert.deepEqual(getIds(s, "secrets", SECRETS), ["rain", "visitor"]);
 });
+
+test("save json (T1, R2): a read-only text snapshot; rev moves on every set, never on a read", () => {
+  const s = createSave(storeOf(memoryStorage()));
+  const r0 = s.rev;
+  const text = s.json();
+  assert.equal(JSON.parse(text).v, 1);
+  assert.equal(s.rev, r0); // get and json never move it
+  s.get("kopi");
+  assert.equal(s.rev, r0);
+  s.set("kopi", ["pagar"]);
+  assert.equal(s.rev, r0 + 1);
+  assert.deepEqual(JSON.parse(s.json()).kopi, ["pagar"]);
+  // The snapshot is a string: changing what was parsed from it never reaches the save.
+  const copy = JSON.parse(s.json());
+  copy.kopi.push("ujung");
+  assert.deepEqual(s.get("kopi"), ["pagar"]);
+  assert.equal(JSON.parse(text).kopi.length, 0); // the earlier snapshot is still the earlier state
+});

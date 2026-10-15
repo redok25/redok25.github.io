@@ -176,6 +176,16 @@
   gap: 8px;
 }
 
+/* R8: the one Mode Bengkel pointer a phone sees (a link to ?bengkel). */
+.credits-bengkel {
+  margin-top: 12px;
+  font-size: 18px;
+}
+
+.credits-bengkel a {
+  color: var(--accent);
+}
+
 .credits-close {
   padding: 6px 14px;
   font: 18px "VT323", monospace;

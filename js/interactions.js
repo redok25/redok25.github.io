@@ -34,7 +34,7 @@ export function nextDestination(stations, stamps, centerX) {
   return best;
 }
 
-const RANGE = 150; // px between the bike's centre and a target's centre
+export const RANGE = 150; // px between the bike's centre and a target's centre (Mode Bengkel draws it)
 
 // Tap order (R19): front to back as world.render draws them (special NPCs over regular
 // NPCs over billboards over stations).

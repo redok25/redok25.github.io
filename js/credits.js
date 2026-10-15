@@ -112,6 +112,16 @@ export class Credits {
     q(".credits-replay").textContent = COPY.credits.replay;
     q(".credits-qv").textContent = COPY.credits.quickView;
     q(".credits-close").textContent = COPY.credits.close;
+    // R8: href "?bengkel" in the markup (a new tab, no JS); a plain click opens the panel in
+    // place instead of reloading the whole game (critique B-6).
+    const bengkel = q(".credits-bengkel a");
+    bengkel.textContent = COPY.credits.bengkel;
+    bengkel.addEventListener("click", (e) => {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+      e.preventDefault();
+      this.close();
+      if (!game.bengkel.on) game.bengkel.toggle();
+    });
     q(".credits-close").addEventListener("click", () => this.close());
     q(".credits-replay").addEventListener("click", () => {
       // Release "credits" first: the travel rule (R22) refuses while it is held.

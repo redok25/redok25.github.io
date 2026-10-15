@@ -9,10 +9,12 @@
 import { JOR } from "./helpers.js";
 
 export const SAVE_KEY = "jor.save.v1";
-const DEFAULTS = { v: 1, visits: null, weatherOptIn: false, stamps: [], bests: {}, audio: null, seen: [], secrets: [], kopi: [], achievements: [] };
+// kopiNotice (T1, R10): the "new cup" toast was told; read as `=== true` (game.js).
+const DEFAULTS = { v: 1, visits: null, weatherOptIn: false, stamps: [], bests: {}, audio: null, seen: [], secrets: [], kopi: [], achievements: [], kopiNotice: false };
 
 export function createSave(store) {
   let data = load();
+  let rev = 0; // +1 per set(): Mode Bengkel re-reads its snapshot only when this moves
 
   function load() {
     if (store.has(SAVE_KEY)) {
@@ -38,7 +40,14 @@ export function createSave(store) {
     get: (key) => data[key],
     set(key, value) {
       data = { ...data, [key]: value, v: DEFAULTS.v };
+      rev++;
       store.set(SAVE_KEY, data);
+    },
+    // Mode Bengkel (T1, R2): the record as text, a read-only snapshot (a string: nothing a
+    // reader does to it reaches the save).
+    json: () => JSON.stringify(data, null, 1),
+    get rev() {
+      return rev;
     },
   };
 }

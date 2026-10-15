@@ -1,9 +1,10 @@
 // Run: node --test
 import test from "node:test";
 import assert from "node:assert/strict";
-import { KOPI, KOPI_IDS, KOPI_SIZE, KOPI_RADIUS, kopiShown, kopiReach, isEmas, goldPixel } from "../js/kopi.js";
+import { KOPI, KOPI_IDS, KOPI_SIZE, KOPI_RADIUS, kopiShown, kopiReach, isEmas, kopiNotice, goldPixel } from "../js/kopi.js";
 import { arrivalX, chapterAt } from "../js/journey.js";
 import { CREDITS_X } from "../js/credits.js";
+import { GAUGE_X } from "../js/world.js";
 import { createSave, SAVE_KEY, getIds, addId } from "../js/save.js";
 import { makeJOR } from "../js/helpers.js";
 import { COPY } from "../js/copy.js";
@@ -22,10 +23,11 @@ const getKopi = (s) => getIds(s, "kopi", KOPI_IDS);
 const addKopi = (s, id) => addId(s, "kopi", id, KOPI_IDS);
 const cup = (id) => KOPI.find((c) => c.id === id);
 
-test("kopi: four cups, one per chapter (Bab 1-4), each with a journal hint", () => {
-  assert.deepEqual(KOPI.map((c) => c.id), ["pagar", "wheelie", "warung", "ujung"]);
-  assert.deepEqual(KOPI.map((c) => chapterAt(c.x)), [1, 2, 3, 4]);
+test("kopi: five cups (#5 appended), each with a journal hint, all on the road after the ride", () => {
+  assert.deepEqual(KOPI.map((c) => c.id), ["pagar", "wheelie", "warung", "ujung", "bengkel"]);
   assert.deepEqual(Object.keys(COPY.kopi.hints), KOPI.map((c) => c.id));
+  // The camera never returns left of the ride's end (Prolog), and the playable road ends at 7400.
+  for (const c of KOPI) assert.ok(chapterAt(c.x) >= 1 && c.x + KOPI_SIZE / 2 < 7400, c.id);
 });
 
 // Every teleport puts the bike's CENTRE here: the opening ride's end and a course start
@@ -33,12 +35,15 @@ test("kopi: four cups, one per chapter (Bab 1-4), each with a journal hint", () 
 // course returns (special NPC centre 3650 / 3950 / 5100 minus RETURN_GAP 40).
 const LANDINGS = [2871, ...[1, 2, 3, 4].map((id) => arrivalX(id) + 100), 3610, 3910, 5060];
 
-test("kopi: no cup near a teleport landing; #4 past the credits trigger, on the road", () => {
+test("kopi: no cup near a teleport landing or another cup; #4 past the credits trigger; #5 on a gauge", () => {
   assert.deepEqual(LANDINGS, [2871, 2971, 4100, 5250, 6700, 3610, 3910, 5060]);
   // 150 px: the 200 px bike standing on a landing neither covers a cup nor reaches it.
   for (const c of KOPI) for (const x of LANDINGS) assert.ok(Math.abs(c.x - x) >= 150, `${c.id} vs ${x}`);
+  for (const a of KOPI) for (const b of KOPI) if (a !== b) assert.ok(Math.abs(a.x - b.x) >= 150, `${a.id} vs ${b.id}`);
   assert.ok(cup("ujung").x - KOPI_RADIUS > CREDITS_X);
   assert.ok(cup("ujung").x + KOPI_SIZE / 2 < 7400);
+  // R9: Kopi #5 sits inside a gauge's hitbox (on its post, 20 px over the road line).
+  assert.ok(GAUGE_X.includes(cup("bengkel").x));
 });
 
 test("kopi: the night cup fades in with the dark, the rain cup with the rain", () => {
@@ -48,6 +53,12 @@ test("kopi: the night cup fades in with the dark, the rain cup with the rain", (
   assert.deepEqual([0, 0.4, 1].map((r) => kopiShown(cup("warung"), 0.5, r)), [0, 0.4, 1]);
   assert.equal(kopiShown(cup("wheelie"), 0, 0), 1);
   assert.equal(kopiShown(cup("ujung"), 0, 0), 1);
+  // R9: #5 only while the hitbox view is on (world.renderKopi passes no xray: never drawn there).
+  assert.equal(kopiShown(cup("bengkel"), 0.5, 1), 0);
+  assert.equal(kopiShown(cup("bengkel"), 0, 0, true), 1);
+  assert.equal(kopiReach(cup("bengkel"), 4300, kopiShown(cup("bengkel"), 0, 0, false), false), false);
+  assert.equal(kopiReach(cup("bengkel"), 4300, kopiShown(cup("bengkel"), 0, 0, true), false), true);
+  assert.equal(kopiShown(cup("pagar"), 0, 0, true), 0); // xray reveals #5 only
 });
 
 test("kopi: taken in range and half shown; the floating cup only at full wheelie", () => {
@@ -90,6 +101,20 @@ test("kopi save: empty, added once, KOPI order, persisted, junk ignored, blocked
   assert.equal(isEmas(getKopi(s)), true);
 });
 
+test("R10: Motor Emas needs all five; a 4/4 hunter from before #5 is told once, nobody else", () => {
+  const old4 = ["pagar", "wheelie", "warung", "ujung"];
+  assert.equal(isEmas(old4), false);
+  assert.equal(isEmas(KOPI_IDS), true);
+  // A pre-Phase-5 profile: 4/4 and Pemburu Kopi earned. Told once, then the save flag holds.
+  assert.equal(kopiNotice(old4, ["berangkat", "kopi"], false), true);
+  assert.equal(kopiNotice(old4, ["berangkat", "kopi"], true), false);
+  // A new visitor at 4/5 (Pemburu Kopi needs all five): nothing to tell, before or after a reload.
+  assert.equal(kopiNotice(["pagar", "wheelie", "warung", "bengkel"], ["berangkat"], false), false);
+  assert.equal(kopiNotice(old4, [], false), false);
+  // All five found: nothing missing.
+  assert.equal(kopiNotice(KOPI_IDS, ["kopi"], false), false);
+});
+
 test("Motor Emas: the gold ramp keeps dark dark and light light, always gold-hued", () => {
   const px = new Uint8ClampedArray(4 * 256);
   for (let v = 0; v < 256; v++) px.set([v, v, v, 255], 4 * v);
@@ -110,8 +135,8 @@ test("Motor Emas: the gold ramp keeps dark dark and light light, always gold-hue
 
 test("copy kopi: numbers only through {found}/{total}, plain text, short (D498, D509)", () => {
   const JOR = makeJOR({});
-  assert.equal(JOR.fillTokens(COPY.kopi.found, { found: 2, total: KOPI.length }), "☕ Kopi rahasia ketemu! 2/4");
-  for (const s of [COPY.kopi.found, COPY.kopi.emas, ...Object.values(COPY.kopi.hints)]) {
+  assert.equal(JOR.fillTokens(COPY.kopi.found, { found: 2, total: KOPI.length }), "☕ Kopi rahasia ketemu! 2/5");
+  for (const s of [COPY.kopi.found, COPY.kopi.emas, COPY.kopi.newCup, ...Object.values(COPY.kopi.hints)]) {
     assert.ok(!/\d/.test(s.replace(/\{(found|total)\}/g, "")), s);
     assert.ok(!s.includes("**"), s); // a toast shows its text as is
     assert.ok(s.length <= 60, s);

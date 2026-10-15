@@ -62,10 +62,10 @@ const SIGN_WOOD = "#5a3a22";
 
 // Skill gauges (W2, R3, R26): centre x of the six posts in Bab 2, in Quick View order.
 // Passive scenery in the props plane: never E targets, never in world.objects.
-const GAUGE_X = [4100, 4200, 4300, 4400, 4500, 4600];
+export const GAUGE_X = [4100, 4200, 4300, 4400, 4500, 4600]; // Kopi #5 sits on the third (kopi.js)
 const GAUGE_W = 72;
 const GAUGE_H = 118;
-const GAUGE_RADIUS = 300; // the bike's centre within this fills a gauge
+export const GAUGE_RADIUS = 300; // the bike's centre within this fills a gauge (Mode Bengkel draws it)
 const GAUGE_FILL_STEP = 1 / 48; // empty -> full in 0.8 s of sim steps
 const GAUGE_FILL = "#38b764";
 const GAUGE_BAR = { x: 9, y: 27, w: 54, h: 10 }; // the bar well inside the baked panel
@@ -153,6 +153,7 @@ export class World {
 
     // Background layers: one set per biome (V2); bgLayers is the normal set (the loader waits for it).
     this.loadBackgroundLayers();
+    this.hideLayers = 0; // Mode Bengkel (R3): bit n hides layer n (1-4 = n.png, 5 = the sky slot + clouds)
     // Biome crossfade (V2, R5): game.enterChapter sets biomeWanted, render() steps the fade.
     this.biomeFade = createBiomeFade("normal");
     this.biomeWanted = "normal";
@@ -977,12 +978,16 @@ export class World {
     const from = this.biomes[fade.from];
     const to = fade.to !== null ? this.biomes[fade.to] : null;
     const ctx = this.ctx;
+    const hide = this.hideLayers; // Mode Bengkel (R3); 0 unless its layer toggles are on
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     // The sky slot (V3): biome sky, night sky, sun and moon (sky.js), the clouds over it.
-    renderSky(ctx, this.skyCache(), fade, effects);
-    if (effects) effects.renderClouds(cameraX);
+    if (!(hide & 32)) {
+      renderSky(ctx, this.skyCache(), fade, effects);
+      if (effects) effects.renderClouds(cameraX);
+    }
     for (let i = 0; i < from.length; i++) {
+      if (hide & (1 << (4 - i))) continue; // i 0 = 4.png (far) ... i 3 = 1.png (near)
       this.drawLayer(from[i], cameraX);
       if (to) {
         ctx.globalAlpha = fade.t;

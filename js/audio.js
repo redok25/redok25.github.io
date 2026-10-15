@@ -15,6 +15,7 @@ import { save, getAudio } from "./save.js";
     _isMuted: savedAudio.muted,
     _prevVolume: savedAudio.volume, // the master volume 0..1 (0 is a real value)
     _fadeHandle: null,
+    pitch: 1, // Mode Bengkel 0.25x (R4): game.gameLoop sets the sim rate here; the engine follows it
 
     playBgm(nameOrPath) {
       try {
@@ -165,7 +166,7 @@ import { save, getAudio } from "./save.js";
         if (ctx.state === "suspended") ctx.resume().catch(() => {});
 
         const gain = JOR.engineGain(ratio, this.level());
-        const rate = JOR.engineRate(ratio);
+        const rate = JOR.engineRate(ratio) * this.pitch;
         const now = ctx.currentTime;
         if (this._engineSource) {
           // tau 0.1 s: per-step targets glide instead of stepping

@@ -23,13 +23,14 @@ import { app } from "./state.js";
   document.addEventListener(
     "touchstart",
     (e) => {
-      // Ignore buttons, legacy modals, dialogs (Quick View scrolls natively) and the journey
-      // strip and credits card (R31): a touch there must not drive the bike.
+      // Ignore buttons, legacy modals, dialogs (Quick View scrolls natively), the journey
+      // strip, the credits card (R31) and the Mode Bengkel aside (T1): a touch there must not
+      // drive the bike.
       if (
         e.target.closest("button") ||
         e.target.closest(".modal") ||
         e.target.closest("dialog") ||
-        e.target.closest(".journey-strip, .credits")
+        e.target.closest(".journey-strip, .credits, .bengkel")
       ) {
         activePointerId = null;
         return;

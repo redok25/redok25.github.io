@@ -8,10 +8,10 @@
 import { JOR } from "./helpers.js";
 import { COPY } from "./copy.js";
 
-const FACE_RANGE = 200; // px, bike centre to NPC centre: stop and look at it
+export const FACE_RANGE = 200; // px, bike centre to NPC centre: stop and look at it (Mode Bengkel draws it)
 const FACE_DEAD = 8; // px: no flip-flop while the bike's centre crosses the NPC's
 const LOOK_MS = 800; // keeps looking this long after the bike leaves, then patrols again
-const ALERT_RANGE = 150; // px: a wheelie this close earns a "!"
+export const ALERT_RANGE = 150; // px: a wheelie this close earns a "!"
 const ALERT_MS = 1200; // the "!" stays this long after the last step a wheelie was in range
 const CHAT_MS = 3000; // bubble life (sim time: frozen while paused)
 

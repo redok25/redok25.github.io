@@ -128,7 +128,8 @@ test("V10 tier: two 2 s windows in a row at a mean over 12 ms trip it; 11 ms, a 
 test("V10 tier: Bengkel.record latches effects.low once, never while paused, and never unsets it", () => {
   const g = { effects: { low: false }, paused: true, _splashCameraActive: false, player: { lockBacktrack: true } };
   const b = Object.assign(Object.create(Bengkel.prototype), {
-    game: g, work: new Float32Array(120), interval: new Float32Array(120), steps: new Uint8Array(120), n: 0,
+    game: g, work: new Float32Array(120), sim: new Float32Array(120), draw: new Float32Array(120),
+    interval: new Float32Array(120), steps: new Uint8Array(120), n: 0,
     pendingCheat: null, tier: createTier(),
   });
   for (let i = 0; i < 300; i++) b.record(STEP, 40, 0);

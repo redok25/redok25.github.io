@@ -12,8 +12,8 @@ import { Camera } from "./camera.js";
 import { showCustomAlert } from "./content.js";
 import { AudioManager } from "./audio.js";
 import { app } from "./state.js";
-import { save, getIds, addId, SECRETS } from "./save.js";
-import { KOPI, KOPI_IDS, KOPI_SIZE, kopiShown, kopiReach, isEmas } from "./kopi.js";
+import { save, getIds, addId, SECRETS, ACHIEVEMENT_IDS } from "./save.js";
+import { KOPI, KOPI_IDS, KOPI_SIZE, kopiShown, kopiReach, isEmas, kopiNotice } from "./kopi.js";
 import { Bengkel } from "./bengkel.js";
 import { CHAPTERS, Journey, arrivalX } from "./journey.js";
 import { Cinema } from "./cinema.js";
@@ -27,6 +27,7 @@ import { unlock, queueToast, catchUpAchievements, flushAchievementToasts } from 
 import { wmoKind, windFrom, weatherUrl, WEATHER_FETCH, NO_WIND } from "./weather.js";
 
 const NO_KEYS = Object.freeze({}); // player input while it is ignored (no object per step)
+const finite = (v) => (Number.isFinite(v) ? v : null); // a number from an untrusted answer, or null
 
 class Game {
   constructor() {
@@ -82,6 +83,10 @@ class Game {
     this.journal = new Journal(this); // Jurnal Perjalanan (P1)
     this.kopi = getIds(save, "kopi", KOPI_IDS); // Kopi Rahasia found (P3); changes only in takeKopi
     catchUpAchievements(); // P5: 2b stamps and 3a bests earned before achievements existed (no toast)
+    // R10: Kopi #5 came after the 4/4 Motor Emas. A visitor who earned Pemburu Kopi but now misses
+    // a cup hears it once. Decided here, told (and the flag spent) by update() once the opening
+    // ride is over, so a load that ends before the ride keeps it for the next one (critique B-3).
+    this._newCup = kopiNotice(this.kopi, getIds(save, "achievements", ACHIEVEMENT_IDS), save.get("kopiNotice") === true);
 
     // Setup input
     this.setupInput();
@@ -343,6 +348,7 @@ class Game {
     this.weatherReq++;
     this.effects.realWeather = null;
     this.effects.wind = NO_WIND;
+    this.effects.realCode = this.effects.realKmh = this.effects.realFrom = null; // Mode Bengkel (R2)
   }
 
   disableRealWeather(message) {
@@ -387,6 +393,10 @@ class Game {
         const kind = wmoKind(now.weathercode); // V8: rain, snow, fog or clear
         this.effects.realWeather = kind;
         this.effects.wind = windFrom(now.windspeed, now.winddirection); // W8
+        // Mode Bengkel (R2) shows the raw answer: untrusted, kept only if it is a finite number.
+        this.effects.realCode = finite(now.weathercode);
+        this.effects.realKmh = finite(now.windspeed);
+        this.effects.realFrom = finite(now.winddirection);
         if (kind === "rain" && this.effects.rainActive) showCustomAlert("Hujan telah datang!", { type: "success" });
       })
       .catch(() => {
@@ -556,10 +566,11 @@ class Game {
     const e = this.effects;
     const nightA = e.currentTimeState ? e.currentTimeState.a : 0;
     const full = p.wheelieRotation >= p.wheelieMaxRotation;
+    const xray = this.bengkel.hitbox; // Kopi #5 (R9): only while the hitbox view is on (off with the panel)
     for (let i = 0; i < KOPI.length; i++) {
       const cup = KOPI[i];
       if (this.kopi.includes(cup.id)) continue;
-      if (kopiReach(cup, cx, kopiShown(cup, nightA, e.rainIntensity), full)) this.takeKopi(cup);
+      if (kopiReach(cup, cx, kopiShown(cup, nightA, e.rainIntensity, xray), full)) this.takeKopi(cup);
     }
   }
 
@@ -744,6 +755,12 @@ class Game {
     // course (R28), not the offscreen "Kembali" return (it can slide back over a cup), not the
     // epilog ride (it passes cup #4, which stays for after the card, R-E8).
     if (this.player.lockBacktrack && !this.offscreenModalActive && !this.minigames.activeMinigame && !this.credits.epilog.running) this.checkKopi();
+    // R10's "new cup" toast, on the first step after the opening ride (see the constructor).
+    if (this._newCup && this.player.lockBacktrack) {
+      this._newCup = false;
+      save.set("kopiNotice", true);
+      queueToast(COPY.kopi.newCup, "info");
+    }
     // Credits (R9) and the epilog before them (V9): the end of the road, once per load, after
     // the ride, never during a course. The epilog advances one step per call.
     if (this.player.lockBacktrack && !this.minigames.activeMinigame) {
@@ -812,6 +829,7 @@ class Game {
     // paused: a pause never freezes the scene mid-jolt.
     const shakeY = this.paused ? 0 : shakeOffset(this.effects.shakeSteps);
     this.ctx.setTransform(1, 0, 0, 1, 0, shakeY);
+    this.drawnShakeY = shakeY; // Mode Bengkel's hitbox pass (after this frame) follows it
 
     // Render world with parallax. Pass `effects` so clouds can be drawn between background
     // layers and each tree sways at its own x (W8).
@@ -850,7 +868,7 @@ class Game {
     const t0 = performance.now();
     const dt = currentTime - this.lastTime;
     this.lastTime = currentTime;
-    let work;
+    let work, sim;
     try {
       let steps = 0;
       if (this.paused) {
@@ -861,7 +879,11 @@ class Game {
         const race = this.minigames && this.minigames.activeMinigame;
         if (race && "prevNpcX" in race) race.prevNpcX = race.npcX;
       } else {
-        const r = JOR.fixedSteps(this.simAcc || 0, dt);
+        // Mode Bengkel 0.25x (R4): the accumulator gets less time, update() still gets STEP_MS,
+        // and the engine pitch follows. simScale() is exactly 1 in a course or its start modal.
+        const scale = this.bengkel.simScale();
+        AudioManager.pitch = scale;
+        const r = JOR.fixedSteps(this.simAcc || 0, dt * scale);
         this.simAcc = r.acc;
         // Re-check every step: a step can open a modal (minigame result) and pause.
         for (; steps < r.steps && !this.paused; steps++) {
@@ -872,12 +894,15 @@ class Game {
         if (this.paused) this.simAcc = 0;
       }
       this.stepsLastFrame = steps;
+      sim = performance.now() - t0; // Mode Bengkel (R2): the sim's share of work
       // Quick View covers the game: skip drawing it underneath.
       if (!JOR.isPauseHeld(this, "quickview")) {
         this.renderInterpolated();
         work = performance.now() - t0;
-        // Mode Bengkel panel (backtick or ?bengkel), after the timed block: its own cost never
-        // feeds the quality tier or the p95 it shows, so a phone check reads the visitor's number.
+        // Mode Bengkel (backtick or ?bengkel), after the timed block: its own cost never feeds
+        // the quality tier or the p95 it shows, so a phone check reads the visitor's number.
+        // Its overlay pass (hitboxes, Kopi #5, light buffer) and panel are drawn only here, with
+        // the drawn camera saved by renderInterpolated: render() itself never draws them.
         if (this.bengkel.on) this.bengkel.render(this.ctx);
       }
     } catch (e) {
@@ -885,7 +910,7 @@ class Game {
       if (!this._loopErrorLogged) console.error("Game loop error:", e);
       this._loopErrorLogged = true;
     }
-    this.bengkel.record(dt, work ?? performance.now() - t0, this.stepsLastFrame || 0);
+    this.bengkel.record(dt, work ?? performance.now() - t0, this.stepsLastFrame || 0, sim ?? 0);
     requestAnimationFrame((time) => this.gameLoop(time));
   }
 
@@ -903,6 +928,10 @@ class Game {
     this.cameraX = prevCam + (camX - prevCam) * alpha;
     this.player.x = prevX + (playerX - prevX) * alpha;
     this.renderAlpha = alpha;
+    // The drawn camera and bike of this frame, for passes drawn after render() (Mode Bengkel's
+    // overlay, R5): the sim values come back in the finally below and would be up to a step off.
+    this.drawnCameraX = this.cameraX;
+    this.drawnPlayerX = this.player.x;
     try {
       this.render();
       this.syncUi(playerX);

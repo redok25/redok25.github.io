@@ -117,3 +117,23 @@ test("copy 3b: NPC memory and rain lines, {visitCount} only, short for a phone b
   assert.match(JOR.fillTokens(COPY.npc.returning, { visitCount: 2 }), /^Kunjungan ke-2!/);
   assert.match(COPY.npc.sameDay, /balik lagi/);
 });
+
+test("copy 5: Mode Bengkel labels fit a button, panel rows fit the 340 px panel, digits only via tokens (T1)", () => {
+  const C = COPY.bengkel;
+  const walk = (v, fn) => (typeof v === "string" ? fn(v) : Object.values(v).forEach((x) => walk(x, fn)));
+  walk(C, (s) => {
+    assert.ok(!/[<>*]/.test(s), s); // textContent and fillText only: no markup, no **bold**
+    assert.ok(!/\d/.test(s.replace(/\{\w+\}|p95/g, "")), s); // D498 (p95 is a unit, like ms)
+  });
+  for (const k of ["title", "layers", "hitbox", "light", "slow", "compact", "source", "close", "save"]) assert.ok(C[k].length <= 18, k);
+  // The worst case of every row: about 45 chars of 12 px monospace in 340 px.
+  const worst = {
+    sim: "99.9", draw: "99.9", scale: 0.25, snow: 200, npc: 5, special: 3, chapter: "Prolog", x: 99999, cam: 99999,
+    v: "-10.00", kind: "kabut", code: 99, kmh: 199, from: 359,
+  };
+  worst.wind = JOR.fillTokens(C.rows.wind, worst);
+  for (const s of Object.values(C.rows)) assert.ok(JOR.fillTokens(s, worst).length <= 45, s);
+  assert.ok(!/\{\w+\}/.test(Object.values(C.rows).map((s) => JOR.fillTokens(s, worst)).join("")), "a token without a value");
+  assert.ok(C.lightOff.length <= 45 && C.legend.join("  ").length <= 45);
+  assert.deepEqual(Object.keys(C.weather), ["rain", "snow", "fog", "clear"]);
+});

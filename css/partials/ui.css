@@ -250,6 +250,95 @@
   display: none;
 }
 
+/* Mode Bengkel v2 (T1, R1): the DOM half of the panel. The canvas half (bengkel.js) is drawn at
+   x 10-350 from y 70, under the Quick View button; this half stands to its right. Phones: the
+   journey strip has the row under that button (journey.css), so both halves go below it, this
+   one first at a fixed top and the canvas panel under it: no view toggle moves a button here.
+   A plain element, not a dialog: game keys stay live. No z-index: the E prompt, the "Tujuan:"
+   pill and the wheelie tip come after it in #ui-overlay and stay on top of it. */
+.bengkel {
+  position: absolute;
+  top: 70px;
+  left: 360px;
+  width: min(340px, calc(100vw - 370px));
+  max-height: calc(100dvh - 78px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #e0e0e0;
+  font: 12px monospace;
+  pointer-events: auto;
+}
+
+.bengkel-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.bengkel button {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 4px 8px;
+  font: inherit;
+  color: inherit;
+  background: #1d1d1d;
+  border: 2px solid #555;
+  cursor: pointer;
+}
+
+.bengkel button[aria-pressed="true"] {
+  color: #7cfc7c;
+  border-color: #7cfc7c;
+}
+
+.bengkel button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.bengkel a {
+  color: #4fc3f7;
+}
+
+/* Ringkas (bengkel.js compact): the views and Tutup only, so the scene stays in sight. Tutup
+   comes first, left in the first row (never moved by a view): on a phone it is the only way out,
+   and photo mode's Tutup (the bar's right end, journey.css) never has it underneath. */
+.bengkel.is-compact .bengkel-more {
+  display: none;
+}
+
+.bengkel summary {
+  min-height: 24px;
+  cursor: pointer;
+}
+
+/* The save JSON: selectable, scrolls on its own (body is touch-action: none). */
+.bengkel pre {
+  max-height: 160px;
+  margin-top: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+/* 112 = bengkel.js ASIDE_TOP_NARROW: under the journey strip (y 72-104). */
+@media (max-width: 500px) {
+  .bengkel {
+    top: 112px;
+    left: 10px;
+    width: min(340px, calc(100vw - 20px));
+    max-height: calc(100dvh - 120px);
+  }
+}
+
 /* === MOBILE INTERACTIONS === */
 /* Make prompt clickable and larger on touch devices */
 @media (pointer: coarse) {

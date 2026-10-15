@@ -6,8 +6,9 @@
 // ===================================
 
 // x = the cup's centre in world px; lift = px from the ground line up to the cup's bottom.
-// Placement rules (tests/kopi.test.js): 150 px or more from every teleport landing, one cup
-// per chapter, and #4 past the credits trigger.
+// Placement rules (tests/kopi.test.js): on the road after the opening ride, 150 px or more
+// from every teleport landing and from every other cup, #4 past the credits trigger, #5 on a
+// gauge post. Appended only: the save keeps ids in this order (the journal's).
 export const KOPI = [
   // Bab 1, night only: on the lower rail of the Bab 1 fence (world.js PROPS, left edge 3010).
   { id: "pagar", x: 3126, lift: 54, when: "night" },
@@ -18,6 +19,9 @@ export const KOPI = [
   { id: "warung", x: 5805, lift: 4, when: "rain" },
   // Bab 4, past the credits trigger (7100): the road goes on after the last card.
   { id: "ujung", x: 7300, lift: 4, when: null },
+  // Bab 2, Mode Bengkel only (R9): on the post of the third skill gauge (world.js GAUGE_X),
+  // inside its box. Shown and taken only while the hitbox view is on; drawn by bengkel.js.
+  { id: "bengkel", x: 4300, lift: 20, when: "bengkel" },
 ];
 
 // The stored ids (save key "kopi"), in KOPI order: the list getIds/addId check against.
@@ -30,10 +34,12 @@ const NIGHT_FULL = 0.45; // fully shown before the overlay settles at 0.5
 const TAKE_FROM = 0.5; // a cup must be at least half shown to be taken
 
 // 0..1, how much of a cup shows. The night cup fades in with the darkness (the same 0.25
-// line the Phase 4 lighting uses), the rain cup with the rain (rainIntensity eases over 1 s).
-export function kopiShown(cup, nightA, rain) {
+// line the Phase 4 lighting uses), the rain cup with the rain (rainIntensity eases over 1 s),
+// the Bengkel cup only while the hitbox view is on (xray).
+export function kopiShown(cup, nightA, rain, xray = false) {
   if (cup.when === "night") return Math.min(1, Math.max(0, (nightA - NIGHT_FROM) / (NIGHT_FULL - NIGHT_FROM)));
   if (cup.when === "rain") return rain;
+  if (cup.when === "bengkel") return xray ? 1 : 0;
   return 1;
 }
 
@@ -46,6 +52,10 @@ export function kopiReach(cup, centerX, shown, fullWheelie) {
 // Motor Emas: on while every cup there is has been found (got = getKopi, normalised ids).
 // A cup added later asks for it again.
 export const isEmas = (got) => got.length === KOPI.length;
+
+// R10: Pemburu Kopi earned (every cup there was) but not every cup now = a cup came later.
+// True once per profile (told = the save's kopiNotice flag): the "new cup" toast.
+export const kopiNotice = (got, achievements, told) => !told && achievements.includes("kopi") && !isEmas(got);
 
 // Motor Emas sprite: each pixel's brightness (Rec. 601 luma, lifted by GOLD_GAMMA so the
 // navy tank turns gold, not bronze) picks a colour on a bronze..pale-gold ramp.

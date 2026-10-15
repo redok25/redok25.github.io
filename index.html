@@ -82,15 +82,15 @@
     <link rel="stylesheet" href="css/partials/animations.css?v=c0193f00" />
     <link rel="stylesheet" href="css/partials/base.css?v=049c0865" />
     <link rel="stylesheet" href="css/partials/loader.css?v=4d47d0d9" />
-    <link rel="stylesheet" href="css/partials/splash.css?v=36dad4ab" />
+    <link rel="stylesheet" href="css/partials/splash.css?v=df71cb40" />
     <link rel="stylesheet" href="css/partials/ui.css?v=c4dac879" />
     <link rel="stylesheet" href="css/partials/modals.css?v=89597359" />
     <link rel="stylesheet" href="css/partials/profile.css?v=0ec5b661" />
     <link rel="stylesheet" href="css/partials/projects.css?v=47806269" />
     <link rel="stylesheet" href="css/partials/gestures.css?v=eb34f661" />
     <link rel="stylesheet" href="css/partials/contact.css?v=e7a374f9" />
-    <link rel="stylesheet" href="css/partials/minigame.css?v=aee73a88" />
-    <link rel="stylesheet" href="css/partials/responsive.css?v=499bdecf" />
+    <link rel="stylesheet" href="css/partials/minigame.css?v=101db180" />
+    <link rel="stylesheet" href="css/partials/responsive.css?v=a0e9caa1" />
     <link rel="stylesheet" href="css/partials/qv.css?v=ad484a48" />
     <link rel="stylesheet" href="css/partials/journey.css?v=04607c74" />
     <link rel="stylesheet" href="css/visitor-counter.css?v=fb54bc6b" />
@@ -98,17 +98,17 @@
     <script type="importmap">
 {
   "imports": {
-    "./js/achievements.js": "./js/achievements.js?v=aa5230ca",
+    "./js/achievements.js": "./js/achievements.js?v=47e11c4c",
     "./js/actions.js": "./js/actions.js?v=a5e6ef32",
     "./js/audio.js": "./js/audio.js?v=c32ae4c7",
     "./js/bengkel.js": "./js/bengkel.js?v=ca51ac4f",
-    "./js/camera.js": "./js/camera.js?v=c8591e22",
-    "./js/cinema.js": "./js/cinema.js?v=ba0997e4",
+    "./js/camera.js": "./js/camera.js?v=b7aecd68",
+    "./js/cinema.js": "./js/cinema.js?v=7bfa47a1",
     "./js/content.js": "./js/content.js?v=ba960180",
-    "./js/copy.js": "./js/copy.js?v=28b3c88f",
-    "./js/credits.js": "./js/credits.js?v=9af87293",
+    "./js/copy.js": "./js/copy.js?v=94ea4590",
+    "./js/credits.js": "./js/credits.js?v=24e9f11e",
     "./js/effects.js": "./js/effects.js?v=c7e57d8c",
-    "./js/game.js": "./js/game.js?v=0683a842",
+    "./js/game.js": "./js/game.js?v=75e87520",
     "./js/helpers.js": "./js/helpers.js?v=c7dd3b16",
     "./js/interactions.js": "./js/interactions.js?v=76a21b12",
     "./js/journal.js": "./js/journal.js?v=351f8965",
@@ -119,7 +119,7 @@
     "./js/minigames.js": "./js/minigames.js?v=4fab81db",
     "./js/mobile-controls.js": "./js/mobile-controls.js?v=1f974a6c",
     "./js/npc.js": "./js/npc.js?v=fecf6e30",
-    "./js/player.js": "./js/player.js?v=bda8689a",
+    "./js/player.js": "./js/player.js?v=18bef2ad",
     "./js/qv.js": "./js/qv.js?v=a550d4ad",
     "./js/redok.js": "./js/redok.js?v=6c0834e5",
     "./js/save.js": "./js/save.js?v=f5cdd6f0",
@@ -131,7 +131,7 @@
     "./js/travel.js": "./js/travel.js?v=cd410645",
     "./js/visitor-counter.js": "./js/visitor-counter.js?v=1369993d",
     "./js/weather.js": "./js/weather.js?v=dffd3eaf",
-    "./js/world.js": "./js/world.js?v=f3933ec8"
+    "./js/world.js": "./js/world.js?v=8a06f96a"
   }
 }
     </script>
@@ -211,6 +211,13 @@
     <div id="opening-story" class="opening hidden">
       <div class="opening-content pixel-panel">
         <p id="story-beat" class="story-line"></p>
+      </div>
+    </div>
+    <!-- Epilog ride subtitle (R-E5): two beats from js/copy.js via js/cinema.js. Before #title-card
+         in the DOM: on landscape phones it takes the card's row (splash.css). -->
+    <div id="epilog-story" class="opening hidden">
+      <div class="opening-content pixel-panel">
+        <p id="epilog-beat" class="story-line"></p>
       </div>
     </div>
     <button id="skip-intro" class="skip-intro-btn hidden" type="button">Lewati ⏭</button>

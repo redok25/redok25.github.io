@@ -600,10 +600,16 @@ class Game {
       this._splashCameraActive || this.offscreenModalActive || this.credits.epilog.running ? NO_KEYS : this.keys;
     const rot0 = this.player.wheelieRotation; // P7: a landing is this step's drop to 0
     this.player.update(deltaTime, keysForPlayer);
+    // The playable road ends at worldWidth (R-E3): only the epilog's scripted ride goes past it.
+    const endX = this.world.worldWidth - this.player.width;
+    if (this.player.x > endX && !this.credits.epilog.running) {
+      this.player.x = endX;
+      if (this.player.velocityX > 0) this.player.velocityX = 0;
+    }
 
-    // Camera: normal follow, or a tighter follow (0.4) while the scripted opening ride runs. The
-    // epilog keeps it: the bike stands still, so the view settles and holds (R1, no override).
-    this.camera.follow(this._splashCameraActive ? 0.4 : this.cameraSmoothing);
+    // Camera: normal follow, or a tighter follow (0.4) while a scripted ride runs: the opening
+    // ride, and the epilog ride and sunrise (R-E2), framed alike.
+    this.camera.follow(this._splashCameraActive || this.credits.epilog.running ? 0.4 : this.cameraSmoothing);
 
     // Chapters (V1, R4 amended): fed after the camera with the bike's center. The biome
     // follows the road even during a minigame course; the title card waits for the first
@@ -730,8 +736,9 @@ class Game {
     // Skill gauges (W2) fill as the bike rides past; inert during a course (R7).
     if (!this.minigames.activeMinigame) this.world.updateGauges(this.player.x + this.player.width / 2);
     // Kopi Rahasia (P3): only the rider's own riding finds a cup: not the opening ride, not a
-    // course (R28), not the offscreen "Kembali" return (it can slide back over a cup).
-    if (this.player.lockBacktrack && !this.offscreenModalActive && !this.minigames.activeMinigame) this.checkKopi();
+    // course (R28), not the offscreen "Kembali" return (it can slide back over a cup), not the
+    // epilog ride (it passes cup #4, which stays for after the card, R-E8).
+    if (this.player.lockBacktrack && !this.offscreenModalActive && !this.minigames.activeMinigame && !this.credits.epilog.running) this.checkKopi();
     // Credits (R9) and the epilog before them (V9): the end of the road, once per load, after
     // the ride, never during a course. The epilog advances one step per call.
     if (this.player.lockBacktrack && !this.minigames.activeMinigame) {
@@ -780,6 +787,10 @@ class Game {
     const p = this.player;
     if (p._isOpeningSplash && simPlayerX < p.splashTargetX) {
       this.cinema.syncBeat((p.x - p._splashStartX) / (p.splashTargetX - p._splashStartX));
+    }
+    // Epilog ride subtitle (R-E5): the same, by the epilog ride's progress.
+    if (this.credits.epilog.riding && p.splashMoving) {
+      this.cinema.syncEpilog((p.x - p._splashStartX) / (p.splashTargetX - p._splashStartX));
     }
     this.strip.sync(this.player.x + this.player.width / 2);
     this.interactions.syncTooltip(this.cameraX);

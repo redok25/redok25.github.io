@@ -3,7 +3,7 @@
 // normaliser in save.js, names in copy.js) and announced by one toast. Achievement toasts show
 // one at a time (a kopi find, queued here too, may go ahead of them); every queued toast waits
 // while something covers the toast layer (z 9999) or its top band: any
-// <dialog> (top layer: Quick View, the journal), the splash, the opening subtitle, the phone
+// <dialog> (top layer: Quick View, the journal), the splash, the opening or epilog subtitle, the phone
 // gesture sheet, the glitch screen, a minigame HUD, a hidden tab, or (phones) a chapter card.
 // Game graph only; no DOM work at load, so node tests import it.
 // ===================================
@@ -16,7 +16,7 @@ const addAchievement = (s, id) => addId(s, "achievements", id, ACHIEVEMENT_IDS);
 
 // What covers the toasts' band: an open <dialog> (Quick View, journal), or one of these while it
 // is not .hidden.
-const COVER_IDS = ["splash-screen", "opening-story", "gesture-info", "disaster-modal", "minigame-hud"];
+const COVER_IDS = ["splash-screen", "opening-story", "epilog-story", "gesture-info", "disaster-modal", "minigame-hud"];
 // Phones, either way up (as ui.css): the chapter title card sits in the toasts' top band.
 const PHONE = "(max-width: 500px), (max-height: 500px)";
 const TOAST_MS = 4000; // one toast's life

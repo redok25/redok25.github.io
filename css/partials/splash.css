@@ -58,8 +58,10 @@
 }
 
 /* === OPENING STORY (Subtitle) === */
-/* Under the top letterbox bar (V6): the bike rides along the bottom and must stay in view. */
-#opening-story {
+/* Under the top letterbox bar (V6): the bike rides along the bottom and must stay in view.
+   The epilog ride's subtitle (R-E5) is the same panel. */
+#opening-story,
+#epilog-story {
   position: fixed;
   top: max(calc(clamp(24px, 9vh, 80px) + 12px), 72px); /* and below the Quick View button */
   left: 50%;
@@ -76,9 +78,22 @@
   box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.35);
 }
 
-#opening-story.hidden {
+#opening-story.hidden,
+#epilog-story.hidden {
   opacity: 0;
   transform: translateX(-50%) translateY(-8px);
+}
+
+/* Over the bars (3100) and the chapter card (3200), under the credits card (3300) it hands over to. */
+#epilog-story {
+  z-index: 3250;
+}
+
+/* Landscape phones: the chapter card shares the subtitle's row, so the subtitle takes it. */
+@media (max-height: 500px) {
+  #epilog-story:not(.hidden) ~ .title-card {
+    opacity: 0;
+  }
 }
 
 .opening-content {
@@ -187,10 +202,15 @@
   }
 }
 
-/* Reduced motion: no bars; the title text only fades (V5). */
+/* Reduced motion: no bars; the title text only fades (V5); the epilog subtitle just shows. */
 @media (prefers-reduced-motion: reduce) {
   .letterbox {
     display: none;
+  }
+
+  #epilog-story,
+  #epilog-story.hidden {
+    transition: none;
   }
 
   .title-card,

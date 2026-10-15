@@ -48,6 +48,16 @@ test("copy 2b: digits only through tokens, and only the tokens each key may use 
   }
 });
 
+test("copy: the epilog ride's two subtitle beats, plain casual text with no digits (R-E5, D498)", () => {
+  assert.ok(Array.isArray(COPY.epilog.beats) && COPY.epilog.beats.length === 2);
+  for (const s of COPY.epilog.beats) {
+    assert.equal(typeof s, "string");
+    assert.ok(!/[\d{}<>]/.test(s), s); // no digits, no tokens, no markup (**bold** is fine)
+    assert.ok(s.replaceAll("**", "").length <= 40, s); // one or two lines on a 375 px phone
+  }
+  assert.notEqual(COPY.epilog.beats[0], COPY.epilog.beats[1]);
+});
+
 test("copy 2b: credits stats fill to the Quick View numbers; every station has a name", () => {
   const filled = JOR.fillTokens(COPY.credits.stats, { projectCount: 15, firstYear: 2021, lastYear: 2025 });
   assert.equal(filled, "15 proyek · 2021 → 2025");

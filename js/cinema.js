@@ -1,9 +1,10 @@
 // ===================================
 // CINEMA.JS - Cinematic DOM layer: letterbox bars, the chapter title card (V5) and the
-// opening ride's subtitle beats (V6). Body-level, pointer-events none. Never .modal (that
-// would block game keys) and never .hidden (the global .hidden rule is display:none and
-// kills the transitions): .is-on toggles them. Text goes in through textContent and DOM
-// nodes only, never innerHTML.
+// subtitle beats of the opening ride (V6) and the epilog ride (R-E5). Body-level, pointer-events
+// none. The bars and the card are never .modal (that would block game keys) and never .hidden
+// (the global .hidden rule is display:none and kills the transitions): .is-on toggles them.
+// The two subtitle panels do use .hidden: minigame.css exempts them from that rule. Text goes
+// in through textContent and DOM nodes only, never innerHTML.
 // ===================================
 import { JOR } from "./helpers.js";
 import { AudioManager } from "./audio.js";
@@ -14,6 +15,15 @@ const TITLE_MS = 3000; // the card is on for this long, then fades out over 0.5 
 // (500 ms delay + 0.35 s fade), so the 85 / 157 / 26 characters get about 1.8 s, 3.4 s and
 // 1.2 s (plus the 0.42 s fade-out).
 const BEAT_AT = [0, 0.37, 0.84];
+// The epilog ride's two beats (R-E5, ~4.6-5.7 s): the second from just past half the distance.
+const EPILOG_AT = [0, 0.55];
+
+// The beat for a ride's progress (0..1): the last one whose start it has reached.
+function beatAt(at, progress) {
+  let i = 0;
+  while (i + 1 < at.length && progress >= at[i + 1]) i++;
+  return i;
+}
 
 // "a **b** c" -> text, <strong>b</strong>, text.
 function setRich(el, text) {
@@ -36,9 +46,14 @@ export class Cinema {
     this.cardName = document.getElementById("title-card-name");
     this.cardSub = document.getElementById("title-card-sub");
     this.beatEl = document.getElementById("story-beat");
+    this.epilogEl = document.getElementById("epilog-story");
+    this.epilogBeatEl = document.getElementById("epilog-beat");
+    this._rm = matchMedia("(prefers-reduced-motion: reduce)");
     this._titleTimer = null;
     this._hold = false; // the epilog (V9) keeps the bars up
     this._beat = 0;
+    this._epilogOn = false;
+    this._epilogBeat = -1;
     // The subtitle panel can appear before the first ride frame: give it beat 1 now.
     if (this.beatEl) setRich(this.beatEl, COPY.prologue[0]);
   }
@@ -77,11 +92,29 @@ export class Cinema {
   // Opening ride subtitle (V6): the beat follows the ride's progress (0..1), not a timer,
   // so a paused ride (Quick View, blur) holds its beat. Writes the DOM only on a change.
   syncBeat(progress) {
-    let i = 0;
-    while (i + 1 < BEAT_AT.length && progress >= BEAT_AT[i + 1]) i++;
+    const i = beatAt(BEAT_AT, progress);
     if (i === this._beat || !this.beatEl) return;
     this._beat = i;
     setRich(this.beatEl, COPY.prologue[i]);
     this.beatEl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
+  }
+
+  // Epilog ride subtitle (R-E5), #epilog-story: on at the trigger with beat 1, off once the bike
+  // stops or on a skip, before the card. Called every epilog step: writes only on a change.
+  showEpilog(on) {
+    if (on === this._epilogOn || !this.epilogEl) return;
+    this._epilogOn = on;
+    if (on) this.syncEpilog(0);
+    this.epilogEl.classList.toggle("hidden", !on);
+  }
+
+  // The epilog beat follows the ride's progress (0..1) like syncBeat; reduced motion: no fade.
+  syncEpilog(progress) {
+    const i = beatAt(EPILOG_AT, progress);
+    if (i === this._epilogBeat || !this.epilogBeatEl) return;
+    const first = this._epilogBeat < 0;
+    this._epilogBeat = i;
+    setRich(this.epilogBeatEl, COPY.epilog.beats[i]);
+    if (!first && !this._rm.matches) this.epilogBeatEl.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300 });
   }
 }

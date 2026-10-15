@@ -82,6 +82,7 @@ export class Player {
     this.splashTargetX = null;
     this.splashCallback = null;
     this.splashSpeed = null;
+    this.splashEase = null; // moveTo's optional speed profile (the epilog ride)
     // Prevent backtracking: minimum X player can move to (set after opening splash)
     // Start unlocked so the player/camera can reach world left on initial load.
     this.minX = 0;
@@ -136,10 +137,12 @@ export class Player {
       // move toward target using fixed speed
       const dir = this.splashSpeed >= 0 ? 1 : -1;
       this.facingRight = dir > 0;
-      this.velocityX = this.splashSpeed;
-
-      // Apply friction lightly (keep movement smoother)
-      this.velocityX *= 0.985;
+      this.canWheelie = false; // no "SPACE untuk Wheelie!" while the bike drives itself
+      // The eased variant (the epilog ride) sets each step's speed from the last one and the
+      // distance left; the others move at a fixed speed with light friction.
+      this.velocityX = this.splashEase
+        ? dir * this.splashEase(this.velocityX * dir, Math.abs(this.splashTargetX - this.x))
+        : this.splashSpeed * 0.985;
 
       // --- Animation state machine while scripted movement ---
       // allow init_move -> move transition to happen even when keys are ignored
@@ -194,6 +197,8 @@ export class Player {
       const dtFactorSplash = deltaTime ? deltaTime / 16.6667 : 1;
       this.wheelAngle +=
         this.velocityX * this.wheelSpinMultiplier * dtFactorSplash;
+      // A wheelie held into a scripted move (the epilog trigger) lands as it would on release.
+      this.wheelieRotation = Math.max(0, this.wheelieRotation - this.wheelieTransitionSpeed * dtFactorSplash);
 
       // Engine sound during the scripted ride: pitch and level follow its speed (P8).
       AudioManager.playEngine(Math.min(1, Math.abs(this.velocityX) / this.maxSpeed));
@@ -306,6 +311,7 @@ export class Player {
   startSplashMove(distance = 600, speed = 4, onComplete = null) {
     this.splashMoving = true;
     this._isOpeningSplash = true;
+    this.splashEase = null;
     this.splashSpeed = Math.abs(speed);
     // always move right for splash; set facing accordingly
     this.facingRight = true;
@@ -323,20 +329,24 @@ export class Player {
   // Move player toward an absolute target X in world coordinates.
   // `speed` is pixels/frame (positive number). If `targetX` is left
   // of the current position, the player will move left. `onComplete`
-  // is called when the move finishes.
-  moveTo(targetX, speed = 4, onComplete = null) {
+  // is called when the move finishes. `ease(speed, remaining)` (optional) gives each step's
+  // speed instead of the fixed one; it must stay > 0 until the target is reached.
+  moveTo(targetX, speed = 4, onComplete = null, ease = null) {
     this.splashMoving = true;
     this._isOpeningSplash = false;
     // determine direction from current position to target
     const dir = targetX >= this.x ? 1 : -1;
     this.splashSpeed = Math.abs(speed) * dir; // signed speed
+    this.splashEase = ease;
     this._splashStartX = this.x;
     this.splashTargetX = targetX;
     this.splashCallback = onComplete;
 
-    // Set animation to transition into movement
-    this.currentAnimation = "init_move";
-    this.animationTimer = 0;
+    // Set animation to transition into movement (a bike already riding keeps its stride)
+    if (this.currentAnimation !== "move") {
+      this.currentAnimation = "init_move";
+      this.animationTimer = 0;
+    }
   }
 
   // World x of wheel i (0 = rear, 1 = front) as drawn: mirrored when facing left (P7 juice).

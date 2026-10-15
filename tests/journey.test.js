@@ -172,3 +172,14 @@ test("stripPos: one equal cell per chapter, node centre = chapter middle", () =>
   assert.equal(stripPos(7400), 1);
   assert.equal(stripPos(9000), 1);
 });
+
+test("Journey: the epilog road past the playable end (7400) stays Bab 4 (R-E7)", () => {
+  const j = new Journey(300);
+  assert.equal(j.update(6700), 4);
+  assert.equal(j.firstEntry(4), true); // the Bab 4 card, once
+  for (let x = 7100; x <= 8100; x += 3) assert.equal(j.update(x), -1, `x ${x}`); // the ride: no change
+  assert.equal(j.jumpTo(7150), -1); // the card closes: the bike is put back at the old road end
+  assert.equal(j.current, 4);
+  assert.equal(j.firstEntry(4), false); // no second title card
+  for (const x of [7400, 7401, 8000, 9200]) assert.equal(stripPos(x), 1); // the dot waits at the end
+});

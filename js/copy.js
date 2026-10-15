@@ -21,6 +21,11 @@ export const COPY = {
     "Saya seorang PHP & Laravel developer yang menggabungkan kecintaan pada coding dan petualangan, silakan jelajahi proyek, kemampuan, dan kisah perjalanan saya.",
     "Terima kasih sudah mampir!",
   ],
+  // Epilog ride subtitle (R-E5, T300): two beats in #epilog-story while the bike rides on into
+  // the night past the end of the road; the second one lands as it rolls to a stop.
+  epilog: {
+    beats: ["Malam turun di **ujung jalan**.", "Mesin pelan, tinggal nunggu pagi."],
+  },
   // "Tujuan:" tooltip names of the four stations (W4, D511: no English). Key = station id.
   stations: {
     about: "Tiang Tentang Aku",

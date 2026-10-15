@@ -10,11 +10,13 @@ export class Camera {
   }
 
   bounds() {
-    const { player, world, canvas } = this.game;
+    const { player, world, canvas, credits } = this.game;
     const locked = player && player.lockBacktrack && typeof player.minX === "number";
+    // The epilog road past the playable end is seen only while the epilog runs (R-E2).
+    const end = credits && credits.epilog.running ? world.sceneryWidth : world.worldWidth;
     return {
       min: locked ? Math.max(0, player.minX - canvas.width / 3) : 0,
-      max: Math.max(0, world.worldWidth - canvas.width),
+      max: Math.max(0, end - canvas.width),
     };
   }
 

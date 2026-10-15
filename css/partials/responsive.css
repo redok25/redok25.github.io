@@ -54,14 +54,16 @@
     width: 90%;
   }
 
-  #opening-story {
+  #opening-story,
+  #epilog-story {
     width: 100%;
     padding: 10px 14px;
   }
 }
 
 @media (max-width: 480px) {
-  #opening-story {
+  #opening-story,
+  #epilog-story {
     padding: 8px 12px;
   }
 }

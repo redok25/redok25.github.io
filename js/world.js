@@ -131,7 +131,11 @@ export class World {
   constructor(canvas, ctx) {
     this.canvas = canvas;
     this.ctx = ctx;
-    this.worldWidth = 7400; // Total world width
+    this.worldWidth = 7400; // The playable world: NPCs, objects, props, gauges, the bike and the camera
+    // Render extent (R-E1): trees and grass tufts go on to here so the epilog ride (bike stops at
+    // centre 8000) is framed like the opening ride, left third, on screens up to ~1950 px wide.
+    // The ground, road and parallax layers tile the viewport, so they never end.
+    this.sceneryWidth = 9200;
     this.splashDistance = 2571; // Match value from splash.js
 
     // Terrain layout config - use offsets from canvas bottom so layout
@@ -644,7 +648,7 @@ export class World {
 
     if (groups.length === 0) {
       // fallback to spaced tufts without sprites
-      for (let x = 0; x < this.worldWidth; x += intraSpacing) {
+      for (let x = 0; x < this.sceneryWidth; x += intraSpacing) {
         const posX = x + (Math.random() * jitterX * 2 - jitterX);
         const sink = -(sinkMin + Math.random() * (sinkMax - sinkMin));
         this.grassTufts.push({ x: posX, yOffset: sink, sprite: null });
@@ -661,7 +665,7 @@ export class World {
     // iterate across world by group centers
     let gx = 0;
     let groupIndex = 0;
-    while (gx < this.worldWidth) {
+    while (gx < this.sceneryWidth) {
       // choose group (randomize for variety)
       const inBab1 = gx >= bab1.startX && gx < bab1.endX;
       const group =
@@ -834,8 +838,9 @@ export class World {
     // Clear any existing trees so repeated calls don't append duplicates.
     this.trees = [];
 
-    const count = 30;
-    const spacing = this.worldWidth / Math.max(1, count);
+    // 30 over the playable world, at the same spacing on to the scenery end (R-E1).
+    const spacing = this.worldWidth / 30;
+    const count = Math.round(this.sceneryWidth / spacing);
 
     const ground = this.groundY(); // trees stand on the road top
 
@@ -843,7 +848,7 @@ export class World {
       // even distribution with jitter so trees don't clump
       const centerX = (i + 0.5) * spacing;
       const jitterX = (Math.random() - 0.5) * spacing * 0.6; // up to ~30% spacing jitter
-      const x = Math.max(0, Math.min(this.worldWidth, centerX + jitterX));
+      const x = Math.max(0, Math.min(this.sceneryWidth, centerX + jitterX));
 
       const width = 120 + Math.random() * 80;
       const height = Math.floor(width * (1.1 + Math.random() * 0.4));

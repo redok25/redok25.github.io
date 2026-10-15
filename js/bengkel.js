@@ -35,6 +35,7 @@ const PANEL_X = 10;
 const PANEL_W = 340;
 const PANEL_Y = 70;
 const ASIDE_TOP_NARROW = 112; // = ui.css .bengkel top at <= 500 px
+const ASIDE_X = 360; // = ui.css .bengkel left (desktop)
 const NARROW = "(max-width: 500px)";
 const COMPACT = "(max-width: 500px), (max-height: 500px)"; // phones open in Ringkas
 const ROW = 18; // px per text row
@@ -235,6 +236,9 @@ export class Bengkel {
     }
     if (lit) {
       // The 1/4-res darkness map as it is (R6): over a light backdrop the cut pools read light.
+      // Desktop: a 1x inset that reaches the aside's column starts under the aside, which grows
+      // down to y ~410 with the save JSON open (review T1-F2).
+      if (!narrow && x + 8 + L.buf.width > ASIDE_X) ly = Math.max(ly, PANEL_Y + this.asideH + ASIDE_GAP);
       const k = Math.max(0.25, Math.min(1, (g.canvas.width - 2 * x - 16) / L.buf.width, (g.canvas.height - ly - 16) / L.buf.height));
       const bw = Math.round(L.buf.width * k);
       const bh = Math.round(L.buf.height * k);

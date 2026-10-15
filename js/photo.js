@@ -135,7 +135,7 @@ export class Photo {
     }
     // The credits card's "Simpan Kartu Pos" (R17): the scene behind the card, no mode. The card
     // stays clickable for its 0.4 s fade-out: a tap then (e.g. on a modal opening under it) saves
-    // nothing (R29, merge X-9).
+    // nothing (R29, critique X-3).
     const card = document.querySelector("#credits .credits-photo");
     if (card) {
       card.textContent = COPY.credits.photo;
@@ -206,12 +206,20 @@ export class Photo {
     const fx = g.effects;
     const p = g.player;
     document.body.classList.remove("is-photo");
+    // close() gives the focus back to what had it at show() (often #qv-open): a held Enter or
+    // Space (auto-repeat) must not press it, so repeats are swallowed until the next keyup (R29).
+    if (this.bar.contains(document.activeElement)) {
+      const held = (e) => {
+        if (e.repeat && (e.key === "Enter" || e.key === " ")) e.preventDefault();
+      };
+      window.addEventListener("keydown", held, true);
+      window.addEventListener("keyup", () => window.removeEventListener("keydown", held, true), { capture: true, once: true });
+    }
     if (this.bar.open) this.bar.close();
     fx.cheatWeather = this.prevWeather;
     fx.low = this.prevLow;
     g.world.hideLayers = this.prevHide;
     fx.setTimeOfDay(this.prevTime);
-    if (fx.reducedMotion) fx.snapTime();
     g.releaseInput();
     // R14, the credits returnBike pattern: back to the bike's framing and chapter, no sweep, no
     // tyre track across the jump, no "Bahaya!" modal. Photo mode never changes journey.current,
@@ -219,8 +227,12 @@ export class Photo {
     // and would show the next chapter's card early near a boundary (critique K-3, amends R14).
     g.camera.jumpTo(p.x - g.canvas.width / 3);
     g.enterChapter(g.journey.current);
+    // The sky and the rain snap too: the first steps run checkKopi, and a fading Malam or Hujan
+    // would hand out the night or rain cup at noon in the dry (review T2-F1).
     g.world.snapBiome(g.world.biomeWanted);
+    fx.snapTime();
     fx.snowIntensity = fx.snowWanted();
+    fx.rainIntensity = fx.rainActive ? 1 : 0;
     fx.tracks.cut();
     g.prevCameraX = g.camera.x;
     g.prevPlayerX = p.x;
@@ -288,7 +300,9 @@ export class Photo {
         this.capturing = false;
         g.world.hideLayers = hide;
       }
-      const id = chapterAt(g.cameraX + g.canvas.width / 2);
+      // While on, the chapter under the camera centre (the biome follows it, R14); otherwise the
+      // biome on screen is journey.current's, which has hysteresis (review T2-F3).
+      const id = this.on ? this.chapter : g.journey.current;
       const out = drawPostcard(g.canvas, postcardLines(id, new Date()));
       out.toBlob((blob) => {
         out.width = out.height = 0; // free the copy (~9 MB on a phone) now, not at the next GC

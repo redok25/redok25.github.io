@@ -117,8 +117,9 @@ export class Credits {
     const bengkel = q(".credits-bengkel a");
     bengkel.textContent = COPY.credits.bengkel;
     bengkel.addEventListener("click", (e) => {
-      if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
-      e.preventDefault();
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      e.preventDefault(); // first: a click in the fade-out must not follow the href either
+      if (!this.isOpen()) return; // the card's 0.4 s fade-out opens nothing (R29, critique X-3)
       this.close();
       if (!game.bengkel.on) game.bengkel.toggle();
     });

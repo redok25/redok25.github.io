@@ -8,6 +8,9 @@ import { Camera } from "../js/camera.js";
 import { SECRETS } from "../js/save.js";
 import { COPY } from "../js/copy.js";
 import { createRedok } from "../js/redok.js";
+import { EffectsManager } from "../js/effects.js";
+import { KOPI, kopiShown, kopiReach } from "../js/kopi.js";
+import { JOR } from "../js/helpers.js";
 
 test("photo: P is free (no cheat word has a p) and only a bare, fresh P toggles (R11)", () => {
   assert.ok(SECRETS.every((w) => !w.includes("p")), "a cheat word with a p would be typed into photo mode");
@@ -95,6 +98,48 @@ test("photo: a paused frame pans inside the camera bounds, follows the chapter, 
   game._pauseOwners.add("quickview"); // Quick View over the photo freezes the weather too
   ph.frame(50);
   assert.equal(n.fx, fx + 3);
+});
+
+// The first unpaused steps after exit run checkKopi on whatever sky and rain exit left: a night
+// or rain still easing back from the mode's Malam or Hujan handed out that cup at noon in the dry.
+test("photo: exit snaps the sky and the rain to the restored settings, so no night or rain cup is taken on the way out (R13)", () => {
+  const doc = globalThis.document;
+  globalThis.document = { querySelector: () => null, activeElement: null, body: { classList: { add() {}, remove() {} } } };
+  try {
+    for (const prev of [null, "rain"]) {
+      const fx = Object.assign(Object.create(EffectsManager.prototype), {
+        _rm: { matches: false }, // full motion: the sky eases
+        forcedTime: "noon", clockMode: "noon", _clockMs: 1000, currentTimeState: null,
+        cheatWeather: prev, realWeather: null, rainIntensity: prev ? 1 : 0, ambientSnow: 0, snowIntensity: 0, low: false,
+        tracks: { cut() {} },
+      });
+      fx.snapTime();
+      const game = {
+        effects: fx, keys: {}, canvas: { width: 1440 }, journey: { current: 1 }, player: { x: 0, width: 200 },
+        world: { hideLayers: 0, biomeWanted: "normal", snapBiome() {} },
+        camera: { x: 0, jumpTo(x) { this.x = x; } },
+        canTravel: () => true, releaseInput() {}, enterChapter() {},
+      };
+      const bar = { open: false, show() { this.open = true; }, close() { this.open = false; }, focus() {}, contains: () => false };
+      const ph = Object.assign(Object.create(Photo.prototype), { game, bar, on: false, acc: 0, chapter: 0, timeBtn: {}, weatherBtn: {} });
+      assert.equal(ph.enter(), true);
+      ph.setTime("night");
+      ph.setWeather("rain");
+      for (let i = 0; i < 90; i++) fx.updateTimeOfDay(JOR.STEP_MS); // 1.5 s of the effects tick
+      fx.rainIntensity = 1; // the rain has faded in (1 s)
+      assert.ok(fx.currentTimeState.a > 0.45, "Malam is on in the mode");
+      ph.exit();
+      assert.equal(fx.currentTimeState.a, 0, "noon at once, not ~10 steps of fading night");
+      assert.equal(fx.rainIntensity, prev ? 1 : 0, "the restored weather's rain at once, not ~30 steps of fading rain");
+      if (prev) continue;
+      for (const cup of KOPI.filter((c) => c.when === "night" || c.when === "rain")) {
+        const shown = kopiShown(cup, fx.currentTimeState.a, fx.rainIntensity);
+        assert.equal(kopiReach(cup, cup.x, shown, false), false, `${cup.id} stays hidden on the first step after exit`);
+      }
+    }
+  } finally {
+    globalThis.document = doc;
+  }
 });
 
 test("redok.photo: the shot or busy, one help line (R16)", () => {

@@ -24,6 +24,7 @@ const RIVAL_FILTER = "hue-rotate(90deg) brightness(0.8) sepia(1) saturate(5) hue
 const GHOST_TINT = "rgba(70, 150, 255, 0.7)";
 const GHOST_ALPHA = 0.5;
 const GHOST_TAG_LIFT = 20; // px: its name tag sits over the rival's when they ride together
+const CHALLENGE_GUARD_MS = 400; // a challenge's start modal ignores activation this long (review T3-F1)
 let ghostSprite = null; // null = not baked yet (retried), false = the bake failed
 
 function ghostSpriteOf(game) {
@@ -140,6 +141,7 @@ export class MinigameManager {
     this.challenge = link || null; // the link's ghost, until its course is started (R25)
     this.lastChallenge = null; // the challenge the last course ran: "Main Lagi?" keeps it (R22)
     this.offer = !!link; // its start modal opens once, on the first free step (offerChallenge)
+    this.challengeShownAt = -Infinity; // performance.now() when a challenge's start modal opened
     this.lastRun = null; // the last win's ghost payload: "Tantang teman"
     this.sharing = false; // a share sheet or clipboard write is in flight (shareRun)
     if (link !== null) {
@@ -213,9 +215,13 @@ export class MinigameManager {
 
     // A hidden .modal keeps its buttons visible for its 0.3 s fade: every handler ignores a
     // second activation (stray Enter, double click) once its modal is hidden (R29).
+    // A challenge's modal opens under the visitor's pointer, right after the tap that hid the
+    // phone sheet or skipped the ride: the second half of a double tap, double click or "Esc,
+    // Esc" is ignored for CHALLENGE_GUARD_MS, so the challenge is read first (review T3-F1).
+    const justShown = () => performance.now() - this.challengeShownAt < CHALLENGE_GUARD_MS;
     if (this.btnStart) {
       this.btnStart.addEventListener("click", () => {
-        if (this.modalElement.classList.contains("hidden")) return;
+        if (this.modalElement.classList.contains("hidden") || justShown()) return;
         this.hideModal(true); // keep the "minigame" owner: the start fade and intro follow
         const type = this.pendingMinigame;
         if (!type) return;
@@ -227,7 +233,7 @@ export class MinigameManager {
 
     if (this.btnCancel) {
       this.btnCancel.addEventListener("click", () => {
-        if (this.modalElement.classList.contains("hidden")) return;
+        if (this.modalElement.classList.contains("hidden") || justShown()) return;
         this.hideModal();
         this.pendingMinigame = null;
       });
@@ -237,7 +243,7 @@ export class MinigameManager {
     // (auto-repeat, e.g. from skipping the ride into a challenge's modal) does nothing (G-4).
     document.addEventListener("keydown", (e) => {
       if (e.key !== "Escape" || e.repeat || !this.pendingMinigame || document.querySelector("dialog[open]")) return;
-      if (!this.modalElement || this.modalElement.classList.contains("hidden")) return;
+      if (!this.modalElement || this.modalElement.classList.contains("hidden") || justShown()) return;
       this.hideModal();
       this.pendingMinigame = null;
     });
@@ -299,7 +305,10 @@ export class MinigameManager {
     if (!info || !this.modalElement) return;
     // A pending challenge for this course frames the modal (R25); the rules stay the course's.
     const ch = this.challengeFor(type);
-    if (ch) this.offer = false;
+    if (ch) {
+      this.offer = false;
+      this.challengeShownAt = performance.now();
+    }
 
     // Populate modal
     if (this.modalTitle) {

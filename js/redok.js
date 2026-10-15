@@ -55,5 +55,9 @@ export function createRedok(game) {
       game.effects.cheatWeather = WEATHERS[key];
       return JOR.fillTokens(COPY.console.weatherOk, { kind: key });
     },
+    // Kartu Pos (T3, R16): the view as it is, clean and framed, straight to a download.
+    photo() {
+      return game.photo.shoot() ? COPY.console.photoOk : COPY.console.gotoBusy;
+    },
   });
 }

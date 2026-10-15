@@ -372,3 +372,91 @@
 .journal-list--ach .is-on::before {
   content: "🏆";
 }
+
+/* Kartu Pos (T3): the 📷 button one slot left of the journal's (46 px + 10 px gap). After the
+   minigame HUD in #ui-overlay, so a running course hides it like the journal's. */
+.photo-open {
+  right: 126px;
+}
+
+.minigame-hud:not(.hidden) ~ .photo-open {
+  visibility: hidden;
+}
+
+/* Photo mode (R12): one body class hides the HUD, the letterbox and the title card; the Quick
+   View button stays (D493). The DOM never reaches the PNG: this only shapes the preview. */
+body.is-photo #ui-overlay,
+body.is-photo #letterbox,
+body.is-photo #title-card {
+  visibility: hidden !important;
+}
+
+/* The toolbar: a non-modal <dialog> (show(), not the top layer), so it needs its own z: over the
+   canvas, under the credits card (3300), toasts and Quick View. Top right, BELOW the HUD button
+   row at every width: the second click of a double click on 📷 or Tutup lands on the canvas,
+   never on Simpan or on the audio toggle (critique K-1). Below 800 px a full-width row under the
+   Quick View button (one row on a landscape phone), and two rows on a portrait one. No
+   transition. */
+.photo-bar {
+  position: fixed;
+  top: 72px;
+  right: 14px;
+  left: auto;
+  z-index: 3150;
+  max-width: calc(100vw - 28px);
+  margin: 0;
+  padding: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  color: #f4e4c1;
+  background: rgba(20, 22, 30, 0.85);
+  border: 2px solid rgba(255, 255, 255, 0.15);
+}
+
+.photo-bar[open] {
+  display: flex;
+}
+
+.photo-bar:focus {
+  outline: none; /* focused on open only so that no button holds the focus (R29) */
+}
+
+.photo-btn {
+  min-width: 44px;
+  height: 40px;
+  padding: 0 10px;
+  font: 20px/1 "VT323", monospace;
+  white-space: nowrap;
+  color: #f4e4c1;
+  background: #3b2414;
+  border: 2px solid #f4e4c1;
+  cursor: pointer;
+  touch-action: none; /* a held ◀ ▶ never turns into a scroll or a long-press menu */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+@media (max-width: 800px) {
+  .photo-bar {
+    left: 14px;
+    width: auto;
+  }
+}
+
+/* Portrait phones: time and weather, then ◀ ▶ Simpan Tutup (no label wraps at 375 px). */
+@media (max-width: 500px) {
+  .photo-bar[open] {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .photo-btn {
+    padding: 0 4px;
+  }
+
+  .photo-time,
+  .photo-weather {
+    grid-column: span 2;
+  }
+}

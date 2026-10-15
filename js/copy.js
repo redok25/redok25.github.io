@@ -4,7 +4,7 @@
 // JOR.contentTokens, D498), never typed in. "**x**" marks bold; it is rendered as a
 // <strong> node, never through innerHTML. Game graph only; no DOM, so node tests import it.
 // Phase 2b keys: stations, billboard, strip, credits, console. Phase 3a: minigame.
-// Phase 3b: kopi, achievements, journal, npc. Phase 5: bengkel.
+// Phase 3b: kopi, achievements, journal, npc. Phase 5: bengkel, photo.
 // ===================================
 export const COPY = {
   // Chapter title cards (V5): "label · title" over the subtitle. Index = chapter id.
@@ -50,6 +50,7 @@ export const COPY = {
     quickView: "Quick View",
     close: "Tutup",
     bengkel: "🔧 Penasaran dapur mesinnya? Buka Mode Bengkel", // R8: a link to ?bengkel (phones too)
+    photo: "Simpan Kartu Pos", // T3, R17: the scene behind the card as a postcard
   },
   // Console API (T2): window.redok, for devs, so code words are fine here.
   console: {
@@ -58,6 +59,7 @@ export const COPY = {
       "redok.goto(n)      lompat ke Bab n (1-4)",
       "redok.time(mode)   pagi | siang | sore | malam | auto",
       "redok.weather(k)   hujan | salju | kabut | cerah",
+      "redok.photo()      simpan kartu pos dari layar sekarang",
     ],
     gotoBad: "Bab-nya 1 sampai 4 aja ya.",
     gotoBusy: "Lagi sibuk (minigame, modal, atau lagi jalan). Coba lagi bentar.",
@@ -66,6 +68,22 @@ export const COPY = {
     timeOk: "Waktu: {mode}.",
     weatherBad: "Pilihannya: hujan, salju, kabut, cerah.",
     weatherOk: "Cuaca: {kind}.",
+    photoOk: "Cekrek! Kartu pos lagi diunduh.",
+  },
+  // Kartu Pos (T3): the 📷 button, photo mode's toolbar and the postcard frame. The toolbar
+  // shows the time and weather in use; a click moves to the next. The frame's chapter line
+  // takes {label} and {title} from the chapters above; its date comes from Intl (D498).
+  photo: {
+    button: "Kartu Pos (P)",
+    title: "Kartu Pos",
+    time: { morning: "Waktu: Pagi", noon: "Waktu: Siang", afternoon: "Waktu: Sore", night: "Waktu: Malam" },
+    weather: { clear: "Cuaca: Cerah", rain: "Cuaca: Hujan", snow: "Cuaca: Salju", fog: "Cuaca: Kabut" },
+    left: "Geser kiri",
+    right: "Geser kanan",
+    save: "Simpan",
+    close: "Tutup",
+    chapter: "{label} · {title}",
+    site: "redok.me",
   },
   // Minigame result card (P6). {time} = seconds with a decimal comma ("5,33"), filled by the
   // game. RLGL times only the steps outside red lights: their length is luck, not skill.

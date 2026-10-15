@@ -21,6 +21,7 @@ import { fadeTeleport } from "./travel.js";
 import { Strip } from "./strip.js";
 import { Credits } from "./credits.js";
 import { Journal } from "./journal.js";
+import { Photo } from "./photo.js";
 import { createRedok } from "./redok.js";
 import { COPY } from "./copy.js";
 import { unlock, queueToast, catchUpAchievements, flushAchievementToasts } from "./achievements.js";
@@ -81,6 +82,7 @@ class Game {
     this.strip = new Strip(this); // journey strip + fast travel (W5)
     this.credits = new Credits(this); // end-of-road card (R9)
     this.journal = new Journal(this); // Jurnal Perjalanan (P1)
+    this.photo = new Photo(this); // Kartu Pos (T3): photo mode and the postcard capture
     this.kopi = getIds(save, "kopi", KOPI_IDS); // Kopi Rahasia found (P3); changes only in takeKopi
     catchUpAchievements(); // P5: 2b stamps and 3a bests earned before achievements existed (no toast)
     // R10: Kopi #5 came after the 4/4 Motor Emas. A visitor who earned Pemburu Kopi but now misses
@@ -856,8 +858,8 @@ class Game {
     const npcs = this.world.npcs;
     for (let i = 0; i < npcs.length; i++) npcs[i].renderOverlay(this.ctx, this.cameraX);
 
-    // Render interaction indicators (UI stays on top and bright)
-    this.interactions.render(this.ctx, this.cameraX);
+    // Render interaction indicators (UI stays on top and bright); never on a postcard (T3)
+    if (!this.photo.clean) this.interactions.render(this.ctx, this.cameraX);
 
     // Render minigames (overlays)
     if (this.minigames) this.minigames.render(this.ctx);
@@ -873,6 +875,7 @@ class Game {
       let steps = 0;
       if (this.paused) {
         this.simAcc = 0; // a pause never banks time
+        if (this.photo.on) this.photo.frame(dt); // Kartu Pos: pan + effects-only tick (R13, R14)
         // Nothing to lerp across a pause (minigame start teleports while paused).
         this.prevCameraX = this.cameraX;
         this.prevPlayerX = this.player.x;
@@ -903,7 +906,8 @@ class Game {
         // the quality tier or the p95 it shows, so a phone check reads the visitor's number.
         // Its overlay pass (hitboxes, Kopi #5, light buffer) and panel are drawn only here, with
         // the drawn camera saved by renderInterpolated: render() itself never draws them.
-        if (this.bengkel.on) this.bengkel.render(this.ctx);
+        // Photo mode's preview is the postcard's clean render (T3, R15): none of it.
+        if (this.bengkel.on && !this.photo.clean) this.bengkel.render(this.ctx);
       }
     } catch (e) {
       // Keep the loop alive; log the first failure only.

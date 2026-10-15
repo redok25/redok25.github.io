@@ -24,7 +24,7 @@ const RIVAL_FILTER = "hue-rotate(90deg) brightness(0.8) sepia(1) saturate(5) hue
 const GHOST_TINT = "rgba(70, 150, 255, 0.7)";
 const GHOST_ALPHA = 0.5;
 const GHOST_TAG_LIFT = 20; // px: its name tag sits over the rival's when they ride together
-const CHALLENGE_GUARD_MS = 400; // a challenge's start modal ignores activation this long (review T3-F1)
+const CHALLENGE_GUARD_MS = 600; // a challenge's start modal ignores activation this long (review T3-F1)
 let ghostSprite = null; // null = not baked yet (retried), false = the bake failed
 
 function ghostSpriteOf(game) {

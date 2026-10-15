@@ -40,7 +40,7 @@ export const newSeed = () => (Math.random() * 0x100000000) >>> 0;
 
 // samples[0..n) (each 0..60) -> "rl.1.<seed>.<data>", or null when anything is out of range.
 export function encodeGhost(kind, seed, samples, n) {
-  if (!GHOST_TYPES[kind] || !validSeed(kind, seed) || !Number.isInteger(n) || n < 1 || n > GHOST_MAX) return null;
+  if (!Object.hasOwn(GHOST_TYPES, kind) || !validSeed(kind, seed) || !Number.isInteger(n) || n < 1 || n > GHOST_MAX) return null;
   let data = "";
   for (let i = 0; i < n; i++) {
     const v = samples[i];

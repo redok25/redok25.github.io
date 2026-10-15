@@ -422,6 +422,12 @@ body.is-photo #title-card {
   outline: none; /* focused on open only so that no button holds the focus (R29) */
 }
 
+/* A toast already up when photo mode opens sits under the bar, never over its buttons
+   (final review): under the one-row bar here, under the two-row bar on portrait phones. */
+body.is-photo #custom-alert-container {
+  top: 136px;
+}
+
 .photo-btn {
   min-width: 44px;
   height: 40px;
@@ -458,5 +464,9 @@ body.is-photo #title-card {
   .photo-time,
   .photo-weather {
     grid-column: span 2;
+  }
+
+  body.is-photo #custom-alert-container {
+    top: 182px;
   }
 }

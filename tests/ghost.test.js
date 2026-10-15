@@ -118,6 +118,7 @@ test("ghost: every broken link is refused before use (R21, acceptance 4)", () =>
   assert.equal(encodeGhost("rl", 4294967296, [1], 1), null);
   assert.equal(encodeGhost("rl", 1.5, [1], 1), null);
   assert.equal(encodeGhost("xx", 0, [1], 1), null);
+  for (const k of ["constructor", "toString", "__proto__", "hasOwnProperty", "valueOf"]) assert.equal(encodeGhost(k, 0, [1], 1), null, k);
 });
 
 test("ghost: the recorder samples every 6 steps as a running max and flushes the last partial sample (R20)", () => {

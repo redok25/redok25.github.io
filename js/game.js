@@ -897,7 +897,7 @@ class Game {
         if (this.paused) this.simAcc = 0;
       }
       this.stepsLastFrame = steps;
-      sim = performance.now() - t0; // Mode Bengkel (R2): the sim's share of work
+      if (this.bengkel.on) sim = performance.now() - t0; // Mode Bengkel (R2): the sim's share of work; closed, nothing is boxed per frame
       // Quick View covers the game: skip drawing it underneath.
       if (!JOR.isPauseHeld(this, "quickview")) {
         this.renderInterpolated();

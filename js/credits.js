@@ -205,16 +205,18 @@ export class Credits {
 
   // R-E6: the epilog road is not playable. The bike goes back to the old road end facing right,
   // like a teleport: the camera jumps (normal bounds again), no interpolated sweep, no tyre track
-  // across the jump. Also before "Ulangi perjalanan" travels to Bab 1.
+  // across the jump. Also before "Ulangi perjalanan" travels to Bab 1. A skip before the bike got
+  // past RETURN_X leaves it where it is, but the camera still comes back inside the playable end.
   returnBike() {
     const g = this.game;
     const p = g.player;
-    if (p.x + p.width / 2 <= RETURN_X) return;
-    p.x = RETURN_X - p.width / 2;
-    p.facingRight = true;
+    if (p.x + p.width / 2 > RETURN_X) {
+      p.x = RETURN_X - p.width / 2;
+      p.facingRight = true;
+      g.effects.tracks.cut();
+    }
     g.camera.jumpTo(p.x - g.canvas.width / 3);
     g.prevPlayerX = p.x;
     g.prevCameraX = g.camera.x;
-    g.effects.tracks.cut();
   }
 }

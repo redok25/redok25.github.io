@@ -24,7 +24,7 @@ export const COPY = {
   // Epilog ride subtitle (R-E5, T300): two beats in #epilog-story while the bike rides on into
   // the night past the end of the road; the second one lands as it rolls to a stop.
   epilog: {
-    beats: ["Malam turun di **ujung jalan**.", "Mesin pelan, tinggal nunggu pagi."],
+    beats: ["Malam turun, lampu kota **makin jauh**.", "Mesin pelan, tinggal nunggu pagi."],
   },
   // "Tujuan:" tooltip names of the four stations (W4, D511: no English). Key = station id.
   stations: {

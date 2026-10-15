@@ -7,11 +7,11 @@ import { Camera } from "../js/camera.js";
 import { RIDE_END_X } from "../js/credits.js";
 
 const SCENERY = 9200; // world.js sceneryWidth
-const game = (w, running) => ({
+const game = (w, running, open = false) => ({
   player: { x: 7000, lockBacktrack: true, minX: 2771 },
   world: { worldWidth: 7400, sceneryWidth: SCENERY },
   canvas: { width: w },
-  credits: { epilog: { running } },
+  credits: { epilog: { running }, isOpen: () => open },
 });
 
 test("camera: the playable end outside the epilog, the scenery end during it", () => {
@@ -24,6 +24,7 @@ test("camera: the playable end outside the epilog, the scenery end during it", (
     assert.equal(cam.bounds().max, SCENERY - w);
     cam.jumpTo(99999);
     assert.equal(cam.x, SCENERY - w);
+    assert.equal(new Camera(game(w, false, true)).bounds().max, SCENERY - w, "the card is up: a resize keeps the bike");
   }
   // Built before Credits exists (Game's constructor): the playable end.
   const early = game(1440, false);

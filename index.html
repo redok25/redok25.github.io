@@ -82,7 +82,7 @@
     <link rel="stylesheet" href="css/partials/animations.css?v=c0193f00" />
     <link rel="stylesheet" href="css/partials/base.css?v=049c0865" />
     <link rel="stylesheet" href="css/partials/loader.css?v=4d47d0d9" />
-    <link rel="stylesheet" href="css/partials/splash.css?v=df71cb40" />
+    <link rel="stylesheet" href="css/partials/splash.css?v=fb0ad348" />
     <link rel="stylesheet" href="css/partials/ui.css?v=c4dac879" />
     <link rel="stylesheet" href="css/partials/modals.css?v=89597359" />
     <link rel="stylesheet" href="css/partials/profile.css?v=0ec5b661" />
@@ -108,7 +108,7 @@
     "./js/copy.js": "./js/copy.js?v=94ea4590",
     "./js/credits.js": "./js/credits.js?v=24e9f11e",
     "./js/effects.js": "./js/effects.js?v=c7e57d8c",
-    "./js/game.js": "./js/game.js?v=75e87520",
+    "./js/game.js": "./js/game.js?v=559951e1",
     "./js/helpers.js": "./js/helpers.js?v=c7dd3b16",
     "./js/interactions.js": "./js/interactions.js?v=76a21b12",
     "./js/journal.js": "./js/journal.js?v=351f8965",
@@ -213,10 +213,11 @@
         <p id="story-beat" class="story-line"></p>
       </div>
     </div>
-    <!-- Epilog ride subtitle (R-E5): two beats from js/copy.js via js/cinema.js. Before #title-card
-         in the DOM: on landscape phones it takes the card's row (splash.css). -->
+    <!-- Epilog ride subtitle (R-E5): two beats from js/copy.js via js/cinema.js. No .pixel-panel
+         padding: it sits right above the Bab 4 title card. Before #title-card in the DOM: on
+         landscape phones it takes the card's row (splash.css). -->
     <div id="epilog-story" class="opening hidden">
-      <div class="opening-content pixel-panel">
+      <div class="opening-content">
         <p id="epilog-beat" class="story-line"></p>
       </div>
     </div>

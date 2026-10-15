@@ -257,13 +257,18 @@ class Game {
   }
 
   // Clear held keys and stop the bike + engine sound (and a landing thump, P7).
+  // A scripted move (the opening or epilog ride) keeps its speed and stride: a pause (blur,
+  // Quick View) freezes it, it never restarts it from a standstill.
   releaseInput() {
     this.keys = {};
-    if (this.player) {
-      this.player.velocityX = 0;
-      this.player.currentAnimation = "idle";
-      this.player.animationTimer = 0;
-      this.player.wheelieActive = false;
+    const p = this.player;
+    if (p) {
+      if (!p.splashMoving) {
+        p.velocityX = 0;
+        p.currentAnimation = "idle";
+        p.animationTimer = 0;
+      }
+      p.wheelieActive = false;
     }
     if (this.effects) this.effects.shakeSteps = 0;
     try {

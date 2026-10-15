@@ -96,6 +96,14 @@
   }
 }
 
+/* Phones: the journey strip has the subtitle's row under the Quick View button (journey.css).
+   It is inert during the epilog, so it steps aside as it does for a course HUD (R21). */
+@media (max-width: 500px) {
+  #epilog-story:not(.hidden) ~ #ui-overlay .journey-strip {
+    visibility: hidden;
+  }
+}
+
 .opening-content {
   text-align: center;
 }

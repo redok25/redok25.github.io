@@ -5,6 +5,8 @@
 import { JOR } from "./helpers.js";
 import { COPY } from "./copy.js";
 import { CHAPTERS } from "./journey.js";
+import { save } from "./save.js";
+import { GHOST_IDS, getGhost, ghostLink } from "./ghost.js";
 
 // Console words -> effects.setTimeOfDay modes (null = follow the clock).
 const TIMES = {
@@ -59,5 +61,17 @@ export function createRedok(game) {
     photo() {
       return game.photo.shoot() ? COPY.console.photoOk : COPY.console.gotoBusy;
     },
+    // T4 (R26): the challenge links of the stored PB ghosts, one line per course. Nested, so
+    // frozen on its own (Object.freeze is shallow).
+    ghost: Object.freeze({
+      export() {
+        const lines = [];
+        for (const id of GHOST_IDS) {
+          const g = getGhost(save, id);
+          if (g) lines.push(`${COPY.journal.courses[id]}: ${ghostLink(location.origin + location.pathname, g.payload)}`);
+        }
+        return lines.length ? lines.join("\n") : COPY.console.ghostNone;
+      },
+    }),
   });
 }

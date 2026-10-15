@@ -89,7 +89,7 @@
     <link rel="stylesheet" href="css/partials/projects.css?v=47806269" />
     <link rel="stylesheet" href="css/partials/gestures.css?v=eb34f661" />
     <link rel="stylesheet" href="css/partials/contact.css?v=e7a374f9" />
-    <link rel="stylesheet" href="css/partials/minigame.css?v=101db180" />
+    <link rel="stylesheet" href="css/partials/minigame.css?v=3606f5ea" />
     <link rel="stylesheet" href="css/partials/responsive.css?v=a0e9caa1" />
     <link rel="stylesheet" href="css/partials/qv.css?v=ad484a48" />
     <link rel="stylesheet" href="css/partials/journey.css?v=c0141217" />
@@ -105,10 +105,11 @@
     "./js/camera.js": "./js/camera.js?v=feb74217",
     "./js/cinema.js": "./js/cinema.js?v=7bfa47a1",
     "./js/content.js": "./js/content.js?v=ba960180",
-    "./js/copy.js": "./js/copy.js?v=f2df4e9b",
+    "./js/copy.js": "./js/copy.js?v=0130aedf",
     "./js/credits.js": "./js/credits.js?v=b622475b",
     "./js/effects.js": "./js/effects.js?v=c7e57d8c",
     "./js/game.js": "./js/game.js?v=1ec88d7e",
+    "./js/ghost.js": "./js/ghost.js?v=5c0caf2b",
     "./js/helpers.js": "./js/helpers.js?v=c7dd3b16",
     "./js/interactions.js": "./js/interactions.js?v=a8b61deb",
     "./js/journal.js": "./js/journal.js?v=351f8965",
@@ -116,14 +117,14 @@
     "./js/kopi.js": "./js/kopi.js?v=a8206110",
     "./js/lighting.js": "./js/lighting.js?v=354ef95f",
     "./js/main.js": "./js/main.js?v=d4a32ddf",
-    "./js/minigames.js": "./js/minigames.js?v=4fab81db",
+    "./js/minigames.js": "./js/minigames.js?v=4e6eb32c",
     "./js/mobile-controls.js": "./js/mobile-controls.js?v=aabf99a1",
     "./js/npc.js": "./js/npc.js?v=a006490e",
     "./js/photo.js": "./js/photo.js?v=d0202754",
     "./js/player.js": "./js/player.js?v=18bef2ad",
     "./js/qv.js": "./js/qv.js?v=a550d4ad",
-    "./js/redok.js": "./js/redok.js?v=92830fbc",
-    "./js/save.js": "./js/save.js?v=6ba97076",
+    "./js/redok.js": "./js/redok.js?v=70b25bc5",
+    "./js/save.js": "./js/save.js?v=0afb6cae",
     "./js/sky.js": "./js/sky.js?v=617458ea",
     "./js/special-npc.js": "./js/special-npc.js?v=276179a8",
     "./js/splash.js": "./js/splash.js?v=4779de2d",
@@ -132,7 +133,7 @@
     "./js/travel.js": "./js/travel.js?v=cd410645",
     "./js/visitor-counter.js": "./js/visitor-counter.js?v=1369993d",
     "./js/weather.js": "./js/weather.js?v=dffd3eaf",
-    "./js/world.js": "./js/world.js?v=d84a963f"
+    "./js/world.js": "./js/world.js?v=6c0d54d0"
   }
 }
     </script>
@@ -1140,7 +1141,7 @@
       role="dialog"
       aria-modal="true"
       aria-labelledby="result-title"
-      aria-describedby="result-message result-time result-best"
+      aria-describedby="result-message result-time result-best result-vs"
     >
       <div
         class="modal-content pixel-panel result-content"
@@ -1153,10 +1154,13 @@
         </p>
         <p id="result-time" class="result-line hidden"></p>
         <p id="result-best" class="result-line hidden"></p>
+        <p id="result-vs" class="result-line hidden"></p>
         <div class="result-actions">
           <button id="btn-result-close" class="splash-btn">OK</button>
           <button id="btn-result-replay" class="return-btn">Main Lagi?</button>
+          <button id="btn-result-share" class="return-btn hidden"></button>
         </div>
+        <input id="result-link" class="result-link hidden" type="text" readonly />
       </div>
     </div>
 

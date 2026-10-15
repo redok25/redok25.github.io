@@ -66,7 +66,7 @@ test("copy 2b: credits stats fill to the Quick View numbers; every station has a
   for (const k of ["banner", "gotoBad", "gotoBusy", "gotoOk", "timeBad", "timeOk", "weatherBad", "weatherOk", "photoOk"]) {
     assert.equal(typeof COPY.console[k], "string", k);
   }
-  assert.ok(Array.isArray(COPY.console.help) && COPY.console.help.length === 4);
+  assert.ok(Array.isArray(COPY.console.help) && COPY.console.help.length === 5);
 });
 
 test("copy 3a: result lines only use {time}, no typed digits, and fit a 375 px card (P6)", () => {
@@ -77,6 +77,24 @@ test("copy 3a: result lines only use {time}, no typed digits, and fit a 375 px c
     assert.ok(JOR.fillTokens(s, { time: "99,99" }).length <= 36, s);
   }
   assert.equal(JOR.fillTokens(COPY.minigame.best, { time: "5,15" }), "Rekor: 5,15 detik");
+});
+
+test("copy T4: ghost copy, {course} only, no digits, the acceptance wording, short for a phone", () => {
+  assert.equal(COPY.ghost.invalid, "Link tantangan tidak valid"); // acceptance 4, verbatim
+  assert.equal(COPY.ghost.share, "Tantang teman"); // acceptance 3, verbatim
+  assert.deepEqual(Object.keys(COPY.ghost.vs), ["beat", "tie", "notYet"]);
+  const walk = (v, fn) => (typeof v === "string" ? fn(v) : Object.values(v).forEach((x) => walk(x, fn)));
+  walk(COPY.ghost, (s) => {
+    for (const [, t] of s.matchAll(/\{(\w+)\}/g)) assert.equal(t, "course", s);
+    assert.ok(!/[\d<>*]/.test(s), s); // D498; plain text (textContent and canvas)
+    assert.ok(s.length <= 64, s);
+  });
+  for (const s of Object.values(COPY.ghost.vs)) assert.ok(s.length <= 36, s); // a result line
+  for (const id of ["red_light_green_light", "drag_race"]) {
+    assert.ok(JOR.fillTokens(COPY.ghost.title, { course: COPY.journal.courses[id] }).length <= 40, id);
+  }
+  assert.match(COPY.console.help.join("\n"), /redok\.ghost\.export\(\)/);
+  assert.equal(typeof COPY.console.ghostNone, "string");
 });
 
 test("copy 3b: achievements match the save ids, plain text, no digits, fit a 375 px toast (P5)", () => {

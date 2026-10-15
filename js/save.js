@@ -10,7 +10,8 @@ import { JOR } from "./helpers.js";
 
 export const SAVE_KEY = "jor.save.v1";
 // kopiNotice (T1, R10): the "new cup" toast was told; read as `=== true` (game.js).
-const DEFAULTS = { v: 1, visits: null, weatherOptIn: false, stamps: [], bests: {}, audio: null, seen: [], secrets: [], kopi: [], achievements: [], kopiNotice: false };
+// ghosts (T4): course id -> PB ghost payload; read and written only through ghost.js getGhost/setGhost.
+const DEFAULTS = { v: 1, visits: null, weatherOptIn: false, stamps: [], bests: {}, audio: null, seen: [], secrets: [], kopi: [], achievements: [], kopiNotice: false, ghosts: {} };
 
 export function createSave(store) {
   let data = load();

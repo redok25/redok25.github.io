@@ -268,10 +268,37 @@
   margin-top: 14px;
 }
 
+/* T4: the challenge link to copy by hand, when neither the share sheet nor the clipboard works. */
+.result-link {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 12px;
+  padding: 6px 8px;
+  font: 16px monospace; /* 16 px: iOS does not zoom into the field */
+  color: #111;
+  background: #fff;
+  border: 3px solid var(--text-light);
+}
+
 /* Landscape phones (85vh is ~319 px at 667x375): the trophy repeats the title; dropping it
-   keeps the time, the record and both buttons on screen without scrolling. */
+   keeps the time, the record and the buttons on screen without scrolling. T4: the three result
+   buttons (OK, Main Lagi?, Tantang teman) fit one row with less side padding (critique G-2),
+   and a challenge's start modal drops the icon and the rules, so its title and "Temanmu
+   nantang kamu!" line stay in view above Mulai (critique G-3). */
 @media (max-height: 500px) {
   #result-icon {
+    display: none;
+  }
+
+  .result-actions .splash-btn,
+  .result-actions .return-btn {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  #minigame-start-modal.is-challenge #minigame-start-icon,
+  #minigame-start-modal.is-challenge #minigame-start-rules {
     display: none;
   }
 }

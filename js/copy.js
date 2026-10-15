@@ -4,7 +4,7 @@
 // JOR.contentTokens, D498), never typed in. "**x**" marks bold; it is rendered as a
 // <strong> node, never through innerHTML. Game graph only; no DOM, so node tests import it.
 // Phase 2b keys: stations, billboard, strip, credits, console. Phase 3a: minigame.
-// Phase 3b: kopi, achievements, journal, npc. Phase 5: bengkel, photo.
+// Phase 3b: kopi, achievements, journal, npc. Phase 5: bengkel, photo, ghost.
 // ===================================
 export const COPY = {
   // Chapter title cards (V5): "label · title" over the subtitle. Index = chapter id.
@@ -60,7 +60,9 @@ export const COPY = {
       "redok.time(mode)   pagi | siang | sore | malam | auto",
       "redok.weather(k)   hujan | salju | kabut | cerah",
       "redok.photo()      simpan kartu pos dari layar sekarang",
+      "redok.ghost.export()  link tantangan dari ghost rekormu",
     ],
+    ghostNone: "Belum ada ghost. Menangin Drag atau Lampu Merah dulu ya.",
     gotoBad: "Bab-nya 1 sampai 4 aja ya.",
     gotoBusy: "Lagi sibuk (minigame, modal, atau lagi jalan). Coba lagi bentar.",
     gotoOk: "Meluncur ke {label} · {title}...",
@@ -95,6 +97,23 @@ export const COPY = {
     },
     best: "Rekor: {time} detik",
     newBest: "REKOR BARU!",
+  },
+  // Ghost + challenge link (T4). {course} = a course name from journal.courses. The ghost is a
+  // blue "bayangan" on the road (D511: no English UI); tags are drawn on the canvas over it.
+  ghost: {
+    invalid: "Link tantangan tidak valid",
+    title: "Tantangan: {course}",
+    desc: "Temanmu nantang kamu! Salip bayangan birunya sampai finish.",
+    share: "Tantang teman",
+    copied: "Link tantangan tersalin!",
+    link: "Link tantangan, salin manual",
+    tagFriend: "👻 TEMAN",
+    tagBest: "👻 REKORMU",
+    vs: {
+      beat: "Tantangan temanmu kamu kalahkan!",
+      tie: "Seri! Sama cepat sama temanmu.",
+      notYet: "Belum, temanmu masih lebih cepat.",
+    },
   },
   // Kopi Rahasia (P3). Toasts are plain text (no **bold**): {found} and {total} are counted
   // from js/kopi.js. hints: one line per cup for the journal (P1), keyed by KOPI id.

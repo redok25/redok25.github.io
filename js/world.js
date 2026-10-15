@@ -71,7 +71,8 @@ const GAUGE_FILL = "#38b764";
 const GAUGE_BAR = { x: 9, y: 27, w: 54, h: 10 }; // the bar well inside the baked panel
 
 // Pre-tinted copy of a loaded sprite: the color lands on its opaque pixels only (source-atop).
-function tintCopy(img, color) {
+// A translucent color keeps the shading (the T4 ghost bike in minigames.js).
+export function tintCopy(img, color) {
   const canvas = document.createElement("canvas");
   canvas.width = img.naturalWidth;
   canvas.height = img.naturalHeight;

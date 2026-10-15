@@ -6,13 +6,70 @@ import { JOR } from "./helpers.js";
 import { fadeTeleport } from "./travel.js";
 import { COPY } from "./copy.js";
 import { save, recordBest, formatSteps } from "./save.js";
-import { unlockMinigame } from "./achievements.js";
+import { unlockMinigame, queueToast } from "./achievements.js";
+import { tintCopy } from "./world.js";
+import {
+  GhostRecorder, mulberry32, newSeed, encodeGhost, parseGhostHash, ghostLink, ghostX, ghostVs, getGhost, setGhost,
+} from "./ghost.js";
 
 // Return to the NPC (W6, R15): the bike's centre lands this far left of the NPC's home
 // centre, facing it. 40 px keeps the NPC the strict best E target and keeps every NPC's
 // return inside its own R3 chapter (RLGL 3910 in Bab 2, Drag 5060 in Bab 3).
 const RETURN_GAP = 40;
 const CONFETTI_PIECES = 24; // P7; CSS hides every other one under reduced motion
+const RIVAL_FILTER = "hue-rotate(90deg) brightness(0.8) sepia(1) saturate(5) hue-rotate(-50deg)"; // the red rival
+
+// T4 ghost bike (R23): the bike's idle sprite tinted blue once per page (a translucent tint keeps
+// the shading), drawn at half alpha through the rival's path. No ctx.filter for it.
+const GHOST_TINT = "rgba(70, 150, 255, 0.7)";
+const GHOST_ALPHA = 0.5;
+const GHOST_TAG_LIFT = 20; // px: its name tag sits over the rival's when they ride together
+let ghostSprite = null; // null = not baked yet (retried), false = the bake failed
+
+function ghostSpriteOf(game) {
+  if (ghostSprite === null) {
+    const img = game.player.sprites.idle;
+    if (!img || !img.complete || !img.naturalWidth) return null;
+    try {
+      ghostSprite = tintCopy(img, GHOST_TINT);
+    } catch (e) {
+      ghostSprite = false;
+    }
+  }
+  return ghostSprite || null;
+}
+
+// One rider on the road at world x (the Drag rival, a ghost): a name tag over a bike sprite,
+// culled 200 px off-screen. The rival keeps its per-frame filter tint; a ghost brings a baked
+// sprite, its alpha and a higher tag instead.
+function drawRider(ctx, game, x, sprite, label, alpha = 1, filter = null, lift = 0) {
+  const p = game.player;
+  const sx = x - game.cameraX;
+  if (!(sx > -200 && sx < game.canvas.width + 200)) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 16px 'VT323', monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(label, sx + p.width * 0.4, p.y - 15 - lift);
+  if (sprite) {
+    if (filter) ctx.filter = filter; // restore() puts it back
+    ctx.drawImage(sprite, sx, p.y, p.width, p.height);
+  } else {
+    ctx.fillStyle = "#e74c3c"; // fallback box
+    ctx.fillRect(sx, p.y, p.width, p.height);
+  }
+  ctx.restore();
+}
+
+// A course's ghost (T4): where its run was after as many course steps, drawn between the last
+// two steps like the bike (renderAlpha; 1 while paused, so a pause holds it in place).
+function drawGhost(ctx, course) {
+  const sprite = ghostSpriteOf(course.game);
+  if (!sprite) return;
+  const t = course.rec.steps - 1 + (course.game.renderAlpha ?? 1);
+  drawRider(ctx, course.game, course.startX + ghostX(course.ghost, t), sprite, course.ghostTag, GHOST_ALPHA, null, GHOST_TAG_LIFT);
+}
 
 // Minigame metadata for modals
 const MINIGAME_INFO = {
@@ -77,6 +134,25 @@ export class MinigameManager {
     this.pendingMinigame = null; // Store pending game type when showing modal
     this.lastType = null; // the course that ran last: where its result and exit return to
 
+    // Challenge link (T4, R25): read once here (never at module load), then the hash goes; no
+    // hashchange listener. A broken link is one queued toast and nothing else.
+    const link = parseGhostHash(location.hash);
+    this.challenge = link || null; // the link's ghost, until its course is started (R25)
+    this.lastChallenge = null; // the challenge the last course ran: "Main Lagi?" keeps it (R22)
+    this.offer = !!link; // its start modal opens once, on the first free step (offerChallenge)
+    this.lastRun = null; // the last win's ghost payload: "Tantang teman"
+    this.sharing = false; // a share sheet or clipboard write is in flight (shareRun)
+    if (link !== null) {
+      try {
+        history.replaceState(null, "", location.pathname + location.search);
+      } catch (e) {
+        // A sandboxed frame: the hash stays, it is read only here anyway.
+      }
+      if (!link) queueToast(COPY.ghost.invalid, "info");
+    }
+    this.gestureInfo = document.getElementById("gesture-info");
+    this.titleCard = document.getElementById("title-card");
+
     // HUD Elements
     this.hudElement = document.getElementById("minigame-hud");
     this.messageElement = document.getElementById("minigame-message");
@@ -110,6 +186,11 @@ export class MinigameManager {
     this.btnResultReplay = document.getElementById("btn-result-replay");
     this.resultTime = document.getElementById("result-time");
     this.resultBest = document.getElementById("result-best");
+    this.resultVs = document.getElementById("result-vs");
+    this.btnResultShare = document.getElementById("btn-result-share");
+    this.resultLink = document.getElementById("result-link");
+    if (this.btnResultShare) this.btnResultShare.textContent = COPY.ghost.share;
+    if (this.resultLink) this.resultLink.setAttribute("aria-label", COPY.ghost.link);
 
     // Exit Button
     this.btnExitMinigame = document.getElementById("btn-exit-minigame");
@@ -128,6 +209,7 @@ export class MinigameManager {
     if (this.btnCancel) this.btnCancel.addEventListener("keydown", ignoreRepeat);
     if (this.btnResultClose) this.btnResultClose.addEventListener("keydown", ignoreRepeat);
     if (this.btnResultReplay) this.btnResultReplay.addEventListener("keydown", ignoreRepeat);
+    if (this.btnResultShare) this.btnResultShare.addEventListener("keydown", ignoreRepeat);
 
     // A hidden .modal keeps its buttons visible for its 0.3 s fade: every handler ignores a
     // second activation (stray Enter, double click) once its modal is hidden (R29).
@@ -135,7 +217,11 @@ export class MinigameManager {
       this.btnStart.addEventListener("click", () => {
         if (this.modalElement.classList.contains("hidden")) return;
         this.hideModal(true); // keep the "minigame" owner: the start fade and intro follow
-        if (this.pendingMinigame) this.actuallyStartMinigame(this.pendingMinigame);
+        const type = this.pendingMinigame;
+        if (!type) return;
+        const ch = this.challengeFor(type);
+        if (ch) this.challenge = null; // R25: started, so used up ("Nanti Saja" kept it)
+        this.actuallyStartMinigame(type, ch);
       });
     }
 
@@ -147,9 +233,10 @@ export class MinigameManager {
       });
     }
 
-    // Esc = "Nanti Saja" while the start modal is open (keyboard-only players, R29).
+    // Esc = "Nanti Saja" while the start modal is open (keyboard-only players, R29). A held Esc
+    // (auto-repeat, e.g. from skipping the ride into a challenge's modal) does nothing (G-4).
     document.addEventListener("keydown", (e) => {
-      if (e.key !== "Escape" || !this.pendingMinigame || document.querySelector("dialog[open]")) return;
+      if (e.key !== "Escape" || e.repeat || !this.pendingMinigame || document.querySelector("dialog[open]")) return;
       if (!this.modalElement || this.modalElement.classList.contains("hidden")) return;
       this.hideModal();
       this.pendingMinigame = null;
@@ -183,8 +270,16 @@ export class MinigameManager {
     if (this.btnResultReplay) {
       this.btnResultReplay.addEventListener("click", () => {
         if (!dismissResult()) return;
-        this.actuallyStartMinigame(this.lastType);
+        this.actuallyStartMinigame(this.lastType, this.lastChallenge);
         JOR.releasePause(this.game, "mg-result");
+      });
+    }
+
+    // "Tantang teman" (T4, R24): shares the run just won; the card stays open.
+    if (this.btnResultShare) {
+      this.btnResultShare.addEventListener("click", () => {
+        if (!this.lastRun || this.resultModal.classList.contains("hidden")) return;
+        this.shareRun(ghostLink(location.origin + location.pathname, this.lastRun));
       });
     }
 
@@ -202,11 +297,17 @@ export class MinigameManager {
   showModal(type) {
     const info = MINIGAME_INFO[type];
     if (!info || !this.modalElement) return;
+    // A pending challenge for this course frames the modal (R25); the rules stay the course's.
+    const ch = this.challengeFor(type);
+    if (ch) this.offer = false;
 
     // Populate modal
-    if (this.modalTitle) this.modalTitle.textContent = info.title;
+    if (this.modalTitle) {
+      this.modalTitle.textContent = ch ? JOR.fillTokens(COPY.ghost.title, { course: COPY.journal.courses[type] }) : info.title;
+    }
     if (this.modalIcon) this.modalIcon.textContent = info.icon;
-    if (this.modalDesc) this.modalDesc.textContent = info.description;
+    if (this.modalDesc) this.modalDesc.textContent = ch ? COPY.ghost.desc : info.description;
+    this.modalElement.classList.toggle("is-challenge", !!ch); // landscape phones: title first (G-3)
     if (this.modalRules) {
       this.modalRules.innerHTML = info.rules
         .map((r) => `<li>${r}</li>`)
@@ -242,6 +343,24 @@ export class MinigameManager {
     // travel, credits...): a tap under a black fade must not open a modal (R18).
     if (this.activeMinigame || this.game.paused) return;
     this.showModal(type);
+  }
+
+  // The pending challenge when it is for this course (T4), else null.
+  challengeFor(type) {
+    return this.challenge && this.challenge.type === type ? this.challenge : null;
+  }
+
+  // A challenge link's start modal (R25): once, on the first free step after the opening ride,
+  // not under the phone gesture sheet and not under a chapter title card (z 3300 over the
+  // modal's 1000). Courses start at the ride end, so there is no travel to the NPC first.
+  // "Free" is the travel rule (canTravel): not in the epilog (its NO_KEYS would hold the course
+  // still), a travel, the offscreen return, a course or any pause owner (critique G-1).
+  offerChallenge() {
+    const g = this.game;
+    if (!g.canTravel() || g._splashCameraActive) return;
+    if (this.gestureInfo && !this.gestureInfo.classList.contains("hidden")) return;
+    if (this.titleCard && this.titleCard.classList.contains("is-on")) return;
+    this.startMinigame(this.challenge.type); // showModal clears `offer` once it opens
   }
 
   playIntro(type, onComplete) {
@@ -282,10 +401,12 @@ export class MinigameManager {
     }, 4000);
   }
 
-  actuallyStartMinigame(type) {
+  // challenge: the link's ghost this run races (R22-R25), or null for a normal run.
+  actuallyStartMinigame(type, challenge = null) {
     console.log(`Starting minigame: ${type}`);
     this.pendingMinigame = null;
     this.lastType = type;
+    this.lastChallenge = challenge;
     const p = this.game.player;
     // Courses keep their lengths from the ride end (R7). The chapter (Bab 1) syncs at the
     // black frame. The caller's owner ("minigame" from the start modal, or "mg-result" from
@@ -294,15 +415,20 @@ export class MinigameManager {
       x: p.minX || 200,
       onDone: () =>
         this.playIntro(type, () => {
+          // A challenge brings its seed and ghost; otherwise Drag shows the local PB ghost and
+          // RLGL draws a fresh seed with no ghost (another seed's ghost would run the reds, R22).
+          const opts = challenge
+            ? { seed: challenge.seed, ghost: challenge, tag: COPY.ghost.tagFriend }
+            : { ghost: type === "drag_race" ? getGhost(save, type) : null, tag: COPY.ghost.tagBest };
           switch (type) {
             case "wheelie_challenge":
               this.activeMinigame = new WheelieChallenge(this.game, this);
               break;
             case "red_light_green_light":
-              this.activeMinigame = new RedLightGreenLight(this.game, this);
+              this.activeMinigame = new RedLightGreenLight(this.game, this, opts);
               break;
             case "drag_race":
-              this.activeMinigame = new DragRace(this.game, this);
+              this.activeMinigame = new DragRace(this.game, this, opts);
               break;
           }
           if (this.activeMinigame) {
@@ -323,17 +449,25 @@ export class MinigameManager {
     if (!this.activeMinigame) return null;
 
     console.log(`Minigame ended. Success: ${success}`);
-    this.activeMinigame.end();
+    const course = this.activeMinigame;
+    course.end();
     this.activeMinigame = null;
     this.hideHUD();
 
     const result = { type: this.lastType, success, ...recordBest(save, this.lastType, success ? steps : null) };
+    // T4: a win under 60 s leaves a ghost: "Tantang teman" shares it, and it becomes the course's
+    // PB ghost on a new best or when there is none yet (R20, R24). A challenge run gets one line
+    // against the friend: every course step of a win (RLGL reds too) vs the ghost's samples (R23).
+    const rec = course.rec;
+    this.lastRun = success && rec ? encodeGhost(course.kind, course.seed, rec.data, rec.finish(this.game.player.x)) : null;
+    if (this.lastRun && (result.isNewBest || !getGhost(save, result.type))) setGhost(save, result.type, this.lastRun);
+    result.vs = this.lastChallenge && rec ? ghostVs(success ? rec.steps : null, this.lastChallenge) : null;
     this.showResultModal(result, message);
     unlockMinigame(result); // P5: wins and a beaten record; their toasts land above the card
     return result;
   }
 
-  showResultModal({ type, success, steps, best, isNewBest }, message) {
+  showResultModal({ type, success, steps, best, isNewBest, vs }, message) {
     if (!this.resultModal) return;
 
     this.resultTitle.textContent = success ? "🎉 VICTORY! 🎉" : "💀 GAME OVER";
@@ -353,6 +487,9 @@ export class MinigameManager {
     line(this.resultTime, steps ? JOR.fillTokens(COPY.minigame.time[type] || "", t(steps)) : "");
     line(this.resultBest, isNewBest ? COPY.minigame.newBest : best ? JOR.fillTokens(COPY.minigame.best, t(best)) : "");
     if (this.resultBest) this.resultBest.classList.toggle("is-new", !!isNewBest);
+    line(this.resultVs, vs ? COPY.ghost.vs[vs] : ""); // T4: a challenge run only
+    if (this.btnResultShare) this.btnResultShare.classList.toggle("hidden", !this.lastRun);
+    if (this.resultLink) this.resultLink.classList.add("hidden");
 
     this.playConfetti(success); // P7: DOM confetti, the "mg-result" pause freezes the canvas
     this.resultModal.classList.remove("hidden");
@@ -391,6 +528,38 @@ export class MinigameManager {
     box.classList.add("is-on");
   }
 
+  // R24: the share sheet on phones; else the clipboard and a toast (z 9999, over the card);
+  // if both fail, the link in a read-only field on the card to copy by hand. A cancelled
+  // share sheet (AbortError) does nothing.
+  // One share at a time: a second tap while the sheet (or the clipboard) is still busy does
+  // nothing (Chrome rejects a second share() with InvalidStateError, critique G-5).
+  async shareRun(url) {
+    if (this.sharing) return;
+    this.sharing = true;
+    try {
+      if (navigator.share && matchMedia("(pointer: coarse)").matches) {
+        try {
+          await navigator.share({ url });
+          return;
+        } catch (e) {
+          if (e && e.name === "AbortError") return;
+        }
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        queueToast(COPY.ghost.copied, "success");
+      } catch (e) {
+        if (!this.resultLink) return;
+        this.resultLink.value = url; // a property, never markup
+        this.resultLink.classList.remove("hidden");
+        this.resultLink.focus();
+        this.resultLink.select();
+      }
+    } finally {
+      this.sharing = false;
+    }
+  }
+
   // Where a course hands the bike back (W6, R15): left of the NPC that offers it. Cheat or
   // console starts have that NPC too; without one (a broken spawn) the ride end is used.
   returnSpot(type) {
@@ -422,6 +591,8 @@ export class MinigameManager {
   update(deltaTime) {
     if (this.activeMinigame) {
       this.activeMinigame.update(deltaTime);
+    } else if (this.offer) {
+      this.offerChallenge(); // T4: a challenge link waits for a free step
     }
   }
 
@@ -535,9 +706,11 @@ class WheelieChallenge extends Minigame {
   }
 }
 
-// 2. Red Light, Green Light
-class RedLightGreenLight extends Minigame {
-  constructor(game, manager) {
+// 2. Red Light, Green Light. Exported for tests/check.html (seeded lights, T4).
+export class RedLightGreenLight extends Minigame {
+  // T4 (R22): the lights are a pure function of (seed, course step): mulberry32(seed) replaces
+  // the three Math.random calls, in the same order. ghost/tag: the challenge ghost, if any.
+  constructor(game, manager, { seed = newSeed(), ghost = null, tag = "" } = {}) {
     super(game, manager);
     this.state = "GREEN"; // GREEN, YELLOW, RED
     this.timer = 0;
@@ -545,18 +718,25 @@ class RedLightGreenLight extends Minigame {
     this.targetX = game.player.x + 3500; // Finish line 3500px away (harder)
     this.startX = game.player.x;
     this.steps = 0; // sim steps outside RED since start (P6): the run's time
+    this.kind = "rl";
+    this.seed = seed;
+    this.rand = mulberry32(seed);
+    this.rec = new GhostRecorder(this.startX); // every course step, reds included (R20)
+    this.ghost = ghost;
+    this.ghostTag = tag;
   }
 
   start() {
     this.manager.showMessage("🟢 LAMPU HIJAU - GAS!", 2000);
     this.state = "GREEN";
-    this.nextSwitch = 1500 + Math.random() * 1500; // Shorter green phase (1.5-3s)
+    this.nextSwitch = 1500 + this.rand() * 1500; // Shorter green phase (1.5-3s)
   }
 
   update(dt) {
+    this.rec.step(this.game.player.x); // T4: the bike after this step, before the win check
     // P6: count the step when the light the rider saw for this step's input was not RED
     // (state before this step's switch). ponytail: red length is luck and never counts; the
-    // number of red cycles still does (~0.5 s each at perfect play) until Phase 5 seeds the lights.
+    // number of red cycles still does (~0.5 s each at perfect play); a challenge shares the seed.
     if (this.state !== "RED") this.steps++;
     this.timer += dt;
 
@@ -569,11 +749,11 @@ class RedLightGreenLight extends Minigame {
         this.manager.showMessage("🟡 HATI-HATI...", 800);
       } else if (this.state === "YELLOW") {
         this.state = "RED";
-        this.nextSwitch = 2500 + Math.random() * 2500; // Red lebih lama (2.5-5s)
+        this.nextSwitch = 2500 + this.rand() * 2500; // Red lebih lama (2.5-5s)
         this.manager.showMessage("🔴 BERHENTI!!", 1500);
       } else if (this.state === "RED") {
         this.state = "GREEN";
-        this.nextSwitch = 1500 + Math.random() * 1500; // Green lebih pendek (1.5-3s)
+        this.nextSwitch = 1500 + this.rand() * 1500; // Green lebih pendek (1.5-3s)
         this.manager.showMessage("🟢 GAS!", 1000);
       }
     }
@@ -626,6 +806,8 @@ class RedLightGreenLight extends Minigame {
       ctx.restore();
     }
 
+    if (this.ghost) drawGhost(ctx, this); // T4: under the red tint, like the road
+
     // Draw Light Overlay (optional, full screen tint)
     if (this.state === "RED") {
       ctx.save();
@@ -638,8 +820,14 @@ class RedLightGreenLight extends Minigame {
 
 // 4. Drag Race
 export class DragRace extends Minigame {
-  constructor(game, manager) {
+  // T4: ghost/tag = the PB or challenge ghost, drawn only (the red rival still decides, R23).
+  constructor(game, manager, { ghost = null, tag = "" } = {}) {
     super(game, manager);
+    this.kind = "dr";
+    this.seed = 0; // no RNG in a drag race (R21)
+    this.rec = new GhostRecorder(game.player.x); // RACING steps only: the race time since GO
+    this.ghost = ghost;
+    this.ghostTag = tag;
     this.state = "WAITING"; // WAITING, COUNTDOWN, RACING, FINISHED
     this.npcX = game.player.x;
     this.targetDist = 3000; // Increased from 2000 to 3000px
@@ -683,6 +871,7 @@ export class DragRace extends Minigame {
       this.manager.updateTimer(`${this.countdown}...`);
     } else if (this.state === "RACING") {
       this.steps++;
+      this.rec.step(this.game.player.x); // T4: x stood still at startX until GO (false start)
       // Move NPC
       this.npcX += this.npcSpeed; // one fixed step
 
@@ -706,56 +895,12 @@ export class DragRace extends Minigame {
   render(ctx) {
     const camX = this.game.cameraX;
 
-    // Draw NPC (Ghost Rider), lerped between the last two sim steps
+    // The ghost (T4, under the rival), then the rival lerped between the last two sim steps:
+    // the bike's idle sprite with a red filter tint.
     if (this.state === "RACING" || this.state === "COUNTDOWN") {
+      if (this.ghost) drawGhost(ctx, this);
       const npcX = this.prevNpcX === undefined ? this.npcX : this.prevNpcX + (this.npcX - this.prevNpcX) * (this.game.renderAlpha ?? 1);
-      const sx = npcX - camX;
-      if (sx > -200 && sx < this.game.canvas.width + 200) {
-        ctx.save();
-
-        // Draw name tag
-        ctx.fillStyle = "#fff";
-        ctx.font = "bold 16px 'VT323', monospace";
-        ctx.textAlign = "center";
-        ctx.fillText(
-          "🏍️ RIVAL",
-          sx + this.game.player.width * 0.4,
-          this.game.player.y - 15
-        );
-
-        // Draw Rival Sprite (Clone of player sprite but with filter)
-        // Assuming idle sprite for now, or maybe moving if racing?
-        // Let's use idle for simple implementation or existing animation frames if possible
-        const sprite = this.game.player.sprites.idle;
-
-        if (sprite) {
-          // Apply red overlay/filter
-          // Option 1: filter (easiest but performance heavy?)
-          // Option 2: globalCompositeOperation
-
-          // Let's use filter if supported (modern browsers)
-          ctx.filter =
-            "hue-rotate(90deg) brightness(0.8) sepia(1) saturate(5) hue-rotate(-50deg)";
-          // Just a red tint hack: sepia 1 + saturate high + hue rotate to red region
-
-          const width = this.game.player.width;
-          const height = this.game.player.height;
-
-          ctx.drawImage(sprite, sx, this.game.player.y, width, height);
-          ctx.filter = "none"; // reset
-        } else {
-          // Fallback box
-          ctx.fillStyle = "#e74c3c";
-          ctx.fillRect(
-            sx,
-            this.game.player.y,
-            this.game.player.width,
-            this.game.player.height
-          );
-        }
-
-        ctx.restore();
-      }
+      drawRider(ctx, this.game, npcX, this.game.player.sprites.idle, "🏍️ RIVAL", 1, RIVAL_FILTER);
     }
 
     // Draw Finish Line

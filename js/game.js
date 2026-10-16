@@ -618,12 +618,8 @@ class Game {
       this._splashCameraActive || this.offscreenModalActive || this.credits.epilog.running ? NO_KEYS : this.keys;
     const rot0 = this.player.wheelieRotation; // P7: a landing is this step's drop to 0
     this.player.update(deltaTime, keysForPlayer);
-    // The playable road ends at worldWidth (R-E3): only the epilog's scripted ride goes past it.
-    const endX = this.world.worldWidth - this.player.width;
-    if (this.player.x > endX && !this.credits.epilog.running) {
-      this.player.x = endX;
-      if (this.player.velocityX > 0) this.player.velocityX = 0;
-    }
+    // No clamp at the road end (D655): like the road start, a bike past 7400 leaves the screen
+    // and the offscreen "Kembali" modal brings it back.
 
     // Camera: normal follow, or a tighter follow (0.4) while a scripted ride runs: the opening
     // ride, and the epilog ride and sunrise (R-E2), framed alike.

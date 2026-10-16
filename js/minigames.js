@@ -8,6 +8,7 @@ import { COPY } from "./copy.js";
 import { save, recordBest, formatSteps } from "./save.js";
 import { unlockMinigame, queueToast } from "./achievements.js";
 import { tintCopy } from "./world.js";
+import { CHAPTERS } from "./journey.js";
 import {
   GhostRecorder, mulberry32, newSeed, encodeGhost, parseGhostHash, ghostLink, ghostX, ghostVs, getGhost, setGhost,
 } from "./ghost.js";
@@ -18,6 +19,7 @@ import {
 const RETURN_GAP = 40;
 const CONFETTI_PIECES = 24; // P7; CSS hides every other one under reduced motion
 const RIVAL_FILTER = "hue-rotate(90deg) brightness(0.8) sepia(1) saturate(5) hue-rotate(-50deg)"; // the red rival
+const RIVAL_DUST = Object.freeze({ count: 2, spreadX: 12, spreadY: 6 }); // the bike's own wheel dust (game.js)
 
 // T4 ghost bike (R23): the bike's idle sprite tinted blue once per page (a translucent tint keeps
 // the shading), drawn at half alpha through the rival's path. No ctx.filter for it.
@@ -42,8 +44,9 @@ function ghostSpriteOf(game) {
 
 // One rider on the road at world x (the Drag rival, a ghost): a name tag over a bike sprite,
 // culled 200 px off-screen. The rival keeps its per-frame filter tint; a ghost brings a baked
-// sprite, its alpha and a higher tag instead.
-function drawRider(ctx, game, x, sprite, label, alpha = 1, filter = null, lift = 0) {
+// sprite, its alpha and a higher tag instead. A `rider` (the rival) also gets the bike's own
+// spinning wheels and exhaust part, drawn untinted (a filter per spoke stroke would be costly).
+function drawRider(ctx, game, x, sprite, label, alpha = 1, filter = null, lift = 0, rider = null) {
   const p = game.player;
   const sx = x - game.cameraX;
   if (!(sx > -200 && sx < game.canvas.width + 200)) return;
@@ -56,6 +59,11 @@ function drawRider(ctx, game, x, sprite, label, alpha = 1, filter = null, lift =
   if (sprite) {
     if (filter) ctx.filter = filter; // restore() puts it back
     ctx.drawImage(sprite, sx, p.y, p.width, p.height);
+    if (rider) {
+      ctx.filter = "none";
+      rider.drawWheels(ctx, sx);
+      rider.drawExhaust(ctx, sx);
+    }
   } else {
     ctx.fillStyle = "#e74c3c"; // fallback box
     ctx.fillRect(sx, p.y, p.width, p.height);
@@ -846,6 +854,13 @@ export class DragRace extends Minigame {
     this.countTimer = 0;
     this.startX = null;
     this.steps = 0; // sim steps since GO (P6): the race time
+    // The red rival as a bike of its own, made once: it inherits the player's size, wheel and
+    // exhaust offsets and drawing methods, and keeps its own x, speed, wheel spin and pose, so
+    // drawWheels/drawExhaust and effects.juice (smoke, Bab 3 leaf wake) read it like the bike.
+    this.rival = Object.assign(Object.create(game.player), {
+      x: game.player.x, velocityX: 0, wheelAngle: 0, currentAnimation: "idle", facingRight: true,
+      braking: false, wheelieActive: false, wheelieRotation: 0,
+    });
   }
 
   start() {
@@ -853,6 +868,7 @@ export class DragRace extends Minigame {
     this.state = "COUNTDOWN";
     this.npcX = this.game.player.x; // Align NPC
     this.startX = this.game.player.x;
+    this.rival.x = this.npcX;
   }
 
   update(dt) {
@@ -883,6 +899,7 @@ export class DragRace extends Minigame {
       this.rec.step(this.game.player.x); // T4: x stood still at startX until GO (false start)
       // Move NPC
       this.npcX += this.npcSpeed; // one fixed step
+      this.rideRival();
 
       const finishX = this.startX + this.targetDist;
 
@@ -901,15 +918,31 @@ export class DragRace extends Minigame {
     }
   }
 
+  // One race step of the rival's bike (T330): the move pose, wheels spun by its speed like the
+  // bike's (player.update), the bike's dust from both wheels (game.update) and its juice.
+  // Runs after the bike's own particles each step, so a full pool never starves the bike.
+  rideRival() {
+    const r = this.rival;
+    const fx = this.game.effects;
+    const wheelY = r.y + r.height - 10;
+    r.x = this.npcX;
+    r.velocityX = this.npcSpeed;
+    r.currentAnimation = "move";
+    r.wheelAngle += this.npcSpeed * r.wheelSpinMultiplier;
+    fx.createDustParticles(r.x + 40, wheelY, RIVAL_DUST);
+    fx.createDustParticles(r.x + r.width - 40, wheelY, RIVAL_DUST);
+    fx.juice(r, 0, CHAPTERS[this.game.journey.current].biome === "autumn");
+  }
+
   render(ctx) {
     const camX = this.game.cameraX;
 
     // The ghost (T4, under the rival), then the rival lerped between the last two sim steps:
-    // the bike's idle sprite with a red filter tint.
+    // the bike's sprite for its pose with a red filter tint, and its own wheels and exhaust.
     if (this.state === "RACING" || this.state === "COUNTDOWN") {
       if (this.ghost) drawGhost(ctx, this);
       const npcX = this.prevNpcX === undefined ? this.npcX : this.prevNpcX + (this.npcX - this.prevNpcX) * (this.game.renderAlpha ?? 1);
-      drawRider(ctx, this.game, npcX, this.game.player.sprites.idle, "🏍️ RIVAL", 1, RIVAL_FILTER);
+      drawRider(ctx, this.game, npcX, this.game.player.sprites[this.rival.currentAnimation], "🏍️ RIVAL", 1, RIVAL_FILTER, 0, this.rival);
     }
 
     // Draw Finish Line

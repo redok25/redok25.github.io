@@ -69,7 +69,8 @@
             raceGhost = success ? encodeGhost(r.kind, r.seed, r.rec.data, r.rec.finish(p.x)) : null;
           },
         };
-        const game = { player: p, canvas: { width: 1920 }, cameraX: 0 };
+        const effects = { createDustParticles() {}, juice() {} };
+        const game = { player: p, canvas: { width: 1920 }, cameraX: 0, journey: { current: 0 }, effects };
         const r = new DragRace(game, manager);
         r.start();
         let goStep = null;
@@ -95,6 +96,27 @@
       }
       race(400);
       check("Drag: a loss reports no steps (P6)", raceSteps === null, String(raceSteps));
+      {
+        // T330: the rival rides a bike of its own: wheels still through the countdown, then spun
+        // by its speed each race step, with dust at both of its wheels and the bike's juice.
+        const p = new Player(2771, 500);
+        const dust = new Set();
+        let juiced = 0;
+        const effects = {
+          createDustParticles(x) { dust.add(Math.round(x - r.rival.x)); },
+          juice(bike) { if (bike === r.rival) juiced++; },
+        };
+        const game = { player: p, canvas: { width: 1920 }, cameraX: 0, journey: { current: 0 }, effects };
+        const r = new DragRace(game, { showMessage() {}, updateScore() {}, updateTimer() {}, stopMinigame() {} });
+        r.start();
+        for (let i = 0; i < 400 && r.state === "COUNTDOWN"; i++) r.update(JOR.STEP_MS);
+        const still = r.rival.wheelAngle === 0 && dust.size === 0 && juiced === 0 && r.rival.currentAnimation === "idle";
+        for (let i = 0; i < 10; i++) r.update(JOR.STEP_MS);
+        const spun = Math.abs(r.rival.wheelAngle - 10 * r.npcSpeed * p.wheelSpinMultiplier) < 1e-9;
+        const wheels = [...dust].sort((a, b) => a - b).join("/");
+        const ok = still && spun && juiced === 10 && r.rival.x === r.npcX && r.rival.currentAnimation === "move" && wheels === `40/${p.width - 40}`;
+        check("T330: the rival's wheels wait for GO, then spin, with dust at both wheels", ok, `still ${still}, angle ${r.rival.wheelAngle.toFixed(2)}, dust at ${wheels}, juice ${juiced}`);
+      }
 
       // (f) T4 codec (F7 c, R21, R27): a round trip and every rejection class.
       {
